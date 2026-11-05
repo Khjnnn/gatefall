@@ -15,7 +15,7 @@ namespace Gatefall.Tests {
         }
         public sealed class Row {
             public Outcome outcome;public string choice,prefixHash;public bool supplement;
-            public int prefixSpent,prefixTowers,actions,expectedActions,peakAlive,unmatchedShots,currentFired;
+            public int prefixSpent,prefixTowers,actions,expectedActions,peakAlive,unmatchedShots,currentFired,supplementSite;
             public double maxPurchaseDelay;public int[] prefixCards,shots=new int[11];public float[] damage,prefixDamage;
         }
         static string Prefix(DefenseSimulation g) {
@@ -24,11 +24,15 @@ namespace Gatefall.Tests {
             using(var sha=SHA256.Create())return string.Concat(sha.ComputeHash(Encoding.UTF8.GetBytes(b.ToString())).Select(x=>x.ToString("x2")));
         }
         public static Row Play(int seed,bool below,string choice,bool supplement) {
+            return PlayAt(seed,below,choice,supplement,8);
+        }
+        public static Row PlayAt(int seed,bool below,string choice,bool supplement,int supplementSite) {
             if(seed!=7 && seed!=19 && seed!=41)throw new ArgumentException("Selected seed only");
             if(choice!="original" && choice!="binding3" && choice!="shatter13" && choice!="shatter15")throw new ArgumentException("Unknown policy");
             if(choice=="original" && supplement)throw new ArgumentException("Original control has no reinforcement");
+            if(supplementSite!=8 && !(supplement && (choice=="shatter13" && supplementSite==15 || choice=="shatter15" && supplementSite==13)))throw new ArgumentException("Refill must be the consumed empty material site");
             var account=AccountGrowthChecks.Recommended(9,0,below?1:0);var rules=new CampaignService(account,null).Battle(9,false);
-            var g=new DefenseSimulation(new GameBalance(),seed,rules);var row=new Row{choice=choice,supplement=supplement};
+            var g=new DefenseSimulation(new GameBalance(),seed,rules);var row=new Row{choice=choice,supplement=supplement,supplementSite=supplement?supplementSite:-1};
             var times=new List<float>();var acts=new List<Func<bool>>();string why;
             Action<float,int,TowerKind> build=(time,site,kind)=>{times.Add(time);acts.Add(()=>g.TryBuild(site,kind,null,out why));};
             Action<float,int> upgrade=(time,site)=>{times.Add(time);acts.Add(()=>g.TowerAt(site)!=null && g.TryUpgrade(g.TowerAt(site).Id,null,out why));};
@@ -40,7 +44,7 @@ namespace Gatefall.Tests {
                 upgrade(90,15);
                 if(choice=="binding3")build(100,3,TowerKind.Binding);
                 else {int output=choice=="shatter13"?13:15;times.Add(100);acts.Add(()=>g.TryFuse(1,g.TowerAt(13).Id,g.TowerAt(15).Id,output,null,out why));}
-                if(supplement)build(120,8,TowerKind.Rupture);
+                if(supplement)build(120,supplementSite,TowerKind.Rupture);
             }
             var fired=new HashSet<int>();int index=0;
             CardKind[] preference={CardKind.Ballistic,CardKind.Range,CardKind.Blast,CardKind.Control,CardKind.Credits,CardKind.Hunter};
