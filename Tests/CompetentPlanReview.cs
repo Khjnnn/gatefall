@@ -114,7 +114,8 @@ namespace Gatefall.Tests
         }
 
         public static DefenseSimulation Play(int stage, int seed, Plan plan, bool crisis = false,
-            int spendingLimit = int.MaxValue, CampaignBattle battle = null, Action<DefenseSimulation> afterTick = null)
+            int spendingLimit = int.MaxValue, CampaignBattle battle = null, Action<DefenseSimulation> afterTick = null,
+            Func<DefenseSimulation, V2> movement = null)
         {
             if (spendingLimit < 0) throw new ArgumentOutOfRangeException(nameof(spendingLimit));
             var g = new DefenseSimulation(new GameBalance(), seed, battle ?? new CampaignBattle { Stage = CampaignCatalog.Stages[stage], Crisis = crisis });
@@ -212,7 +213,7 @@ namespace Gatefall.Tests
                 }
             };
             act(); g.Start();
-            while (g.State != RunState.Won && g.State != RunState.Lost && g.Elapsed < 400) { act(); g.Tick(1f / 30, new V2()); if(afterTick!=null)afterTick(g); g.Events.Clear(); }
+            while (g.State != RunState.Won && g.State != RunState.Lost && g.Elapsed < 400) { act(); g.Tick(1f / 30, movement == null ? new V2() : movement(g)); if(afterTick!=null)afterTick(g); g.Events.Clear(); }
             return g;
         }
     }

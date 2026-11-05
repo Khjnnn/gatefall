@@ -12,25 +12,39 @@ namespace Gatefall.Tests {
         }
         public sealed class Case {
             public ProgressionBalanceReview.Row Outcome;
-            public int PolicyIndex, Spawned, Remaining;
+            public int PolicyIndex, Spawned, Remaining, Hunter, Motion, HunterShots, HunterDowns, HunterRevives, SkillUses;
+            public double HunterDownSeconds, MovementDistance;
             public bool AllSpawned, BossDefeated;
             public float[] LaneDamage, TowerDamage;
             public CoreHit[] Hits;
             public Snapshot[] Timeline;
         }
-        public static Case Play(int stage, int seed, string profile, int budget, int policy) {
+        public static Case Play(int stage, int seed, string profile, int budget, int policy, int hunter = 0, int motion = 0) {
             if (stage < 10 || stage > 13 || budget < 0 || (profile != "below" && profile != "recommended") || (policy != 0 && policy != 3))
                 throw new ArgumentException("Curve review requires late crisis stages, valid profile/budget and spear or blast-fusion policy");
+            if (hunter < 0 || hunter > 2 || motion < 0 || motion > 2) throw new ArgumentException("Unknown hunter/motion policy");
             foreach (var entry in CampaignCatalog.Stages) BattlefieldLayouts.Get(entry);
-            var account = AccountGrowthChecks.Recommended(stage, 0, profile == "below" ? 1 : 0);
+            var account = AccountGrowthChecks.Recommended(stage, hunter, profile == "below" ? 1 : 0);
             var rules = new CampaignService(account, null).Battle(stage, true);
             var plan = policy == 0 ? new CompetentPlanReview.Plan { Spread = .5f, Cap = 1, Upgrade = 1 } :
                 new CompetentPlanReview.Plan { Rupture = .4f, Spread = .5f, Cap = 1, Upgrade = 2, Fuse = true };
             var cooldowns = new Dictionary<int, float>(); var fired = new HashSet<int>(); var last = new Dictionary<int, double>();
             var hits = new List<CoreHit>(); var timeline = new List<Snapshot>();
             double total = 0, end = 0; int samples = 0, peak = 0, nextSnapshot = 0;
+            int hunterShots = 0, hunterDowns = 0, hunterRevives = 0, skillUses = 0;
+            double downSeconds = 0, distance = 0, previousTime = 0;
+            V2 previousPosition = new V2(0, -2.2f);
             double[] checkpoints = { 60, 120, 150, 180 };
             Action<DefenseSimulation> observe = game => {
+                bool revived = false;
+                foreach (var item in game.Events) {
+                    if (item.Kind == EventKind.HunterShot) hunterShots++;
+                    if (item.Kind == EventKind.HunterDown) hunterDowns++;
+                    if (item.Kind == EventKind.HunterRevived) { hunterRevives++; revived = true; }
+                }
+                if (game.HunterDown) downSeconds += game.Elapsed - previousTime;
+                if (!revived) distance += V2.Distance(previousPosition, game.PlayerPosition);
+                previousTime = game.Elapsed; previousPosition = game.PlayerPosition;
                 foreach (var tower in game.Towers) {
                     float previous;
                     if (cooldowns.TryGetValue(tower.Id, out previous) && tower.Kind != TowerKind.Barrier && tower.Commission <= 0 && tower.Cooldown > previous + .0001f) {
@@ -50,7 +64,16 @@ namespace Gatefall.Tests {
                     nextSnapshot++;
                 }
             };
-            var result = CompetentPlanReview.Play(stage, seed, plan, true, budget, rules, observe);
+            Func<DefenseSimulation, V2> move = null;
+            if (motion > 0) move = game => {
+                Enemy urgent = null; float closest = float.MaxValue;
+                foreach (var enemy in game.Enemies) if (enemy.Health > 0 && enemy.Position.Length < closest) { closest = enemy.Position.Length; urgent = enemy; }
+                V2 target = urgent == null ? new V2(0, -2.2f) : urgent.Position + new V2(0, -.8f);
+                if (motion == 2 && urgent != null && V2.Distance(game.PlayerPosition, urgent.Position) <= 3 && game.UseSkill()) skillUses++;
+                V2 delta = target - game.PlayerPosition;
+                return delta.Length > .2f ? delta.Normalized : new V2();
+            };
+            var result = CompetentPlanReview.Play(stage, seed, plan, true, budget, rules, observe, move);
             if (result.Telemetry.CreditsSpent > budget) throw new Exception("Curve review spending ceiling exceeded");
             return new Case {
                 Outcome = new ProgressionBalanceReview.Row {
@@ -65,7 +88,9 @@ namespace Gatefall.Tests {
                     Profile = profile, Policy = plan.ToString(), State = result.State.ToString(), Core = result.MinimumCoreHealth,
                     End = result.Elapsed, Ledger = result.Telemetry.Purchases.ToArray()
                 },
-                PolicyIndex = policy, Spawned = result.Telemetry.Spawned, Remaining = result.Enemies.Count,
+                PolicyIndex = policy, Hunter = hunter, Motion = motion, HunterShots = hunterShots, HunterDowns = hunterDowns, HunterRevives = hunterRevives,
+                SkillUses = skillUses, HunterDownSeconds = downSeconds, MovementDistance = distance,
+                Spawned = result.Telemetry.Spawned, Remaining = result.Enemies.Count,
                 AllSpawned = result.AllWavesSpawned, BossDefeated = result.BossDefeated,
                 LaneDamage = result.Telemetry.CoreDamageByLane, TowerDamage = result.Telemetry.TowerDamage,
                 Hits = hits.ToArray(), Timeline = timeline.ToArray()
