@@ -126,7 +126,9 @@ namespace Gatefall
             float hp = Mathf.Clamp01(game.CoreHealth / game.Balance.CoreHealth);
             Skin(new Rect(14, 10, 252, 50), "ui-chip");
             Icon(new Rect(24, 15, 40, 40), "icon-barrier", Color.white);
-            Text(new Rect(70, 12, 120, 18), "도시 결계", 13, Muted, TextAnchor.MiddleLeft, 0);
+            bool crisis = game.Rules != null && !game.Rules.Lab && game.Rules.Crisis;
+            Text(new Rect(70, 12, 120, 18), crisis ? "위기 · 도시 결계" : "도시 결계", 13,
+                crisis ? Amber : Muted, TextAnchor.MiddleLeft, 0);
             Bar(new Rect(70, 33, 136, 12), hp, hp < .3f ? Threat : Ally);
             Text(new Rect(208, 14, 52, 40), Mathf.CeilToInt(game.CoreHealth).ToString(), 20, Paper, TextAnchor.MiddleCenter, 2);
             if (game.HunterDown) {

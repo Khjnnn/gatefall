@@ -309,6 +309,7 @@ namespace Gatefall.Editor
                 if (Resources.Load<Font>(weight) == null) throw new Exception("Missing bundled font weight: " + weight);
             ValidateBaseTowerArt();
             ValidateWaveHeaderFont();
+            ValidateBattleModeFont();
             ValidateObserverMenuFont();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
@@ -386,6 +387,26 @@ namespace Gatefall.Editor
             }
             Directory.CreateDirectory("TestResults");File.WriteAllText("TestResults/wave-header-font.json",JsonUtility.ToJson(report,true));
             Debug.Log("GATEFALL WAVE HEADER FONT PASSED:24pt labels including4-digit remaining count fit150x32.");
+        }
+
+        [Serializable] private sealed class BattleModeFontReport {
+            public string version;
+            public string[] labels = {"도시 결계", "위기 · 도시 결계"};
+            public float[] widths = new float[2], heights = new float[2];
+        }
+        private static void ValidateBattleModeFont()
+        {
+            var report = new BattleModeFontReport { version = Application.version };
+            var style = new GUIStyle { font = Resources.Load<Font>("Fonts/NanumGothic-Regular"), fontSize = 13, wordWrap = true, padding = new RectOffset() };
+            for (int i = 0; i < report.labels.Length; i++) {
+                style.font.RequestCharactersInTexture(report.labels[i], 13, FontStyle.Normal);
+                var content = new GUIContent(report.labels[i]);
+                report.widths[i] = style.CalcSize(content).x; report.heights[i] = style.CalcHeight(content, 120);
+                if (report.widths[i] + 1.5f > 120 || report.heights[i] > 18)
+                    throw new BuildFailedException("Battle mode label wraps: " + report.labels[i]);
+            }
+            File.WriteAllText("TestResults/battle-mode-font.json", JsonUtility.ToJson(report, true));
+            Debug.Log("GATEFALL BATTLE MODE FONT PASSED: normal/crisis core labels fit existing120x18.");
         }
 
         private static void ValidateSplashStatFont(Font font)
