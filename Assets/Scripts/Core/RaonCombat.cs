@@ -194,8 +194,10 @@ namespace Gatefall.Core
         void ApplyAdjacency(Tower tower,TowerStats stats,int level)
         {
             if(!HasResonance(tower))return;
-            TowerStats raw=RawStats(tower.Kind,level);
-            if(tower.Kind==TowerKind.Autocannon || tower.Kind==TowerKind.Rupture)stats.Damage+=raw.Damage*.05f;
+            // Resonance reads only unmodified tier-one scalars; do not allocate a second stats snapshot.
+            TowerStats raw=TowerCatalog.Get(tower.Kind).Levels[level-1];
+            float damage=tower.Kind==TowerKind.Autocannon && Rules!=null ? (level==1 ? 14 : level==2 ? 22 : 30) : raw.Damage;
+            if(tower.Kind==TowerKind.Autocannon || tower.Kind==TowerKind.Rupture)stats.Damage+=damage*.05f;
             if(tower.Kind==TowerKind.Binding)stats.SlowSeconds+=raw.SlowSeconds*.05f;
         }
         void TickRaonTimers(float dt)
