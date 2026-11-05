@@ -503,12 +503,13 @@ namespace Gatefall.Core
             Enemies.Add(enemy);
             Telemetry.Spawned++; Telemetry.SpawnedKinds[(int)g.Kind]++;
         }
+        private static readonly Comparison<Enemy> LeadComparison = Lead;
         private static int Lead(Enemy a,Enemy b) { int d=a.Position.Length.CompareTo(b.Position.Length); return d!=0 ? d : a.Id.CompareTo(b.Id); }
         // Consumed synchronously; impacts do not nest a target query inside the radius loop.
         private List<Enemy> Targets(V2 p,float range,bool availableOnly=false) {
             targetScratch.Clear();float r2=range*range;
             foreach(Enemy enemy in Enemies)if(enemy.Health>0 && (!availableOnly || enemy.IncomingDamage<enemy.Health) && V2.DistanceSquared(p,enemy.Position)<=r2)targetScratch.Add(enemy);
-            targetScratch.Sort(Lead);return targetScratch;
+            targetScratch.Sort(LeadComparison);return targetScratch;
         }
         private int Cluster(Enemy t,float radius) { int count=0;float r2=radius*radius;foreach(Enemy e in Enemies)if(e.Health>0 && V2.DistanceSquared(t.Position,e.Position)<=r2)count++;return count; }
         public Enemy LivingEnemy(int id) {foreach(Enemy e in Enemies)if(e.Id==id && e.Health>0)return e;return null;}

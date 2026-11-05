@@ -29,7 +29,7 @@ if(-not $UseRecorded){
             stars=[Gatefall.Core.CampaignCatalog]::Stars($g.State -eq [Gatefall.Core.RunState]::Won,$g.MinimumCoreHealth,$g.Balance.CoreHealth);laneDamage=$g.Telemetry.CoreDamageByLane;ledger=$g.Telemetry.Purchases.ToArray()}
         $cases.Add([pscustomobject]$row)
         # Preserve each actual outcome before result guards; this file is not a new model request.
-        [ordered]@{source=$hashes;cases=$cases;scope='Normal1-7/8 only,600/720 spending ceilings,below/recommended,first offered cards,idle hunter; same rules are not fixed purchase times/positions or equal actual spending. No new Android or product tuning.'}|ConvertTo-Json -Depth 9|Set-Content $output -Encoding utf8
+        [ordered]@{source=$hashes;cases=$cases;scope='Normal1-7/8 only,600/720 spending ceilings,below/recommended,idle hunter; fixed card preference Ballistic/Range/Blast/Control/Credits/Hunter. Same rules are not fixed purchase times/positions or equal actual spending. No new Android or product tuning.'}|ConvertTo-Json -Depth 9|Set-Content $output -Encoding utf8
         if($row.spent -gt $budget -or $g.State -in @([Gatefall.Core.RunState]::Paused,[Gatefall.Core.RunState]::Ready,[Gatefall.Core.RunState]::Running)){throw 'Spending cap/nonterminal outcome invalid'}
         if($g.State -eq [Gatefall.Core.RunState]::Won -and (-not $g.AllWavesSpawned -or $g.Enemies.Count -ne 0)){throw 'Not an extermination victory'}
         if([Math]::Abs(($row.laneDamage|Measure-Object -Sum).Sum-(300-$g.CoreHealth)) -gt 25){throw 'Core damage ledger differs beyond final overkill'}

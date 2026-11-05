@@ -102,16 +102,19 @@ namespace Gatefall.Editor
             const Unity.Profiling.ProfilerRecorderOptions options =
                 Unity.Profiling.ProfilerRecorderOptions.StartImmediately | Unity.Profiling.ProfilerRecorderOptions.CollectOnlyOnCurrentThread;
             int samples;
-            long allocated = 0;
+            string sampleUnit;
+            long sampleValueSum = 0;
             using (var recorder = new Unity.Profiling.ProfilerRecorder(Unity.Profiling.ProfilerCategory.Memory, "GC.Alloc", 2 * pairs * batches + 16, options)) {
                 for (int i = 0; i < batches; i++) Rebuild();
                 recorder.Stop();
                 samples = recorder.Count;
-                for (int i = 0; i < samples; i++) allocated += recorder.GetSample(i).Value;
+                sampleUnit = recorder.UnitType.ToString();
+                for (int i = 0; i < samples; i++) sampleValueSum += recorder.GetSample(i).Value;
             }
             if (items.Count != 2 * pairs) throw new BuildFailedException("HUD command count changed");
             bool valueType = type.GetNestedType("Item", System.Reflection.BindingFlags.NonPublic).IsValueType;
-            Debug.Log($"GATEFALL HUD COMMAND AUDIT version={Application.version} valueType={valueType} commands={2 * pairs * batches} samples={samples} allocatedBytes={allocated}");
+            // GC.Alloc is a time marker in Unity6; its sample values must not be labelled as bytes.
+            Debug.Log($"GATEFALL HUD COMMAND AUDIT version={Application.version} valueType={valueType} commands={2 * pairs * batches} samples={samples} sampleUnit={sampleUnit} sampleValueSum={sampleValueSum}");
         }
 
         [MenuItem("Gatefall/Mobile/Apply Android and iOS Settings")]

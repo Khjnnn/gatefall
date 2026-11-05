@@ -20,8 +20,27 @@ namespace Gatefall.Tests
             Check("Ward blocking cost per step does not grow with the number of enemies", WardBlockingScale);
             Check("Fusion-ready pad marker matches the fusion menu rule on random lab and campaign boards", ReadyFusionMatchesMenu);
             Check("Fusion-ready pad marker allocates nothing per frame", ReadyFusionAllocation);
+            Check("Target queries reuse their comparison delegate under C#9", TargetQueryAllocation);
             output.Add("PASS: " + count + " allocation checks. Host .NET only; Android frame time and GC pauses are not measured.");
             return string.Join("\n", output);
+        }
+
+        static string TargetQueryAllocation()
+        {
+            var positive=new object[64];long positiveBefore=GC.GetAllocatedBytesForCurrentThread();
+            for(int i=0;i<positive.Length;i++)positive[i]=new object();
+            long positiveBytes=GC.GetAllocatedBytesForCurrentThread()-positiveBefore;GC.KeepAlive(positive);
+            Assert(positiveBytes>0,"Host allocation counter did not detect the positive control");
+            var g=new DefenseSimulation(new GameBalance{SpawnEnemies=false,OfferCards=false},7);
+            for(int i=0;i<64;i++)g.Enemies.Add(new Enemy{Id=i+1,Health=50,MaxHealth=50,Position=new V2(i%8-4,i/8-4)});
+            var method=typeof(DefenseSimulation).GetMethod("Targets",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
+            var query=(Func<V2,float,bool,List<Enemy>>)method.CreateDelegate(typeof(Func<V2,float,bool,List<Enemy>>),g);
+            for(int i=0;i<64;i++)query(new V2(),20,true);
+            long before=GC.GetAllocatedBytesForCurrentThread();int checksum=0;
+            for(int i=0;i<2000;i++)checksum+=query(new V2(),20,true).Count;
+            long allocated=GC.GetAllocatedBytesForCurrentThread()-before;
+            Assert(checksum==128000 && allocated==0,"Target query allocated "+allocated+" bytes or changed target count");
+            return "2000 warmed queries/64enemies:0 host bytes;positive control detected";
         }
 
         // ---------------------------------------------------------------- per-step ward blocking
