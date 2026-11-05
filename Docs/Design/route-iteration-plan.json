@@ -1,0 +1,35 @@
+{
+  "baseline": "0.16.0",
+  "changed_layouts": [
+    {
+      "stage_index": 9,
+      "layout_id": "observatory-four-fronts-ring",
+      "reason": "User requested varied long approaches and optional four-direction layouts; compare firing participation and four-lane defense."
+    },
+    {
+      "stage_index": 6,
+      "layout_id": "evacuation-three-short-south",
+      "reason": "Same552 enemies, paired9 models: fired5.33→8.44; southern short approach, west/east long flanks."
+    },
+    {
+      "stage_index": 7,
+      "layout_id": "alley-three-staggered-courts",
+      "reason": "Same612 enemies/type/timing and22 sites; add east ingress to unchanged west/north roads. Final normal9: frequent firing6.11→7.11, idle24.28→14.18seconds, allcore300; east bendy3 keeps north/east centerlines3apart after candidate0 looked joined. Shared normal/crisis geometry and lane allocation; final Android14towers/612clear182.03/core300/reward24/save verified."
+    },
+    {
+      "stage_index": 13,
+      "layout_id": "observer-three-short-north",
+      "reason": "Keep west49.83/east41.83 and add northern17.33 feeder;24sites/944cell species and times/economy fixed with three-lane redistribution. Normal9 core300/fired12.44 to14.67/frequent11.11 to12.78;two opening7 policies lose152.6;selected crisis3 win300. Product0.23.0 Android20towers/1140spend/175.60s944clear/core300/reward36/Observer unlock and three identical persistent saves verified;not all20 fired."
+    },
+    {
+      "stage_index": 10,
+      "layout_id": "marker-offset-training-courts",
+      "reason": "v0.25.1 verified:offset southeast entry/forward extra sites; normal36 pairs/reinforced18 core300. Android1-11 16T1050/2fusions/174.78s816clear300/reward30 and3equal saves."
+    },
+    {
+      "stage_index": 11,
+      "layout_id": "west-crossing-forward-yards",
+      "reason": "v0.25.1 verified:unchanged roads/original ten sites; forward extra14. Android1-12 16T1050/2fusions/180.28s880clear300/reward32/3equal saves, no all16 simultaneous firing claim."
+    }
+  ]
+}

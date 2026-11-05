@@ -1,0 +1,1032 @@
+{
+  "date": "2026-10-26",
+  "scope": "Planning data arithmetic and structural checks only; no gameplay simulation or device tests",
+  "source_sha256": "d4d9a7b2ce5ec05f0949cbf36759ac7232a6ad1741262f1fd0894c1c976c453f",
+  "document_sha256": "7c3c521756af0250f9636d2ef9e829c05bcc71fac88ddd7786cf98415ba8bb93",
+  "summary": {
+    "passed": 100,
+    "failed": 0,
+    "tower_count": 7,
+    "recipe_count": 6,
+    "total_enemy_count": 147,
+    "total_planned_enemy_hp": 11988,
+    "ideal_final_income": 537
+  },
+  "cumulative_tower_costs": {
+    "autocannon": {
+      "1": {
+        "credits": 40,
+        "cores": 0
+      },
+      "2": {
+        "credits": 70,
+        "cores": 0
+      }
+    },
+    "binding": {
+      "1": {
+        "credits": 45,
+        "cores": 0
+      },
+      "2": {
+        "credits": 85,
+        "cores": 0
+      }
+    },
+    "rupture": {
+      "1": {
+        "credits": 65,
+        "cores": 0
+      },
+      "2": {
+        "credits": 120,
+        "cores": 0
+      }
+    },
+    "arc": {
+      "1": {
+        "credits": 195,
+        "cores": 1
+      },
+      "2": {
+        "credits": 255,
+        "cores": 1
+      }
+    },
+    "shatter": {
+      "1": {
+        "credits": 235,
+        "cores": 1
+      },
+      "2": {
+        "credits": 295,
+        "cores": 1
+      }
+    },
+    "gravity": {
+      "1": {
+        "credits": 250,
+        "cores": 1
+      },
+      "2": {
+        "credits": 310,
+        "cores": 1
+      }
+    },
+    "seal": {
+      "1": {
+        "credits": 455,
+        "cores": 2
+      }
+    }
+  },
+  "wave_income_bounds": [
+    {
+      "time_seconds": 30,
+      "wave_enemy_count": 14,
+      "wave_hp_budget": 840,
+      "wave_kill_reward": 14,
+      "guaranteed_credits": 180,
+      "cumulative_kill_reward": 14,
+      "ideal_total_income": 194,
+      "granted_cores": 0
+    },
+    {
+      "time_seconds": 60,
+      "wave_enemy_count": 22,
+      "wave_hp_budget": 1096,
+      "wave_kill_reward": 22,
+      "guaranteed_credits": 220,
+      "cumulative_kill_reward": 36,
+      "ideal_total_income": 256,
+      "granted_cores": 1
+    },
+    {
+      "time_seconds": 90,
+      "wave_enemy_count": 21,
+      "wave_hp_budget": 1740,
+      "wave_kill_reward": 27,
+      "guaranteed_credits": 260,
+      "cumulative_kill_reward": 63,
+      "ideal_total_income": 323,
+      "granted_cores": 1
+    },
+    {
+      "time_seconds": 120,
+      "wave_enemy_count": 28,
+      "wave_hp_budget": 1720,
+      "wave_kill_reward": 32,
+      "guaranteed_credits": 300,
+      "cumulative_kill_reward": 95,
+      "ideal_total_income": 395,
+      "granted_cores": 2
+    },
+    {
+      "time_seconds": 150,
+      "wave_enemy_count": 26,
+      "wave_hp_budget": 2712,
+      "wave_kill_reward": 42,
+      "guaranteed_credits": 340,
+      "cumulative_kill_reward": 137,
+      "ideal_total_income": 477,
+      "granted_cores": 2
+    },
+    {
+      "time_seconds": 180,
+      "wave_enemy_count": 36,
+      "wave_hp_budget": 3880,
+      "wave_kill_reward": 60,
+      "guaranteed_credits": 340,
+      "cumulative_kill_reward": 197,
+      "ideal_total_income": 537,
+      "granted_cores": 2
+    }
+  ],
+  "portfolio_examples": [
+    {
+      "id": "wide_defense",
+      "name": "분산 방어",
+      "final_board": [
+        {
+          "tower": "autocannon",
+          "level": 2,
+          "count": 2
+        },
+        {
+          "tower": "binding",
+          "level": 2,
+          "count": 2
+        },
+        {
+          "tower": "rupture",
+          "level": 2,
+          "count": 1
+        }
+      ],
+      "expected_total_credits": 430,
+      "expected_invested_cores": 0
+    },
+    {
+      "id": "two_hybrids",
+      "name": "양쪽 전선 조합",
+      "final_board": [
+        {
+          "tower": "arc",
+          "level": 1,
+          "count": 1
+        },
+        {
+          "tower": "shatter",
+          "level": 1,
+          "count": 1
+        },
+        {
+          "tower": "binding",
+          "level": 1,
+          "count": 1
+        }
+      ],
+      "expected_total_credits": 475,
+      "expected_invested_cores": 2
+    },
+    {
+      "id": "capstone",
+      "name": "최종 조합 집중",
+      "final_board": [
+        {
+          "tower": "seal",
+          "level": 1,
+          "count": 1
+        }
+      ],
+      "expected_total_credits": 455,
+      "expected_invested_cores": 2
+    },
+    {
+      "id": "capstone_with_backup",
+      "name": "최종 조합과 후방 포탑",
+      "final_board": [
+        {
+          "tower": "seal",
+          "level": 1,
+          "count": 1
+        },
+        {
+          "tower": "autocannon",
+          "level": 1,
+          "count": 1
+        }
+      ],
+      "expected_total_credits": 495,
+      "expected_invested_cores": 2
+    }
+  ],
+  "checks": [
+    {
+      "name": "Unique tower IDs",
+      "passed": true,
+      "value": [
+        "autocannon",
+        "binding",
+        "rupture",
+        "arc",
+        "shatter",
+        "gravity",
+        "seal"
+      ]
+    },
+    {
+      "name": "Unique recipe IDs",
+      "passed": true,
+      "value": [
+        "make_arc",
+        "make_shatter",
+        "make_gravity",
+        "seal_via_arc",
+        "seal_via_shatter",
+        "seal_via_gravity"
+      ]
+    },
+    {
+      "name": "All recipes visible",
+      "passed": true,
+      "value": true
+    },
+    {
+      "name": "Contiguous levels autocannon",
+      "passed": true,
+      "value": 2
+    },
+    {
+      "name": "Upgrade costs match levels autocannon",
+      "passed": true,
+      "value": [
+        30
+      ]
+    },
+    {
+      "name": "Positive attack period autocannon1",
+      "passed": true,
+      "value": 0.5
+    },
+    {
+      "name": "Positive attack period autocannon2",
+      "passed": true,
+      "value": 0.5
+    },
+    {
+      "name": "Contiguous levels binding",
+      "passed": true,
+      "value": 2
+    },
+    {
+      "name": "Upgrade costs match levels binding",
+      "passed": true,
+      "value": [
+        40
+      ]
+    },
+    {
+      "name": "Positive attack period binding1",
+      "passed": true,
+      "value": 0.9
+    },
+    {
+      "name": "Positive attack period binding2",
+      "passed": true,
+      "value": 0.9
+    },
+    {
+      "name": "Contiguous levels rupture",
+      "passed": true,
+      "value": 2
+    },
+    {
+      "name": "Upgrade costs match levels rupture",
+      "passed": true,
+      "value": [
+        55
+      ]
+    },
+    {
+      "name": "Positive attack period rupture1",
+      "passed": true,
+      "value": 2.0
+    },
+    {
+      "name": "Positive attack period rupture2",
+      "passed": true,
+      "value": 2.0
+    },
+    {
+      "name": "Contiguous levels arc",
+      "passed": true,
+      "value": 2
+    },
+    {
+      "name": "Upgrade costs match levels arc",
+      "passed": true,
+      "value": [
+        60
+      ]
+    },
+    {
+      "name": "Positive attack period arc1",
+      "passed": true,
+      "value": 0.75
+    },
+    {
+      "name": "Positive attack period arc2",
+      "passed": true,
+      "value": 0.65
+    },
+    {
+      "name": "Contiguous levels shatter",
+      "passed": true,
+      "value": 2
+    },
+    {
+      "name": "Upgrade costs match levels shatter",
+      "passed": true,
+      "value": [
+        60
+      ]
+    },
+    {
+      "name": "Positive attack period shatter1",
+      "passed": true,
+      "value": 1.0
+    },
+    {
+      "name": "Positive attack period shatter2",
+      "passed": true,
+      "value": 0.9
+    },
+    {
+      "name": "Contiguous levels gravity",
+      "passed": true,
+      "value": 2
+    },
+    {
+      "name": "Upgrade costs match levels gravity",
+      "passed": true,
+      "value": [
+        60
+      ]
+    },
+    {
+      "name": "Positive attack period gravity1",
+      "passed": true,
+      "value": 1.4
+    },
+    {
+      "name": "Positive attack period gravity2",
+      "passed": true,
+      "value": 1.2
+    },
+    {
+      "name": "Contiguous levels seal",
+      "passed": true,
+      "value": 1
+    },
+    {
+      "name": "Upgrade costs match levels seal",
+      "passed": true,
+      "value": []
+    },
+    {
+      "name": "Positive attack period seal1",
+      "passed": true,
+      "value": 1.0
+    },
+    {
+      "name": "Two distinct material types make_arc",
+      "passed": true,
+      "value": [
+        {
+          "tower": "autocannon",
+          "level": 2
+        },
+        {
+          "tower": "binding",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "name": "Valid result make_arc",
+      "passed": true,
+      "value": {
+        "tower": "arc",
+        "level": 1
+      }
+    },
+    {
+      "name": "Valid tier progression make_arcautocannon",
+      "passed": true,
+      "value": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "Valid tier progression make_arcbinding",
+      "passed": true,
+      "value": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "Two distinct material types make_shatter",
+      "passed": true,
+      "value": [
+        {
+          "tower": "autocannon",
+          "level": 2
+        },
+        {
+          "tower": "rupture",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "name": "Valid result make_shatter",
+      "passed": true,
+      "value": {
+        "tower": "shatter",
+        "level": 1
+      }
+    },
+    {
+      "name": "Valid tier progression make_shatterautocannon",
+      "passed": true,
+      "value": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "Valid tier progression make_shatterrupture",
+      "passed": true,
+      "value": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "Two distinct material types make_gravity",
+      "passed": true,
+      "value": [
+        {
+          "tower": "binding",
+          "level": 2
+        },
+        {
+          "tower": "rupture",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "name": "Valid result make_gravity",
+      "passed": true,
+      "value": {
+        "tower": "gravity",
+        "level": 1
+      }
+    },
+    {
+      "name": "Valid tier progression make_gravitybinding",
+      "passed": true,
+      "value": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "Valid tier progression make_gravityrupture",
+      "passed": true,
+      "value": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "Two distinct material types seal_via_arc",
+      "passed": true,
+      "value": [
+        {
+          "tower": "arc",
+          "level": 2
+        },
+        {
+          "tower": "rupture",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "name": "Valid result seal_via_arc",
+      "passed": true,
+      "value": {
+        "tower": "seal",
+        "level": 1
+      }
+    },
+    {
+      "name": "Valid tier progression seal_via_arcarc",
+      "passed": true,
+      "value": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "Valid tier progression seal_via_arcrupture",
+      "passed": true,
+      "value": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "Two distinct material types seal_via_shatter",
+      "passed": true,
+      "value": [
+        {
+          "tower": "shatter",
+          "level": 2
+        },
+        {
+          "tower": "binding",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "name": "Valid result seal_via_shatter",
+      "passed": true,
+      "value": {
+        "tower": "seal",
+        "level": 1
+      }
+    },
+    {
+      "name": "Valid tier progression seal_via_shattershatter",
+      "passed": true,
+      "value": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "Valid tier progression seal_via_shatterbinding",
+      "passed": true,
+      "value": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "Two distinct material types seal_via_gravity",
+      "passed": true,
+      "value": [
+        {
+          "tower": "gravity",
+          "level": 2
+        },
+        {
+          "tower": "autocannon",
+          "level": 2
+        }
+      ]
+    },
+    {
+      "name": "Valid result seal_via_gravity",
+      "passed": true,
+      "value": {
+        "tower": "seal",
+        "level": 1
+      }
+    },
+    {
+      "name": "Valid tier progression seal_via_gravitygravity",
+      "passed": true,
+      "value": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "Valid tier progression seal_via_gravityautocannon",
+      "passed": true,
+      "value": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "Reachable fusion arc",
+      "passed": true,
+      "value": [
+        [
+          195,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes arc",
+      "passed": true,
+      "value": [
+        [
+          195,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Reachable fusion arc",
+      "passed": true,
+      "value": [
+        [
+          195,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes arc",
+      "passed": true,
+      "value": [
+        [
+          195,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Reachable fusion shatter",
+      "passed": true,
+      "value": [
+        [
+          235,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes shatter",
+      "passed": true,
+      "value": [
+        [
+          235,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Reachable fusion shatter",
+      "passed": true,
+      "value": [
+        [
+          235,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes shatter",
+      "passed": true,
+      "value": [
+        [
+          235,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Reachable fusion gravity",
+      "passed": true,
+      "value": [
+        [
+          250,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes gravity",
+      "passed": true,
+      "value": [
+        [
+          250,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Reachable fusion gravity",
+      "passed": true,
+      "value": [
+        [
+          250,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes gravity",
+      "passed": true,
+      "value": [
+        [
+          250,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "Reachable fusion seal",
+      "passed": true,
+      "value": [
+        [
+          455,
+          2
+        ],
+        [
+          455,
+          2
+        ],
+        [
+          455,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "Equal cumulative cost for alternative routes seal",
+      "passed": true,
+      "value": [
+        [
+          455,
+          2
+        ],
+        [
+          455,
+          2
+        ],
+        [
+          455,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "Capstone totals",
+      "passed": true,
+      "value": [
+        455,
+        2
+      ]
+    },
+    {
+      "name": "Contiguous wave 1",
+      "passed": true,
+      "value": [
+        0,
+        30
+      ]
+    },
+    {
+      "name": "Contiguous wave 2",
+      "passed": true,
+      "value": [
+        30,
+        60
+      ]
+    },
+    {
+      "name": "Contiguous wave 3",
+      "passed": true,
+      "value": [
+        60,
+        90
+      ]
+    },
+    {
+      "name": "Contiguous wave 4",
+      "passed": true,
+      "value": [
+        90,
+        120
+      ]
+    },
+    {
+      "name": "Contiguous wave 5",
+      "passed": true,
+      "value": [
+        120,
+        150
+      ]
+    },
+    {
+      "name": "Contiguous wave 6",
+      "passed": true,
+      "value": [
+        150,
+        180
+      ]
+    },
+    {
+      "name": "147 planned enemies",
+      "passed": true,
+      "value": {
+        "grunt": 94,
+        "runner": 34,
+        "brute": 13,
+        "siege": 6
+      }
+    },
+    {
+      "name": "197 maximum kill credits",
+      "passed": true,
+      "value": 197
+    },
+    {
+      "name": "537 ideal final income",
+      "passed": true,
+      "value": {
+        "time_seconds": 180,
+        "wave_enemy_count": 36,
+        "wave_hp_budget": 3880,
+        "wave_kill_reward": 60,
+        "guaranteed_credits": 340,
+        "cumulative_kill_reward": 197,
+        "ideal_total_income": 537,
+        "granted_cores": 2
+      }
+    },
+    {
+      "name": "Cheap fusion fits guaranteed 60s income",
+      "passed": true,
+      "value": {
+        "cost": [
+          195,
+          1
+        ],
+        "guaranteed": 220
+      }
+    },
+    {
+      "name": "Portfolio cost wide_defense",
+      "passed": true,
+      "value": {
+        "credits": 430,
+        "cores": 0
+      }
+    },
+    {
+      "name": "Portfolio fits final resource ceiling wide_defense",
+      "passed": true,
+      "value": {
+        "credits": 430,
+        "cores": 0,
+        "sockets": 5
+      }
+    },
+    {
+      "name": "Portfolio material staging fits eight sockets wide_defense",
+      "passed": true,
+      "value": "Build all base materials first is within eight sockets"
+    },
+    {
+      "name": "Portfolio cost two_hybrids",
+      "passed": true,
+      "value": {
+        "credits": 475,
+        "cores": 2
+      }
+    },
+    {
+      "name": "Portfolio fits final resource ceiling two_hybrids",
+      "passed": true,
+      "value": {
+        "credits": 475,
+        "cores": 2,
+        "sockets": 3
+      }
+    },
+    {
+      "name": "Portfolio material staging fits eight sockets two_hybrids",
+      "passed": true,
+      "value": "Build all base materials first is within eight sockets"
+    },
+    {
+      "name": "Portfolio cost capstone",
+      "passed": true,
+      "value": {
+        "credits": 455,
+        "cores": 2
+      }
+    },
+    {
+      "name": "Portfolio fits final resource ceiling capstone",
+      "passed": true,
+      "value": {
+        "credits": 455,
+        "cores": 2,
+        "sockets": 1
+      }
+    },
+    {
+      "name": "Portfolio material staging fits eight sockets capstone",
+      "passed": true,
+      "value": "Build all base materials first is within eight sockets"
+    },
+    {
+      "name": "Portfolio cost capstone_with_backup",
+      "passed": true,
+      "value": {
+        "credits": 495,
+        "cores": 2
+      }
+    },
+    {
+      "name": "Portfolio fits final resource ceiling capstone_with_backup",
+      "passed": true,
+      "value": {
+        "credits": 495,
+        "cores": 2,
+        "sockets": 2
+      }
+    },
+    {
+      "name": "Portfolio material staging fits eight sockets capstone_with_backup",
+      "passed": true,
+      "value": "Build all base materials first is within eight sockets"
+    },
+    {
+      "name": "Refunds use cumulative paid example",
+      "passed": true,
+      "value": {
+        "arc": 146,
+        "seal": 341
+      }
+    },
+    {
+      "name": "Refund cannot increase coins",
+      "passed": true,
+      "value": {
+        "arc": 146,
+        "seal": 341
+      }
+    },
+    {
+      "name": "Core accounting for fusion and sale",
+      "passed": true,
+      "value": {
+        "capstone_invested": 2,
+        "sale_returns": 2
+      }
+    },
+    {
+      "name": "Document link combination-balance-v2.json",
+      "passed": true,
+      "value": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-unity\\Docs\\Design\\combination-balance-v2.json"
+    },
+    {
+      "name": "Document link REALM_DEFENSE_GAMEPLAY_ANALYSIS_2026-10-26.md",
+      "passed": true,
+      "value": "C:\\dev\\rea_project\\realm_defense_work\\reports\\REALM_DEFENSE_GAMEPLAY_ANALYSIS_2026-10-26.md"
+    },
+    {
+      "name": "Document link DefenseSimulation.cs",
+      "passed": true,
+      "value": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-unity\\Assets\\Scripts\\Core\\DefenseSimulation.cs"
+    },
+    {
+      "name": "Document link README.md",
+      "passed": true,
+      "value": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-unity\\README.md"
+    },
+    {
+      "name": "Document link combination-validation-v2.json",
+      "passed": true,
+      "value": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-unity\\Docs\\Design\\combination-validation-v2.json"
+    },
+    {
+      "name": "No replacement characters in Korean document",
+      "passed": true,
+      "value": 12134
+    }
+  ],
+  "remaining_validation": [
+    "Actual spawn timing and kill delays",
+    "Player reachability and camera visibility",
+    "Combat strength of three operating strategies",
+    "Fusion transaction implementation and mobile multitouch",
+    "Android device performance and readability"
+  ]
+}

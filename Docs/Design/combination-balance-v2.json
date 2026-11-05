@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "design_revision": "2026-10-26-v2",
+  "status": "implemented_v030_reference_validated",
+  "purpose": "Gatefall v0.3.0 balance reference validated against runtime; not loaded by the shipped game",
+  "run": {
+    "duration_seconds": 180,
+    "last_spawn_before_seconds": 170,
+    "preparation_seconds": 5,
+    "map_width": 36,
+    "map_height": 20,
+    "socket_count": 8,
+    "hunter_build_distance": 2.15,
+    "hunter_engagement_cap": 2,
+    "starting_credits": 140,
+    "supply_credits": 40,
+    "supply_times": [30, 60, 90, 120, 150],
+    "starting_cores": 0,
+    "core_grants": [{"time": 60, "amount": 1}, {"time": 120, "amount": 1}],
+    "card_choice_times": [30, 90, 150],
+    "sale_credit_fraction": 0.75,
+    "sale_returns_invested_cores": true,
+    "fusion_commission_seconds": 1.0,
+    "menus_pause_game_clock": true,
+    "all_recipes_visible_at_start": true
+  },
+  "towers": [
+    {
+      "id": "autocannon", "name": "자동포탑", "tier": 1, "tags": ["ballistic"],
+      "build_cost": 40, "upgrade_costs": [30],
+      "levels": [
+        {"level": 1, "damage": 10, "interval": 0.5, "range": 5.2, "max_targets": 1},
+        {"level": 2, "damage": 16, "interval": 0.5, "range": 5.2, "max_targets": 1}
+      ]
+    },
+    {
+      "id": "binding", "name": "구속탑", "tier": 1, "tags": ["control"],
+      "build_cost": 45, "upgrade_costs": [40],
+      "levels": [
+        {"level": 1, "damage": 3, "interval": 0.9, "range": 4.8, "max_targets": 3, "slow_fraction": 0.35, "slow_seconds": 1.2},
+        {"level": 2, "damage": 3, "interval": 0.9, "range": 4.8, "max_targets": 4, "slow_fraction": 0.45, "slow_seconds": 1.2}
+      ]
+    },
+    {
+      "id": "rupture", "name": "파열포", "tier": 1, "tags": ["blast"],
+      "build_cost": 65, "upgrade_costs": [55],
+      "levels": [
+        {"level": 1, "damage": 32, "interval": 2.0, "range": 5.0, "radius": 1.6, "max_targets": 5},
+        {"level": 2, "damage": 48, "interval": 2.0, "range": 5.0, "radius": 1.9, "max_targets": 6}
+      ]
+    },
+    {
+      "id": "arc", "name": "뇌격탑", "tier": 2, "tags": ["ballistic", "control"],
+      "build_cost": null, "upgrade_costs": [60],
+      "levels": [
+        {"level": 1, "chain_damage": [24, 16, 10], "interval": 0.75, "range": 5.4, "chain_range": 2.5, "max_targets": 3, "slow_fraction": 0.25, "slow_seconds": 1.0},
+        {"level": 2, "chain_damage": [30, 20, 14], "interval": 0.65, "range": 5.4, "chain_range": 2.5, "max_targets": 3, "slow_fraction": 0.30, "slow_seconds": 1.3}
+      ]
+    },
+    {
+      "id": "shatter", "name": "파쇄포", "tier": 2, "tags": ["ballistic", "blast"],
+      "build_cost": null, "upgrade_costs": [60],
+      "levels": [
+        {"level": 1, "primary_damage": 64, "secondary_damage": 32, "interval": 1.0, "range": 5.4, "radius": 1.4, "max_targets": 5},
+        {"level": 2, "primary_damage": 84, "secondary_damage": 42, "interval": 0.9, "range": 5.4, "radius": 1.6, "max_targets": 6}
+      ]
+    },
+    {
+      "id": "gravity", "name": "중력포", "tier": 2, "tags": ["control", "blast"],
+      "build_cost": null, "upgrade_costs": [60],
+      "levels": [
+        {"level": 1, "damage": 28, "interval": 1.4, "range": 5.2, "radius": 1.9, "max_targets": 6, "slow_fraction": 0.50, "slow_seconds": 1.5},
+        {"level": 2, "damage": 42, "interval": 1.2, "range": 5.2, "radius": 2.2, "max_targets": 8, "slow_fraction": 0.55, "slow_seconds": 1.5}
+      ]
+    },
+    {
+      "id": "seal", "name": "균열봉쇄포", "tier": 3, "tags": ["ballistic", "control", "blast"],
+      "build_cost": null, "upgrade_costs": [],
+      "levels": [
+        {"level": 1, "primary_damage": 120, "secondary_damage": 60, "interval": 1.0, "range": 6.4, "radius": 2.0, "max_targets": 4, "slow_fraction": 0.35, "slow_seconds": 1.5}
+      ]
+    }
+  ],
+  "recipes": [
+    {"id": "make_arc", "ingredients": [{"tower": "autocannon", "level": 2}, {"tower": "binding", "level": 2}], "credits": 40, "cores": 1, "result": {"tower": "arc", "level": 1}},
+    {"id": "make_shatter", "ingredients": [{"tower": "autocannon", "level": 2}, {"tower": "rupture", "level": 2}], "credits": 45, "cores": 1, "result": {"tower": "shatter", "level": 1}},
+    {"id": "make_gravity", "ingredients": [{"tower": "binding", "level": 2}, {"tower": "rupture", "level": 2}], "credits": 45, "cores": 1, "result": {"tower": "gravity", "level": 1}},
+    {"id": "seal_via_arc", "ingredients": [{"tower": "arc", "level": 2}, {"tower": "rupture", "level": 2}], "credits": 80, "cores": 1, "result": {"tower": "seal", "level": 1}},
+    {"id": "seal_via_shatter", "ingredients": [{"tower": "shatter", "level": 2}, {"tower": "binding", "level": 2}], "credits": 75, "cores": 1, "result": {"tower": "seal", "level": 1}},
+    {"id": "seal_via_gravity", "ingredients": [{"tower": "gravity", "level": 2}, {"tower": "autocannon", "level": 2}], "credits": 75, "cores": 1, "result": {"tower": "seal", "level": 1}}
+  ],
+  "enemies": [
+    {"id": "grunt", "name": "일반 침입체", "health": 60, "speed": 1.15, "damage": 7, "attack_interval": 1.1, "credits": 1, "engageable": true, "slow_effect_multiplier": 1.0},
+    {"id": "runner", "name": "질주 침입체", "health": 32, "speed": 2.0, "damage": 7, "attack_interval": 1.1, "credits": 1, "engageable": true, "slow_effect_multiplier": 1.0},
+    {"id": "brute", "name": "중장 침입체", "health": 220, "speed": 0.85, "damage": 13, "attack_interval": 1.1, "credits": 3, "engageable": true, "slow_effect_multiplier": 0.65},
+    {"id": "siege", "name": "결계 파괴체", "health": 400, "speed": 0.8, "damage": 24, "attack_interval": 1.5, "credits": 5, "engageable": false, "slow_effect_multiplier": 0.4}
+  ],
+  "waves": [
+    {"index": 1, "start": 0, "end": 30, "counts": {"grunt": 14, "runner": 0, "brute": 0, "siege": 0}, "intent": "Single approach; five-second initial preparation"},
+    {"index": 2, "start": 30, "end": 60, "counts": {"grunt": 14, "runner": 8, "brute": 0, "siege": 0}, "intent": "Delayed runners from the opposite approach"},
+    {"index": 3, "start": 60, "end": 90, "counts": {"grunt": 18, "runner": 0, "brute": 3, "siege": 0}, "intent": "First fusion core and mixed heavy group"},
+    {"index": 4, "start": 90, "end": 120, "counts": {"grunt": 16, "runner": 10, "brute": 2, "siege": 0}, "intent": "Two simultaneous approaches; test the empty material socket"},
+    {"index": 5, "start": 120, "end": 150, "counts": {"grunt": 14, "runner": 6, "brute": 4, "siege": 2}, "intent": "Second fusion core; siege ignores hunter engagement"},
+    {"index": 6, "start": 150, "end": 180, "counts": {"grunt": 18, "runner": 10, "brute": 4, "siege": 4}, "intent": "Capstone or two-hybrid payoff; scheduled spawns finish before 170s"}
+  ],
+  "economic_examples": [
+    {"id": "wide_defense", "name": "분산 방어", "final_board": [{"tower": "autocannon", "level": 2, "count": 2}, {"tower": "binding", "level": 2, "count": 2}, {"tower": "rupture", "level": 2, "count": 1}], "expected_total_credits": 430, "expected_invested_cores": 0},
+    {"id": "two_hybrids", "name": "양쪽 전선 조합", "final_board": [{"tower": "arc", "level": 1, "count": 1}, {"tower": "shatter", "level": 1, "count": 1}, {"tower": "binding", "level": 1, "count": 1}], "expected_total_credits": 475, "expected_invested_cores": 2},
+    {"id": "capstone", "name": "최종 조합 집중", "final_board": [{"tower": "seal", "level": 1, "count": 1}], "expected_total_credits": 455, "expected_invested_cores": 2},
+    {"id": "capstone_with_backup", "name": "최종 조합과 후방 포탑", "final_board": [{"tower": "seal", "level": 1, "count": 1}, {"tower": "autocannon", "level": 1, "count": 1}], "expected_total_credits": 495, "expected_invested_cores": 2}
+  ],
+  "interpretation": {
+    "currency_units": "Run-only credits; no premium currency or purchases",
+    "cores": "Fixed supply, not randomized drops; invested cores returned on sale, enforcing a simultaneous field limit",
+    "max_targets": "Unique enemies including primary; primary never receives secondary damage from the same attack",
+    "chain_damage": "One listed amount per distinct enemy in chain order; no bounce back to a previously hit enemy",
+    "slow": "Apply strongest current slow only, refresh that source duration; effective fraction = raw fraction * enemy slow_effect_multiplier",
+    "fusion_cost": "Additional fee; cumulative cost includes both material histories once",
+    "balance_claim": "Arithmetic planning only. No combat, pathing, animation, device performance or human difficulty validation."
+  }
+}

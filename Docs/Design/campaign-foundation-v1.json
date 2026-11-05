@@ -1,0 +1,371 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "status": "design_not_runtime",
+  "user_direction": "sequential_city_campaign_with_per_battle_roguelike_growth",
+  "runtime_baseline": "0.3.0",
+  "scope": {
+    "initial_districts": 1,
+    "initial_stages": 6,
+    "long_term_districts": 6,
+    "long_term_stages_per_district": 6
+  },
+  "initial_unlocks": [
+    "Autocannon",
+    "HunterJin"
+  ],
+  "stages": [
+    {
+      "id": "D1-S1",
+      "name": "역 앞 광장",
+      "previous": null,
+      "min_previous_stars": 0,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Autocannon"
+      ],
+      "fusion_results": [],
+      "clear_unlocks": [
+        "Binding",
+        "Research"
+      ],
+      "first_clear_parts": 100,
+      "repeat_clear_parts": 20,
+      "wave_counts": [
+        4,
+        6,
+        7,
+        8,
+        10,
+        10
+      ],
+      "lanes": [
+        "west"
+      ],
+      "sockets": 5,
+      "optional_objective": "first_upgrade",
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "core_supply_enabled": false
+    },
+    {
+      "id": "D1-S2",
+      "name": "고가도로 진입부",
+      "previous": "D1-S1",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Autocannon",
+        "Binding"
+      ],
+      "fusion_results": [],
+      "clear_unlocks": [
+        "Arc",
+        "FusionCore"
+      ],
+      "first_clear_parts": 120,
+      "repeat_clear_parts": 20,
+      "wave_counts": [
+        6,
+        8,
+        10,
+        12,
+        14,
+        15
+      ],
+      "lanes": [
+        "west",
+        "east"
+      ],
+      "sockets": 6,
+      "optional_objective": "binding_effective_slow",
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "core_supply_enabled": false
+    },
+    {
+      "id": "D1-S3",
+      "name": "변전소",
+      "previous": "D1-S2",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Autocannon",
+        "Binding"
+      ],
+      "fusion_results": [
+        "Arc"
+      ],
+      "clear_unlocks": [
+        "Rupture",
+        "Shatter",
+        "Gravity",
+        "HunterHarin"
+      ],
+      "first_clear_parts": 140,
+      "repeat_clear_parts": 20,
+      "wave_counts": [
+        8,
+        10,
+        14,
+        18,
+        20,
+        20
+      ],
+      "lanes": [
+        "west",
+        "north"
+      ],
+      "sockets": 6,
+      "optional_objective": "first_fusion",
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "core_supply_enabled": true
+    },
+    {
+      "id": "D1-S4",
+      "name": "하천 교량",
+      "previous": "D1-S3",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Autocannon",
+        "Binding",
+        "Rupture"
+      ],
+      "fusion_results": [
+        "Arc",
+        "Shatter",
+        "Gravity"
+      ],
+      "clear_unlocks": [
+        "Seal"
+      ],
+      "first_clear_parts": 160,
+      "repeat_clear_parts": 20,
+      "wave_counts": [
+        10,
+        14,
+        18,
+        20,
+        22,
+        26
+      ],
+      "lanes": [
+        "west",
+        "north",
+        "east"
+      ],
+      "sockets": 8,
+      "optional_objective": "two_lane_tower_contribution",
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "core_supply_enabled": true
+    },
+    {
+      "id": "D1-S5",
+      "name": "물류 터미널",
+      "previous": "D1-S4",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Autocannon",
+        "Binding",
+        "Rupture"
+      ],
+      "fusion_results": [
+        "Arc",
+        "Shatter",
+        "Gravity",
+        "Seal"
+      ],
+      "clear_unlocks": [
+        "BossIntel"
+      ],
+      "first_clear_parts": 180,
+      "repeat_clear_parts": 20,
+      "wave_counts": [
+        12,
+        16,
+        20,
+        24,
+        28,
+        30
+      ],
+      "lanes": [
+        "west",
+        "east"
+      ],
+      "sockets": 8,
+      "optional_objective": "capstone_fusion",
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "core_supply_enabled": true
+    },
+    {
+      "id": "D1-S6",
+      "name": "중앙 중계소",
+      "previous": "D1-S5",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Autocannon",
+        "Binding",
+        "Rupture"
+      ],
+      "fusion_results": [
+        "Arc",
+        "Shatter",
+        "Gravity",
+        "Seal"
+      ],
+      "clear_unlocks": [
+        "District2",
+        "CrisisMode",
+        "HunterSeoha"
+      ],
+      "first_clear_parts": 200,
+      "repeat_clear_parts": 20,
+      "wave_counts": [
+        12,
+        18,
+        24,
+        27,
+        30,
+        36
+      ],
+      "lanes": [
+        "west",
+        "north",
+        "east"
+      ],
+      "sockets": 8,
+      "optional_objective": "evade_boss_telegraph",
+      "boss_count": 1,
+      "boss_spawn_seconds": 150,
+      "require_boss_kill": true,
+      "core_supply_enabled": true
+    }
+  ],
+  "economy": {
+    "starting_credits": 140,
+    "supply_credits": 40,
+    "supply_times": [
+      30,
+      60,
+      90,
+      120,
+      150
+    ],
+    "core_supply_times": [
+      60,
+      120
+    ],
+    "core_grant": 1,
+    "pre_wave_sale_fraction": 1,
+    "combat_sale_fraction": 0.75,
+    "core_refund": "all_invested",
+    "first_arc_total": 195,
+    "capstone_total": 455,
+    "capstone_cores": 2,
+    "entry_cost": 0,
+    "failure_parts": 0
+  },
+  "stars": {
+    "maximum_per_stage": 3,
+    "require_victory": true,
+    "conditions": [
+      "victory",
+      "core_ratio_at_least_0.70",
+      "optional_objective"
+    ],
+    "reward": "positive_difference_from_previous_best",
+    "main_path_star_requirement": 1,
+    "spent_points_do_not_reduce_displayed_rating": true
+  },
+  "research": {
+    "step_costs": [
+      1,
+      2,
+      3
+    ],
+    "free_respec": true,
+    "lines": [
+      {
+        "id": "Ballistic",
+        "total_effect_by_rank": [
+          0.04,
+          0.08,
+          0.12
+        ],
+        "effect": "damage_fraction"
+      },
+      {
+        "id": "Control",
+        "total_effect_by_rank": [
+          0.05,
+          0.1,
+          0.15
+        ],
+        "effect": "slow_duration_seconds"
+      },
+      {
+        "id": "Blast",
+        "total_effect_by_rank": [
+          0.05,
+          0.1,
+          0.15
+        ],
+        "effect": "splash_radius"
+      }
+    ]
+  },
+  "hunter_progression": {
+    "start_level": 1,
+    "max_level": 5,
+    "level_costs_parts": [
+      80,
+      120,
+      160,
+      200
+    ],
+    "health_fraction_per_level": 0.025,
+    "damage_fraction_per_level": 0.02,
+    "controlled_hunters": 1
+  },
+  "cards": {
+    "times": [
+      30,
+      90,
+      150
+    ],
+    "max_choices": 3,
+    "initial_pool": [
+      "Ballistic",
+      "Range",
+      "Hunter",
+      "Credits"
+    ],
+    "filter_locked_tower_tags": true,
+    "filter_max_stacks": true,
+    "pad_with_duplicates": false
+  },
+  "save": {
+    "schema_version": 1,
+    "idempotent_run_reward": true,
+    "backup": true,
+    "mid_battle_resume": false,
+    "v030_last_run_is_not_profile": true
+  },
+  "fullChapterBudget": {
+    "first_clear_parts": 900,
+    "max_stars": 18,
+    "all_research_cost": 18,
+    "one_hunter_max_cost": 560
+  }
+}

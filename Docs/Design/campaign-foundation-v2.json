@@ -1,0 +1,866 @@
+{
+  "schema_version": 2,
+  "date": "2026-10-29",
+  "status": "design_not_runtime",
+  "supersedes": "campaign-foundation-v1.json",
+  "runtime_baseline": "0.16.0",
+  "battle_completion": {
+    "rule": "all_scheduled_enemies_spawned_and_defeated_with_core_alive",
+    "boss_kill_required_in_boss_stages": true,
+    "hard_time_limit_seconds": null,
+    "duration_seconds_meaning": "nominal_spawn_budget_not_victory_deadline",
+    "cleanup_grants_additional_supplies": false
+  },
+  "source": {
+    "type": "user_supplied_setting",
+    "file": "RAON_WORLD_USER_REFERENCE.txt",
+    "numeric_rules": "proposed_not_source_quotes"
+  },
+  "world": {
+    "city": "라온시",
+    "river": "라온강",
+    "years_since_fall": 7,
+    "protagonist": "강윤",
+    "home_faction": "제7방위대",
+    "antagonists": [
+      "금관 길드",
+      "잔광 교단"
+    ],
+    "ending": "강윤이 왕좌 안에 남아 봉인, 라온 빛축제 회복"
+  },
+  "scope": {
+    "initial_districts": 1,
+    "initial_stages": 6,
+    "long_term_districts": 7,
+    "long_term_stages_per_district": 6,
+    "later_stage_counts": "provisional"
+  },
+  "chapters": [
+    {
+      "id": 1,
+      "tower_id": "Ash",
+      "tower": "잿빛 탑",
+      "district": "종현동 구도심",
+      "act": 1,
+      "mechanic": "기본 경로와 조작",
+      "story": "강윤 귀환과 최초 봉인"
+    },
+    {
+      "id": 2,
+      "tower_id": "Hunger",
+      "tower": "굶주림의 탑",
+      "district": "다솜동 새벽시장·주거지",
+      "act": 1,
+      "mechanic": "생존자 구출",
+      "story": "실종자 소지품과 길드 협력"
+    },
+    {
+      "id": 3,
+      "tower_id": "Abyss",
+      "tower": "심연의 탑",
+      "district": "라온역 환승센터",
+      "act": 2,
+      "mechanic": "예고된 터널 가변 출현",
+      "story": "연결된 탑의 뿌리"
+    },
+    {
+      "id": 4,
+      "tower_id": "Flood",
+      "tower": "범람의 탑",
+      "district": "라온강 나루·항만",
+      "act": 2,
+      "mechanic": "예고된 수위 경로 전환",
+      "story": "길드의 의도적 범람 방치"
+    },
+    {
+      "id": 5,
+      "tower_id": "Rust",
+      "tower": "녹슨 탑",
+      "district": "한울 산업단지",
+      "act": 2,
+      "mechanic": "복구 가능한 전력 장애",
+      "story": "인간의 의식 장치"
+    },
+    {
+      "id": 6,
+      "tower_id": "Sky",
+      "tower": "하늘의 탑",
+      "district": "누리 마천루지구",
+      "act": 3,
+      "mechanic": "고지 사거리와 비행 적",
+      "story": "교단과 나은재"
+    },
+    {
+      "id": 7,
+      "tower_id": "Throne",
+      "tower": "왕좌의 탑",
+      "district": "시청·중앙광장",
+      "act": 3,
+      "mechanic": "여러 문 동시 범람",
+      "story": "열쇠 강윤과 봉인 엔딩"
+    }
+  ],
+  "initial_unlocks": [
+    "Spear",
+    "HunterKangYoon"
+  ],
+  "stages": [
+    {
+      "id": "D1-S1",
+      "name": "종현 사거리",
+      "chapter": 1,
+      "previous": null,
+      "min_previous_stars": 0,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Spear"
+      ],
+      "fusion_results": [],
+      "clear_unlocks": [
+        "Binding",
+        "Research",
+        "Resonance"
+      ],
+      "lanes": [
+        "west"
+      ],
+      "sockets": 14,
+      "wave_counts": [
+        20,
+        35,
+        50,
+        65,
+        75,
+        85
+      ],
+      "tutorial_objective": "first_upgrade",
+      "first_clear_magic_cores": 10,
+      "repeat_clear_magic_cores": 2,
+      "core_supply_enabled": false,
+      "adjacency_enabled": false,
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "permanent_tower_seal": false,
+      "rescue_points": 0,
+      "mandatory_fusion": false
+    },
+    {
+      "id": "D1-S2",
+      "name": "구도심 지하보도",
+      "chapter": 1,
+      "previous": "D1-S1",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Spear",
+        "Binding"
+      ],
+      "fusion_results": [],
+      "clear_unlocks": [
+        "Arc",
+        "FusionCatalyst"
+      ],
+      "lanes": [
+        "west",
+        "east"
+      ],
+      "sockets": 18,
+      "wave_counts": [
+        30,
+        50,
+        70,
+        90,
+        100,
+        120
+      ],
+      "tutorial_objective": "observe_adjacency",
+      "first_clear_magic_cores": 12,
+      "repeat_clear_magic_cores": 2,
+      "core_supply_enabled": false,
+      "adjacency_enabled": true,
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "permanent_tower_seal": false,
+      "rescue_points": 0,
+      "mandatory_fusion": false
+    },
+    {
+      "id": "D1-S3",
+      "name": "종현 배급소",
+      "chapter": 1,
+      "previous": "D1-S2",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Spear",
+        "Binding"
+      ],
+      "fusion_results": [
+        "Arc"
+      ],
+      "clear_unlocks": [
+        "Rupture",
+        "Shatter",
+        "Gravity",
+        "HunterHani"
+      ],
+      "lanes": [
+        "west",
+        "north"
+      ],
+      "sockets": 14,
+      "wave_counts": [
+        40,
+        50,
+        70,
+        90,
+        100,
+        100
+      ],
+      "tutorial_objective": "first_fusion",
+      "first_clear_magic_cores": 14,
+      "repeat_clear_magic_cores": 2,
+      "core_supply_enabled": true,
+      "adjacency_enabled": true,
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "permanent_tower_seal": false,
+      "rescue_points": 0,
+      "mandatory_fusion": false
+    },
+    {
+      "id": "D1-S4",
+      "name": "방위대 임시초소",
+      "chapter": 1,
+      "previous": "D1-S3",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Spear",
+        "Binding",
+        "Rupture"
+      ],
+      "fusion_results": [
+        "Arc",
+        "Shatter",
+        "Gravity"
+      ],
+      "clear_unlocks": [
+        "Barrier",
+        "Seal"
+      ],
+      "lanes": [
+        "west",
+        "north",
+        "east"
+      ],
+      "sockets": 24,
+      "wave_counts": [
+        60,
+        84,
+        108,
+        156,
+        168,
+        192
+      ],
+      "tutorial_objective": "two_lane_tower_contribution",
+      "first_clear_magic_cores": 16,
+      "repeat_clear_magic_cores": 2,
+      "core_supply_enabled": true,
+      "adjacency_enabled": true,
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "permanent_tower_seal": false,
+      "rescue_points": 0,
+      "mandatory_fusion": false
+    },
+    {
+      "id": "D1-S5",
+      "name": "잿빛 탑 외곽",
+      "chapter": 1,
+      "previous": "D1-S4",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Spear",
+        "Binding",
+        "Rupture",
+        "Barrier"
+      ],
+      "fusion_results": [
+        "Arc",
+        "Shatter",
+        "Gravity",
+        "Seal"
+      ],
+      "clear_unlocks": [
+        "BossIntel",
+        "ResearchRank2"
+      ],
+      "lanes": [
+        "west",
+        "east"
+      ],
+      "sockets": 24,
+      "wave_counts": [
+        72,
+        96,
+        120,
+        144,
+        168,
+        180
+      ],
+      "tutorial_objective": "optional_capstone",
+      "first_clear_magic_cores": 18,
+      "repeat_clear_magic_cores": 2,
+      "core_supply_enabled": true,
+      "adjacency_enabled": true,
+      "boss_count": 0,
+      "boss_spawn_seconds": null,
+      "require_boss_kill": false,
+      "permanent_tower_seal": false,
+      "rescue_points": 0,
+      "mandatory_fusion": false
+    },
+    {
+      "id": "D1-S6",
+      "name": "잿빛 탑 전면광장",
+      "chapter": 1,
+      "previous": "D1-S5",
+      "min_previous_stars": 1,
+      "duration_seconds": 180,
+      "base_towers": [
+        "Spear",
+        "Binding",
+        "Rupture",
+        "Barrier"
+      ],
+      "fusion_results": [
+        "Arc",
+        "Shatter",
+        "Gravity",
+        "Seal"
+      ],
+      "clear_unlocks": [
+        "District2",
+        "CrisisMode",
+        "HunterBaekDoha"
+      ],
+      "lanes": [
+        "west",
+        "north",
+        "east"
+      ],
+      "sockets": 24,
+      "wave_counts": [
+        72,
+        108,
+        144,
+        162,
+        180,
+        216
+      ],
+      "tutorial_objective": "evade_boss_telegraph",
+      "first_clear_magic_cores": 20,
+      "repeat_clear_magic_cores": 2,
+      "core_supply_enabled": true,
+      "adjacency_enabled": true,
+      "boss_count": 1,
+      "boss_spawn_seconds": 150,
+      "require_boss_kill": true,
+      "permanent_tower_seal": true,
+      "rescue_points": 0,
+      "mandatory_fusion": false
+    }
+  ],
+  "base_towers": [
+    {
+      "id": "Spear",
+      "name": "창 결계주",
+      "legacy_id": "Autocannon",
+      "build": 40,
+      "upgrade": 30,
+      "role": "long_range_slow_single_target",
+      "attack_retune_required": true,
+      "research_tags": [
+        "Spear"
+      ]
+    },
+    {
+      "id": "Binding",
+      "name": "봉인 결계주",
+      "legacy_id": "Binding",
+      "build": 45,
+      "upgrade": 40,
+      "role": "slow_control",
+      "research_tags": [
+        "Binding"
+      ]
+    },
+    {
+      "id": "Rupture",
+      "name": "붕괴 결계주",
+      "legacy_id": "Rupture",
+      "build": 65,
+      "upgrade": 55,
+      "role": "area_damage",
+      "research_tags": [
+        "Rupture"
+      ]
+    },
+    {
+      "id": "Barrier",
+      "name": "방벽 결계주",
+      "legacy_id": null,
+      "build": 40,
+      "upgrade": 35,
+      "role": "finite_block",
+      "research_tags": [
+        "Barrier"
+      ],
+      "new_runtime_required": true
+    }
+  ],
+  "fusion": {
+    "display_name": "공명 융합",
+    "consumes_materials": true,
+    "material_level": 2,
+    "requires_material_adjacency": false,
+    "requires_anchor_interaction_range": true,
+    "result_upgrade_cost": 60,
+    "commission_seconds": 1,
+    "full_attack_interval_after_commission": true,
+    "recipes": [
+      {
+        "id": "SpearBinding",
+        "a": "Spear",
+        "b": "Binding",
+        "result": "Arc",
+        "cost": 40,
+        "catalysts": 1
+      },
+      {
+        "id": "SpearRupture",
+        "a": "Spear",
+        "b": "Rupture",
+        "result": "Shatter",
+        "cost": 45,
+        "catalysts": 1
+      },
+      {
+        "id": "BindingRupture",
+        "a": "Binding",
+        "b": "Rupture",
+        "result": "Gravity",
+        "cost": 45,
+        "catalysts": 1
+      },
+      {
+        "id": "ArcRupture",
+        "a": "Arc",
+        "b": "Rupture",
+        "result": "Seal",
+        "cost": 80,
+        "catalysts": 1
+      },
+      {
+        "id": "ShatterBinding",
+        "a": "Shatter",
+        "b": "Binding",
+        "result": "Seal",
+        "cost": 75,
+        "catalysts": 1
+      },
+      {
+        "id": "GravitySpear",
+        "a": "Gravity",
+        "b": "Spear",
+        "result": "Seal",
+        "cost": 75,
+        "catalysts": 1
+      }
+    ],
+    "results": [
+      {
+        "id": "Arc",
+        "name": "뇌격 결계주",
+        "research_tags": [
+          "Spear",
+          "Binding"
+        ]
+      },
+      {
+        "id": "Shatter",
+        "name": "파쇄 결계주",
+        "research_tags": [
+          "Spear",
+          "Rupture"
+        ]
+      },
+      {
+        "id": "Gravity",
+        "name": "중력 결계주",
+        "research_tags": [
+          "Binding",
+          "Rupture"
+        ]
+      },
+      {
+        "id": "Seal",
+        "name": "종결 결계주",
+        "research_tags": [
+          "Spear",
+          "Binding",
+          "Rupture"
+        ]
+      }
+    ]
+  },
+  "adjacency": {
+    "display_name": "인접 공명",
+    "unlock": "Resonance",
+    "base_only": true,
+    "same_family": true,
+    "requires_active": true,
+    "self_link": false,
+    "radius": 6,
+    "max_effect_stacks": 1,
+    "consumes_materials": false,
+    "recompute_on": [
+      "build",
+      "sell",
+      "fusion",
+      "disable",
+      "commission_complete"
+    ],
+    "effects": {
+      "Spear": {
+        "stat": "damage",
+        "fraction": 0.05
+      },
+      "Binding": {
+        "stat": "slow_duration",
+        "fraction": 0.05
+      },
+      "Rupture": {
+        "stat": "damage",
+        "fraction": 0.05
+      },
+      "Barrier": {
+        "stat": "block_duration",
+        "fraction": 0.05
+      }
+    },
+    "modifier_rule": "additive_from_base_with_research"
+  },
+  "barrier": {
+    "max_targets": 2,
+    "base_block_seconds": 3,
+    "shared_block_immunity_seconds": 4,
+    "excluded": [
+      "Siege",
+      "Boss",
+      "Flying"
+    ],
+    "no_physical_path_closure": true,
+    "upgrade_keeps_target_cap": true,
+    "recharge_and_durability": "requires_combat_tuning"
+  },
+  "economy": {
+    "combat_currency": "마석",
+    "permanent_currency": "마핵",
+    "core_supply_name": "공명 촉매",
+    "starting_credits": 240,
+    "supply_credits": 100,
+    "supply_times": [
+      30,
+      60,
+      90,
+      120,
+      150
+    ],
+    "core_supply_times": [
+      60,
+      120
+    ],
+    "core_grant": 1,
+    "pre_wave_sale_fraction": 1,
+    "combat_sale_fraction": 0.75,
+    "core_refund": "all_invested",
+    "first_arc_total": 195,
+    "capstone_total": 455,
+    "capstone_cores": 2,
+    "entry_cost": 0,
+    "failure_magic_cores": 0,
+    "normal_enemy_magic_core_drop": 0,
+    "first_chapter_reward_source": "defense_force_refined_elite_boss_stock",
+    "combat_credits_convert_to_permanent": false,
+    "first_plus_repeat_same_run": false,
+    "starting_credits_by_operation": [
+      240,
+      240,
+      240,
+      280,
+      280,
+      280,
+      280,
+      280,
+      280,
+      320,
+      320,
+      320,
+      320,
+      320
+    ],
+    "supply_credits_by_operation": [
+      80,
+      80,
+      80,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100
+    ]
+  },
+  "stars": {
+    "maximum_per_stage": 3,
+    "require_victory": true,
+    "metric": "peak_erosion_from_min_core_health",
+    "max_health_reference": "battle_start_fixed",
+    "three_star_max_erosion": 0.1,
+    "two_star_max_erosion": 0.3,
+    "failure_stars": 0,
+    "optional_objectives_affect_stars": false,
+    "healing_reduces_recorded_erosion": false,
+    "main_path_star_requirement": 1,
+    "is_currency": false
+  },
+  "research": {
+    "currency": "마핵",
+    "step_costs": [
+      2,
+      4,
+      6
+    ],
+    "rank_unlocks": [
+      "D1-S1",
+      "D1-S5",
+      "D2-Clear"
+    ],
+    "require_base_family_unlock": true,
+    "free_respec": true,
+    "refund": "actual_research_spend_only",
+    "effect_combination": "each_result_tag_once_not_copied_from_materials",
+    "lines": [
+      {
+        "id": "Spear",
+        "effect": "damage_fraction",
+        "total_effect_by_rank": [
+          0.04,
+          0.08,
+          0.12
+        ]
+      },
+      {
+        "id": "Binding",
+        "effect": "slow_duration_seconds",
+        "total_effect_by_rank": [
+          0.05,
+          0.1,
+          0.15
+        ]
+      },
+      {
+        "id": "Rupture",
+        "effect": "splash_radius",
+        "total_effect_by_rank": [
+          0.05,
+          0.1,
+          0.15
+        ]
+      },
+      {
+        "id": "Barrier",
+        "effect": "recharge_reduction_fraction",
+        "total_effect_by_rank": [
+          0.03,
+          0.06,
+          0.09
+        ]
+      }
+    ]
+  },
+  "hunter_progression": {
+    "currency": "마핵",
+    "grade_order": [
+      "F",
+      "E",
+      "D",
+      "C",
+      "B",
+      "A",
+      "S"
+    ],
+    "transition_costs": [
+      4,
+      6,
+      8,
+      12,
+      18,
+      26
+    ],
+    "legacy_grade_promotion_min_chapters": [
+      1,
+      1,
+      1,
+      2,
+      3,
+      5,
+      7
+    ],
+    "recruit_grade_exempt_from_promotion_gate": true,
+    "current_earned_step_caps": [
+      3,
+      1,
+      1
+    ],
+    "kang_yoon_third_step_requires": "D1-S6",
+    "recruited_first_step_requires": "hunter_unlocked",
+    "preserve_existing_earned_steps": true,
+    "later_steps_require": "future_content",
+    "health_fraction_per_earned_step": 0.025,
+    "damage_fraction_per_earned_step": 0.02,
+    "controlled_hunters": 1,
+    "random_permanent_corruption": false,
+    "baseline_clear_requires_upgrades": false,
+    "hunters": [
+      {
+        "id": "HunterKangYoon",
+        "name": "강윤",
+        "unlock": "initial",
+        "grade_mode": "unclassified_stabilization",
+        "display_grade": "미분류",
+        "start_index": 0,
+        "role": "balanced",
+        "skill": "회피",
+        "legacy_id": "HunterJin"
+      },
+      {
+        "id": "HunterHani",
+        "name": "세희",
+        "unlock": "D1-S3",
+        "grade_mode": "measured",
+        "display_grade": "C",
+        "start_index": 3,
+        "role": "fast_ranged_rescue",
+        "skill": "질주",
+        "legacy_id": "HunterHarin"
+      },
+      {
+        "id": "HunterBaekDoha",
+        "name": "백도하",
+        "unlock": "D1-S6",
+        "grade_mode": "measured",
+        "display_grade": "B",
+        "start_index": 4,
+        "role": "melee_defense",
+        "skill": "방호",
+        "legacy_id": "HunterSeoha"
+      }
+    ]
+  },
+  "cards": {
+    "world_name": "잔광 적응",
+    "times": [
+      30,
+      90,
+      150
+    ],
+    "max_choices": 3,
+    "filter_locked_tower_tags": true,
+    "filter_max_stacks": true,
+    "pad_with_duplicates": false,
+    "resets_each_battle": true
+  },
+  "rescue": {
+    "introduced_chapter": 2,
+    "credits_per_point": 20,
+    "reward_once_per_point": true,
+    "affects_stars": false,
+    "magic_core_reward": 0
+  },
+  "save": {
+    "schema_version": 2,
+    "idempotent_run_reward": true,
+    "atomic_reward_unlock_story": true,
+    "backup": true,
+    "mid_battle_resume": false,
+    "v030_last_run_is_not_profile": true,
+    "retain_best_on_failure": true,
+    "repeat_mode": "operation_reconstruction"
+  },
+  "fullChapterBudget": {
+    "first_clear_magic_cores": 90,
+    "max_stars": 18,
+    "all_research_cost": 48,
+    "kang_yoon_all_stabilization_cost": 74,
+    "chapter1_available_research_cost": 24,
+    "chapter1_available_kang_yoon_cost": 18,
+    "chapter1_available_recruited_hunter_cost": 30,
+    "chapter1_remainder": 18,
+    "full_long_term_combined_cost": 122,
+    "budget_scope": "first_six_operations_through_first_seal",
+    "long_term_cost_scope": "kang_yoon_and_four_research_lines_only"
+  },
+  "combat_pacing": {
+    "reference": "Gatefall0.12.1 pre-swarm budget; own design, not original-game numeric data",
+    "swarm_multipliers": [
+      5,
+      5,
+      5,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      8,
+      8,
+      8,
+      8,
+      8
+    ],
+    "grunt_health_fraction_pre013": 0.12,
+    "grunt_speed_multiplier_pre013": 1.35,
+    "runner_health_fraction_pre013": 0.75,
+    "runner_speed_multiplier_pre013": 1.2,
+    "additional_swarm_kills_per_credit": 4,
+    "spear_interval": 0.46,
+    "tower_projectile_speed": 28,
+    "hunter_projectile_speed": 30,
+    "ordinary_import_max_pixels": 64,
+    "ordinary_view_scale": 0.42,
+    "ordinary_renderer": "shared dynamic row meshes",
+    "ordinary_path_lateral_offsets": [
+      -0.32,
+      0,
+      0.32
+    ],
+    "supply_card_catalyst_caps": [
+      5,
+      3,
+      2
+    ]
+  }
+}

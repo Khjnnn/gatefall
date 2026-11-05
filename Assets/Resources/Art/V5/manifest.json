@@ -1,0 +1,370 @@
+{
+ "tower-spear-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-spear-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-binding-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-binding-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-rupture-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-rupture-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-barrier-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-barrier-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-arc-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-arc-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-shatter-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-shatter-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-gravity-1": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-gravity-2": {
+  "width": 256,
+  "height": 320
+ },
+ "tower-seal-1": {
+  "width": 256,
+  "height": 320
+ },
+ "pad": {
+  "width": 220,
+  "height": 140
+ },
+ "core": {
+  "width": 340,
+  "height": 400
+ },
+ "enemy-grunt": {
+  "width": 200,
+  "height": 150
+ },
+ "enemy-runner": {
+  "width": 200,
+  "height": 150
+ },
+ "enemy-brute": {
+  "width": 220,
+  "height": 200
+ },
+ "enemy-siege": {
+  "width": 264,
+  "height": 180
+ },
+ "enemy-boss": {
+  "width": 360,
+  "height": 360
+ },
+ "hunter-0": {
+  "width": 170,
+  "height": 190
+ },
+ "hunter-1": {
+  "width": 170,
+  "height": 190
+ },
+ "hunter-2": {
+  "width": 170,
+  "height": 190
+ },
+ "ui-panel": {
+  "width": 96,
+  "height": 96
+ },
+ "ui-panel-flat": {
+  "width": 64,
+  "height": 64
+ },
+ "ui-button": {
+  "width": 64,
+  "height": 64
+ },
+ "ui-button-primary": {
+  "width": 64,
+  "height": 64
+ },
+ "ui-button-disabled": {
+  "width": 64,
+  "height": 64
+ },
+ "ui-chip": {
+  "width": 48,
+  "height": 48
+ },
+ "ui-selected": {
+  "width": 64,
+  "height": 64
+ },
+ "ui-bar": {
+  "width": 32,
+  "height": 32
+ },
+ "icon-stone": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-catalyst": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-core": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-pause": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-play": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-upgrade": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-fusion": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-sell": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-lock": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-barrier": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-retreat": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-growth": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-settings": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-back": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-hand": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-star": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-star-empty": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-sound-on": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-sound-off": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-skill-0": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-skill-1": {
+  "width": 96,
+  "height": 96
+ },
+ "icon-skill-2": {
+  "width": 96,
+  "height": 96
+ },
+ "fx-disc": {
+  "width": 64,
+  "height": 64
+ },
+ "fx-ring": {
+  "width": 128,
+  "height": 128
+ },
+ "fx-ring-soft": {
+  "width": 128,
+  "height": 128
+ },
+ "fx-bolt": {
+  "width": 96,
+  "height": 24
+ },
+ "fx-tracer": {
+  "width": 48,
+  "height": 16
+ },
+ "fx-shell": {
+  "width": 40,
+  "height": 40
+ },
+ "fx-burst": {
+  "width": 160,
+  "height": 160
+ },
+ "fx-vortex": {
+  "width": 160,
+  "height": 160
+ },
+ "fx-pillar": {
+  "width": 64,
+  "height": 256
+ },
+ "fx-shard": {
+  "width": 32,
+  "height": 32
+ },
+ "fx-rift": {
+  "width": 220,
+  "height": 140
+ },
+ "fx-danger": {
+  "width": 256,
+  "height": 256
+ },
+ "fx-select": {
+  "width": 256,
+  "height": 160
+ },
+ "fx-shield": {
+  "width": 160,
+  "height": 160
+ },
+ "fx-fusion-ready": {
+  "width": 72,
+  "height": 72
+ },
+ "stage-0": {
+  "width": 2592,
+  "height": 1296,
+  "ppu": 54,
+  "half_extent": [
+   24,
+   12
+  ]
+ },
+ "stage-1": {
+  "width": 2592,
+  "height": 1296,
+  "ppu": 54,
+  "half_extent": [
+   24,
+   12
+  ]
+ },
+ "stage-2": {
+  "width": 2592,
+  "height": 1296,
+  "ppu": 54,
+  "half_extent": [
+   24,
+   12
+  ]
+ },
+ "stage-3": {
+  "width": 2592,
+  "height": 1296,
+  "ppu": 54,
+  "half_extent": [
+   24,
+   12
+  ]
+ },
+ "stage-4": {
+  "width": 2592,
+  "height": 1296,
+  "ppu": 54,
+  "half_extent": [
+   24,
+   12
+  ]
+ },
+ "stage-5": {
+  "width": 2592,
+  "height": 1296,
+  "ppu": 54,
+  "half_extent": [
+   24,
+   12
+  ]
+ },
+ "district-map": {
+  "width": 1600,
+  "height": 1000,
+  "nodes": [
+   [
+    0.1,
+    0.7
+   ],
+   [
+    0.25,
+    0.56
+   ],
+   [
+    0.4,
+    0.66
+   ],
+   [
+    0.54,
+    0.46
+   ],
+   [
+    0.68,
+    0.4
+   ],
+   [
+    0.8,
+    0.33
+   ]
+  ]
+ },
+ "fx-range": {
+  "width": 512,
+  "height": 512
+ }
+}

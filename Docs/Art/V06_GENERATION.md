@@ -1,0 +1,19 @@
+# Gatefall v0.6 생성 기록
+
+2026-10-27. 이미지 생성은 Codex의 내장 image_gen 도구를 사용했다. 원본은 `v06-source/`에 보관하며 `Tools/art/prepare_v06.py`가 잘라내기·투명도 조각 정리·발 위치 맞춤·크기 조절을 수행해 `Assets/Resources/Art/V6/`에 넣는다. V5 원본은 보존한다. 기존 게임의 추출 이미지나 소스는 사용하지 않았다.
+
+## 프롬프트 묶음
+
+- `stage-0`: 기존 Gatefall stage-0을 레이아웃 참조로 사용. “Preserve exact existing road geometry, central round plaza, building footprint positions and the placement of the dark tower, viewed straight overhead; ... premium hand-painted 2D game environment art ... Korean neighborhood with compact old shop roofs around the edges, asphalt, sidewalks, crosswalks, traffic barricades, signs without readable text ... centered open plaza and streets very quiet and low contrast ... 2:1 ... no characters, towers, UI, or text.”
+- `stage-1`, `stage-2`: 각각 기존 Gatefall 도로 배치와 새 stage-0을 참조. “Image 1 is the exact geometry/layout to preserve; image 2 is ONLY a style reference ... preserve the exact three road curves and their entrance and central plaza coordinates ... no new obstacles on roads or central plaza.” 1-4~1-6은 순서대로 세 배경을 재사용한다. 별도의 6개 이미지나 실제 지도를 주장하지 않는다.
+- `district-map`: 기존 Gatefall 지도를 레이아웃, 새 stage-0을 화풍으로 참조. “Modern flat concrete shop roofs, apartment blocks, asphalt roads, sidewalk and crosswalks; bus stops, rooftops with air conditioning. No historic temples, no traditional palace roofs, no medieval architecture ... fully top-down ... no icons, characters, text, UI or labels.” 첫 시도는 전통 마을로 나와 사용하지 않았다.
+- `towers-level1`: “2x2 sprite atlas of FOUR distinct original Korean urban-fantasy defense devices ... top left slender spear turret with golden spear point; top right low teal ward ring ... bottom left squat heavy orange mortar; bottom right protective blue steel shield arch ... true transparent background ... fixed 3/4 top-down camera ... no text.”
+- `towers-level2`: 위 기본 결계주를 편집 참조로 사용. “Create the upgraded level-two versions of the same four defense devices in the exact same four grid positions ... preserve identity and core silhouette ... extra gold metal collar ... true transparent background.”
+- `fusion`: 기본 결계주를 화풍 참조로 사용. “2x2 grid ... arc fusion: golden spear with teal ward and lightning conductor; shatter: orange mortar and spear; gravity: teal ring and violet sphere; ultimate seal: three ivory gold pillars and cyan core ... complete silhouettes ... transparent background.” `fusion-level2`는 이 이미지를 편집해 같은 네 형태를 유지하면서 금속 지지대와 코어를 강화했다. 종결은 게임 규칙상 1단계만 쓴다.
+- `units`: “2x2 ... young Korean urban defender in navy field jacket with short spear; fast small black stone hound with restrained crimson cracks; compact hunched dark crystalline creature; hulking obsidian armored monster ... genuine transparent background ... 3/4 top down ... readable at 64 pixels.” 첫 인물의 긴 창이 중앙선을 넘어 수동 분할 영역을 따로 지정했다.
+- `heroes`: `units`를 화풍 참조로 사용. “Female Korean scout with orange short hair and compact crossbow; male defense captain with large steel shield; compact ranged siege creature; enormous obsidian gate guardian ... 2x2 ... true transparent background.” 공성 마수와 일반 마수는 형태가 유사하므로 후속 아트 디렉션에서 구분 개선 여지가 있다.
+- `core`: 기본 결계주를 화풍 참조. “Compact teal crystalline defensive beacon ... low round stone and brass platform ... three small guard pylons ... hand-painted 2D ... transparent background.”
+- `pad`: 결계주를 화풍 참조. “Low circular brushed steel and weathered dark stone platform with subtle brass edge and muted amber center ... blank for a plus marker ... transparent background.”
+- `fx-rift`: 마수 시트를 화풍 참조. “Dark fractured circular tear in asphalt ... black charcoal stone splinters ... deep crimson fissure ... no creatures, text, symbols or bright particles ... transparent background.”
+
+생성 이미지는 실제 스크린 캡처가 아니다. UI 패널·버튼과 작은 기능 아이콘·이펙트는 `prepare_v06.py`, `v06_ui.py`에서 새로 그렸으며 글자는 Unity가 렌더링한다. 크기와 리소스 이름은 기존 UI 코드와 맞춘다. V5는 누락 시 예비 자원으로 보존한다.
