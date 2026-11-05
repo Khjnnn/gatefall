@@ -311,6 +311,7 @@ namespace Gatefall.Editor
             ValidateWaveHeaderFont();
             ValidateBattleModeFont();
             ValidateObserverMenuFont();
+            ValidateGrowthHintFont();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);
@@ -557,6 +558,31 @@ namespace Gatefall.Editor
             for (int i = 0; i < lines.Length; i++)
                 row.lineWidths[i] = style.CalcSize(new GUIContent(lines[i])).x;
             return row;
+        }
+
+        [Serializable] private sealed class GrowthHintFontReport {
+            public int labels;
+            public float width=344,height=22,maxWidth,maxHeight;
+            public string widest;
+        }
+        private static void ValidateGrowthHintFont()
+        {
+            var report=new GrowthHintFontReport();
+            var style=new GUIStyle {font=Resources.Load<Font>("Fonts/NanumGothic-Bold"),fontSize=13,wordWrap=true,padding=new RectOffset()};
+            style.font.RequestCharactersInTexture("권장 성장 · 창 봉인 붕괴 방벽 연구 (현재 / )0123456공격형결계주를함께편성하세요",13,FontStyle.Normal);
+            Action<string> measure=text=>{
+                var content=new GUIContent(text);float width=style.CalcSize(content).x,height=style.CalcHeight(content,report.width);report.labels++;
+                if(width>report.maxWidth){report.maxWidth=width;report.widest=text;}report.maxHeight=Mathf.Max(report.maxHeight,height);
+                if(width>report.width || height>report.height)throw new BuildFailedException("Growth hint wraps: "+text);
+            };
+            for(int stage=6;stage<14;stage++)for(int hunter=0;hunter<3;hunter++){
+                int growth=CampaignCatalog.RecommendedHunterGrowth(stage,hunter);
+                measure("권장 성장 "+growth+" · 공격형 결계주를 함께 편성하세요");
+                for(int currentGrowth=0;currentGrowth<=6;currentGrowth++)for(int focus=0;focus<4;focus++)for(int current=0;current<=3;current++)
+                    measure("권장 성장 "+growth+" · "+CampaignCatalog.ResearchNames[focus].Split('·')[0].Trim()+" 연구 "+CampaignCatalog.Stages[stage].RecommendedResearch[focus]+"  (현재 "+currentGrowth+" / "+current+")");
+            }
+            Directory.CreateDirectory("TestResults");File.WriteAllText("TestResults/growth-hint-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
+            Debug.Log("GATEFALL GROWTH HINT FONT PASSED: "+report.labels+" labels fit344x22.");
         }
 
         [Serializable] private sealed class ObserverFontReport {

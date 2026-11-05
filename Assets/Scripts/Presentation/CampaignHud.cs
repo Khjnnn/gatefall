@@ -148,7 +148,7 @@ namespace Gatefall
             int hunter = profile.SelectedHunter;
             Rect chip = new Rect(x, r.yMax - 172, w, 64);
             if(stage.Index>=6) {
-                int growth=CampaignCatalog.RecommendedHunterGrowth(stage.Index,hunter),focus=CampaignCatalog.ResearchFocus(profile.Loadout);
+                int growth=CampaignCatalog.RecommendedHunterGrowth(stage.Index,hunter),focus=CampaignCatalog.ResearchFocus(profile.Loadout,profile.Research,stage.RecommendedResearch);
                 int research=focus<0 ? 0 : stage.RecommendedResearch[focus];
                 string hint=focus<0 ? "권장 성장 "+growth+" · 공격형 결계주를 함께 편성하세요" :
                     "권장 성장 "+growth+" · "+CampaignCatalog.ResearchNames[focus].Split('·')[0].Trim()+" 연구 "+research+

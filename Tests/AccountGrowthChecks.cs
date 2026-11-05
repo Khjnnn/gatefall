@@ -17,6 +17,21 @@ namespace Gatefall.Tests {
         }
         public static string Run(){
             Assert(CampaignCatalog.ResearchCosts.SequenceEqual(new[]{2,4,6}) && CampaignCatalog.GrowthCosts.SequenceEqual(new[]{4,6,8,12,18,26}),"Historical prices changed");
+            int hintCases=0;int[] familyBits={1,2,4,1<<7};
+            for(int stage=6;stage<14;stage++)for(int families=0;families<32;families++)for(int ranks=0;ranks<256;ranks++){
+                int loadout=(families&16)!=0 ? 1<<8 : 0;for(int line=0;line<4;line++)if((families&(1<<line))!=0)loadout|=familyBits[line];
+                int[] current={ranks&3,(ranks>>2)&3,(ranks>>4)&3,(ranks>>6)&3};
+                var recommended=CampaignCatalog.Stages[stage].RecommendedResearch;var copy=current.ToArray();var recCopy=recommended.ToArray();
+                int focus=CampaignCatalog.ResearchFocus(loadout,current,recommended);bool missing=false;
+                for(int line=0;line<4;line++)if((loadout&familyBits[line])!=0 && current[line]<recommended[line])missing=true;
+                if(missing)Assert(focus>=0 && (loadout&familyBits[focus])!=0 && current[focus]<recommended[focus],"Hint hid an unmet selected family");
+                else Assert(focus==CampaignCatalog.ResearchFocus(loadout),"Completed/unsupported hint changed its fallback");
+                Assert(current.SequenceEqual(copy) && recommended.SequenceEqual(recCopy),"Hint mutated profile or stage");hintCases++;
+            }
+            var partial=new[]{3,0,0,0};var final=CampaignCatalog.Stages[13].RecommendedResearch;
+            Assert(CampaignCatalog.ResearchFocus(263,partial,final)==2,"Mixed plan should show missing blast after ballistic");partial[2]=2;
+            Assert(CampaignCatalog.ResearchFocus(263,partial,final)==1,"Mixed plan should show missing control next");partial[1]=2;
+            Assert(CampaignCatalog.ResearchFocus(263,partial,final)==0,"Unselected ward should not delay fulfilled hint");
             for(int hunter=0;hunter<3;hunter++)for(int growth=0;growth<6-CampaignCatalog.HunterStart[hunter];growth++){
                 int gate=Math.Max(CampaignCatalog.GrowthUnlocks[hunter][growth],hunter==1?3:hunter==2?6:0);
                 if(gate>0){var before=Cleared(gate-1);before.MagicCores=1000;before.Growth[hunter]=growth;var svc=new CampaignService(before,null);Assert(!svc.Grow(hunter) && svc.Profile.MagicCores==1000 && svc.Profile.Growth[hunter]==growth,"Growth bypassed milestone");}
@@ -38,7 +53,7 @@ namespace Gatefall.Tests {
             int total=max.Profile.MagicCores;Assert(max.Respec() && max.Profile.MagicCores==total+48 && max.Respec() && max.Profile.MagicCores==total+48,"Full research refund mint");
             var battle=new CampaignBattle{Stage=CampaignCatalog.Stages[13],Research=new[]{3,2,2,1},EarnedGrowth=4};var g=new DefenseSimulation(new GameBalance(),7,battle);g.Cards[(int)CardKind.Ballistic]=1;
             float raw=64*CampaignCatalog.Stages[13].HybridDamage;Assert(Math.Abs(g.Stats(TowerKind.Shatter,1).Damage-raw*(1+.15f+.24f+.12f))<.002f,"Research/card lines multiplied or double applied");
-            return "PASS account growth: all hunter milestones, affordable recommendations for every available hunter/stage, v2, historical/full refunds, research3 and222/322 investment";
+            return "PASS account growth: all hunter milestones, affordable recommendations for every available hunter/stage, v2, historical/full refunds, research3 and222/322 investment; "+hintCases+" non-mutating selected-family research hints";
         }
     }
 }

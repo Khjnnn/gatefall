@@ -98,6 +98,16 @@ namespace Gatefall.Core
         }
         public static int ResearchFocus(int loadout)
         { return (loadout&1)!=0 ? 0 : (loadout&4)!=0 ? 2 : (loadout&2)!=0 ? 1 : (loadout&(1<<7))!=0 ? 3 : -1; }
+        public static int ResearchFocus(int loadout,int[] current,int[] recommended)
+        {
+            if(current==null || recommended==null || current.Length!=4 || recommended.Length!=4)throw new ArgumentException("Research hints require four ranks");
+            // Keep one hint, advancing to another selected family after the main recommendation is met.
+            if((loadout&1)!=0 && current[0]<recommended[0])return 0;
+            if((loadout&4)!=0 && current[2]<recommended[2])return 2;
+            if((loadout&2)!=0 && current[1]<recommended[1])return 1;
+            if((loadout&(1<<7))!=0 && current[3]<recommended[3])return 3;
+            return ResearchFocus(loadout);
+        }
         internal const string ObserverRoutes = "북쪽 지름길과 서·동 우회로를 막으세요.";
         public const string Prologue = "낙하 7주년. 잿빛 탑의 범람 속에서 한 남자가 걸어 나왔다.\n7년 전 실종자, 강윤. 측정기는 그의 등급을 읽지 못했다.\n백도하: 신원 확인은 나중이다. 우선 뒤쪽 사람들부터 지켜.";
         public static readonly CampaignStage[] Stages = {
