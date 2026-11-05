@@ -6,11 +6,12 @@ using Gatefall.Core;
 namespace Gatefall.Tests {
     public static class ProgressionBalanceReview {
         public sealed class Row {
+            public bool Crisis;
             public int Stage,Seed,Limit,Budget,Spent,Credits,AccountSpent,Growth,Towers,Fusions,Stars,FiredCurrent,FiredLifetime,PeakRecent3,ParticipationSamples;
             public int[] Research,Cards;public string Profile,Policy,State;public float Core;public double End,MeanRecent3,ParticipationEnd;
             public string[] Ledger;
         }
-        public static Row[] Run(int[] stages,int[] limits,string[] profiles,int[] budgets=null,float lateSwarmHealth=0){
+        public static Row[] Run(int[] stages,int[] limits,string[] profiles,int[] budgets=null,float lateSwarmHealth=0,bool crisis=false){
             foreach(var stage in CampaignCatalog.Stages)BattlefieldLayouts.Get(stage);
             var plans=new[]{
                 new CompetentPlanReview.Plan{Spread=.5f,Cap=1,Upgrade=1},
@@ -31,16 +32,16 @@ namespace Gatefall.Tests {
                     var rows=new Row[jobs.Count];
                     Parallel.For(0,jobs.Count,new ParallelOptions{MaxDegreeOfParallelism=4},i=>{
                         var j=jobs[i];int stage=j.Item1;var p=j.Item4=="zero"?new CampaignProfile():AccountGrowthChecks.Recommended(stage,0,j.Item4=="below"?1:0);
-                        CampaignBattle rules=j.Item4=="zero"?new CampaignBattle{Stage=CampaignCatalog.Stages[stage]}:new CampaignService(p,null).Battle(stage,false);
+                        CampaignBattle rules=j.Item4=="zero"?new CampaignBattle{Stage=CampaignCatalog.Stages[stage],Crisis=crisis}:new CampaignService(p,null).Battle(stage,crisis);
                         var cooldowns=new Dictionary<int,float>();var fired=new HashSet<int>();var last=new Dictionary<int,double>();double total=0,end=0;int samples=0,peak=0;
                         Action<DefenseSimulation> observe=g=>{
                             foreach(var t in g.Towers){float previous;if(cooldowns.TryGetValue(t.Id,out previous) && t.Kind!=TowerKind.Barrier && t.Commission<=0 && t.Cooldown>previous+.0001f){fired.Add(t.Id);last[t.Id]=g.Elapsed;}cooldowns[t.Id]=t.Cooldown;}
                             if(g.Elapsed>=60 && g.Elapsed<=170){int recent=g.Towers.Count(t=>last.ContainsKey(t.Id) && last[t.Id]>=g.Elapsed-3);total+=recent;samples++;peak=Math.Max(peak,recent);end=g.Elapsed;}
                         };
-                        var game=CompetentPlanReview.Play(stage,j.Item2,plans[j.Item3],false,j.Item5,rules,observe);
+                        var game=CompetentPlanReview.Play(stage,j.Item2,plans[j.Item3],crisis,j.Item5,rules,observe);
                         if(game.Telemetry.CreditsSpent>j.Item5)throw new Exception("Spending cap exceeded");
                         int income=CampaignCatalog.Stages.Take(stage).Sum(s=>s.FirstReward);
-                        rows[i]=new Row{Stage=stage+1,Seed=j.Item2,Limit=game.TowerLimit,Budget=j.Item5,Spent=game.Telemetry.CreditsSpent,Credits=game.Credits,
+                        rows[i]=new Row{Crisis=crisis,Stage=stage+1,Seed=j.Item2,Limit=game.TowerLimit,Budget=j.Item5,Spent=game.Telemetry.CreditsSpent,Credits=game.Credits,
                             AccountSpent=j.Item4=="zero"?0:income-p.MagicCores,Growth=rules.EarnedGrowth,Research=rules.Research,Cards=game.Cards,
                             Towers=game.Towers.Count,Fusions=game.Telemetry.Fusions,Stars=CampaignCatalog.Stars(game.State==RunState.Won,game.MinimumCoreHealth,game.Balance.CoreHealth),
                             FiredCurrent=game.Towers.Count(t=>fired.Contains(t.Id)),FiredLifetime=fired.Count,PeakRecent3=peak,ParticipationSamples=samples,ParticipationEnd=end,
