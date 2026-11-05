@@ -415,7 +415,7 @@ namespace Gatefall.Tests
                     TowerStats before=g.Stats(a), preview=g.Stats(a,2);
                     Assert(a.Level==1 && g.Credits==credits && g.Telemetry.Purchases.Count==purchases && g.Elapsed==elapsed,"preview changed battle");
                     Near(g.Stats(a).Damage,before.Damage);Near(g.Stats(a).SlowSeconds,before.SlowSeconds);
-                    if(kind==TowerKind.Autocannon)Near(preview.Damage,22*(1+.15f+.08f+.05f));
+                    if(kind==TowerKind.Autocannon)Near(preview.Damage,22*(1+.15f+.16f+.05f));
                     string reason;Assert(g.TryUpgrade(a.Id,null,out reason),reason);TowerStats actual=g.Stats(a);
                     Near(preview.Damage,actual.Damage);Near(preview.SlowSeconds,actual.SlowSeconds);Near(preview.Range,actual.Range);Near(preview.Radius,actual.Radius);
                 }
@@ -429,10 +429,10 @@ namespace Gatefall.Tests
             Check("Research is added once and copied into a battle snapshot",()=>{
                 var rules=new CampaignBattle {Research=new[]{2,2,2,0}};
                 var g=new DefenseSimulation(new GameBalance(),7,rules);rules.Research[0]=3;
-                Near(g.Stats(TowerKind.Autocannon,2).Damage,22*1.08f);
-                Near(g.Stats(TowerKind.Arc,1).Chain[0],24*1.08f);
-                Near(g.Stats(TowerKind.Gravity,1).SlowSeconds,1.6f);
-                Near(g.Stats(TowerKind.Shatter,1).Radius,1.5f);
+                Near(g.Stats(TowerKind.Autocannon,2).Damage,22*1.16f);
+                Near(g.Stats(TowerKind.Arc,1).Chain[0],24*1.16f);
+                Near(g.Stats(TowerKind.Gravity,1).SlowSeconds,1.7f);
+                Near(g.Stats(TowerKind.Shatter,1).Radius,1.6f);
             });
             Check("Ward capacity, finite duration, shared immunity and movement",()=>{
                 var g=New(-1,false,1000);var ward=Build(g,4,TowerKind.Barrier);Move(g,0);
@@ -637,7 +637,7 @@ namespace Gatefall.Tests
                 var g=new DefenseSimulation(new GameBalance(),7,svc.Battle(2,false));
                 // Select explicitly: the earlier purchase must not silently change the deployed hunter.
                 Assert(g.Rules.Hunter==0,"growth changed selection");Assert(svc.SelectHunter(1),"Sehee selection");
-                g=new DefenseSimulation(new GameBalance(),7,svc.Battle(2,false));Near(g.Balance.PlayerHealth,87.125f);Near(g.Balance.PlayerDamage,10.2f);
+                g=new DefenseSimulation(new GameBalance(),7,svc.Battle(2,false));Near(g.Balance.PlayerHealth,91.8f);Near(g.Balance.PlayerDamage,10.5f);
                 svc=ClearedProfile();Assert(svc.Profile.FirstSealComplete && svc.Grow(2),"Baek first growth");
                 Assert(svc.Profile.Grade(2)=="A급" && svc.Profile.MagicCores==72,"Baek cost/grade");
                 Assert(!svc.Grow(2) && svc.Profile.MagicCores==72,"Baek future step charged");
@@ -647,7 +647,7 @@ namespace Gatefall.Tests
                 var restored=CampaignStore.Decode(CampaignStore.Encode(p));var svc=new CampaignService(restored,null);
                 Assert(restored.Growth[0]==3 && restored.Growth[1]==2 && restored.Growth[2]==1 && restored.SelectedHunter==1,"existing growth reset");
                 Assert(!svc.Grow(1) && svc.Profile.MagicCores==p.MagicCores,"locked legacy purchase mutated economy");
-                var g=new DefenseSimulation(new GameBalance(),7,svc.Battle(6,false));Near(g.Balance.PlayerHealth,89.25f);Near(g.Balance.PlayerDamage,10.4f);
+                var g=new DefenseSimulation(new GameBalance(),7,svc.Battle(6,false));Near(g.Balance.PlayerHealth,98.6f);Near(g.Balance.PlayerDamage,11f);
             });
             Check("Crisis mode is gated and keeps normal stars and first reward",()=>{
                 var svc=new CampaignService(new CampaignProfile(),null);string id;Assert(!svc.Begin(0,true,out id),"crisis before clear");

@@ -134,7 +134,7 @@ namespace Gatefall
             Text(new Rect(x, y + 64, w, 22), "진입로 " + lanes + "  ·  지점 " + stage.SocketCount + "  ·  6웨이브", 14, Muted, TextAnchor.MiddleLeft, 0);
             bool first = stage.Index == 0 && profile.BestStars[0] == 0;
             bool showDeployment = stage.Index >= 3;
-            float storyHeight = showDeployment ? 80 : 112;
+            float storyHeight = stage.Index>=6 ? 56 : showDeployment ? 80 : 112;
             float briefingY = y + 94 + storyHeight;
             Text(new Rect(x, y + 94, w, storyHeight), (first ? CampaignCatalog.Prologue : stage.Story).Replace('\n', ' '), 15, Paper, TextAnchor.UpperLeft, 0);
             Text(new Rect(x, briefingY, w, 50), stage.CityBriefing(profile), 15, Ally, TextAnchor.UpperLeft, 1);
@@ -147,6 +147,15 @@ namespace Gatefall
             // Hunter chip: tap to cycle unlocked hunters (no separate screen needed).
             int hunter = profile.SelectedHunter;
             Rect chip = new Rect(x, r.yMax - 172, w, 64);
+            if(stage.Index>=6) {
+                int growth=CampaignCatalog.RecommendedHunterGrowth(stage.Index,hunter),focus=CampaignCatalog.ResearchFocus(profile.Loadout);
+                int research=focus<0 ? 0 : stage.RecommendedResearch[focus];
+                string hint=focus<0 ? "권장 성장 "+growth+" · 공격형 결계주를 함께 편성하세요" :
+                    "권장 성장 "+growth+" · "+CampaignCatalog.ResearchNames[focus].Split('·')[0].Trim()+" 연구 "+research+
+                    "  (현재 "+profile.Growth[hunter]+" / "+profile.Research[focus]+")";
+                bool ready=profile.Growth[hunter]>=growth && (focus<0 || profile.Research[focus]>=research);
+                Text(new Rect(x,chip.y-25,w,22),hint,13,ready ? Ally : Amber,TextAnchor.MiddleLeft,1);
+            }
             bool many = profile.IsHunterOpen(1) || profile.IsHunterOpen(2);
             Button(many ? 623 : 0, Box(chip), "", many, Look.Secondary);
             if (!many) Skin(chip, "ui-button");
@@ -173,7 +182,7 @@ namespace Gatefall
             Rect left = new Rect(18, 80, colW, H - 96), right = new Rect(36 + colW, 80, colW, H - 96);
             Skin(left, "ui-panel"); Skin(right, "ui-panel");
             Text(new Rect(left.x + 20, left.y + 12, 300, 30), "각성자", 20, Paper, TextAnchor.MiddleLeft, 2);
-            Text(new Rect(left.x + 120, left.y + 14, colW - 140, 28), "직접 조작 1명 · 고유 스킬 1개", 13, Muted, TextAnchor.MiddleRight, 0);
+            Text(new Rect(left.x + 120, left.y + 14, colW - 140, 28), "성장마다 생명 +8% · 피해 +5%", 13, Muted, TextAnchor.MiddleRight, 0);
             float ch = (left.height - 70) / 3;
             for (int i = 0; i < 3; i++) {
                 bool open = profile.IsHunterOpen(i), chosen = i == profile.SelectedHunter;
@@ -184,7 +193,8 @@ namespace Gatefall
                 Tex(new Rect(c.x + 8, c.center.y - portrait / 2, portrait, portrait), art.Texture("hunter-" + i), open ? Color.white : new Color(.3f, .3f, .35f, 1));
                 float tx = c.x + portrait + 20, textWidth = c.xMax - 174 - tx;
                 Text(new Rect(tx, c.y + 6, textWidth, 28), CampaignCatalog.Hunters[i], 19, open ? Paper : Muted, TextAnchor.MiddleLeft, 2);
-                Text(new Rect(tx, c.y + 34, open ? textWidth : c.xMax - tx - 12, 64), open ? profile.Grade(i) + "\n" + CampaignCatalog.HunterRoles[i].Split('·')[1].Trim() : i == 1 ? "1-3 종현 배급소 클리어" : "1-6 잿빛 탑 봉인", 13, Muted, TextAnchor.UpperLeft, 0);
+                Text(new Rect(tx, c.y + 34, open ? textWidth : c.xMax - tx - 12, 64), open ? profile.Grade(i) + "\n" + CampaignCatalog.HunterRoles[i].Split('·')[1].Trim()+
+                    "\n생명 +"+(profile.Growth[i]*8)+"% · 피해 +"+(profile.Growth[i]*5)+"%" : i == 1 ? "1-3 종현 배급소 클리어" : "1-6 잿빛 탑 봉인", 13, Muted, TextAnchor.UpperLeft, 0);
                 if (!open) continue;
                 if (!chosen) Button(620 + i, new Box2(c.xMax - 162, c.y + 8, 150, 48), "출전 선택", true, Look.Secondary, null, 15);
                 else Text(new Rect(c.xMax - 162, c.y + 8, 150, 40), "출전 중", 15, Amber, TextAnchor.MiddleCenter, 2);

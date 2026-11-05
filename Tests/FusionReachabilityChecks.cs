@@ -43,7 +43,30 @@ namespace Gatefall.Tests {
             Assert(queried.State==control.State && queried.Credits==control.Credits && queried.Enemies.Count==control.Enemies.Count &&
                 queried.CardOffers.Count==control.CardOffers.Count,"Query changed subsequent state");
             for(int i=0;i<queried.CardOffers.Count;i++)Assert(queried.CardOffers[i]==control.CardOffers[i],"Query consumed card RNG");
-            return "PASS: family/gate/owned-resource cases and read-only state/card-RNG comparison";
+            NestedFusionAtTowerLimit();
+            return "PASS: family/gate/owned-resource cases, read-only state/card-RNG comparison, nested fusion at cap and refill";
+        }
+        static void NestedFusionAtTowerLimit() {
+            var g=new DefenseSimulation(new GameBalance {StartingCredits=5000,SpawnEnemies=false,OfferCards=false},7,
+                new CampaignBattle {Stage=CampaignCatalog.Stages[13],Loadout=135});
+            string why;
+            Assert(g.TryBuild(4,TowerKind.Autocannon,null,out why) && g.TryBuild(1,TowerKind.Binding,null,out why) &&
+                g.TryBuild(7,TowerKind.Rupture,null,out why),"Nested material construction");
+            foreach(int site in new[]{4,1,7})Assert(g.TryUpgrade(g.TowerAt(site).Id,null,out why),"Nested material upgrade");
+            g.Start();g.Tick(61,new V2());
+            Assert(g.Cores==1 && g.TryFuse(0,g.TowerAt(4).Id,g.TowerAt(1).Id,4,null,out why),"First catalyst fusion");
+            Assert(g.TryUpgrade(g.TowerAt(4).Id,null,out why),"Intermediate Lv2");
+            for(int i=0;g.Towers.Count<g.TowerLimit;i++)
+                if(g.TowerAt(i)==null)Assert(g.TryBuild(i,TowerKind.Autocannon,null,out why),"Fill available cap");
+            int count=g.Towers.Count,unused=0;
+            while(g.TowerAt(unused)!=null)unused++;
+            int credits=g.Credits;
+            Assert(!g.TryBuild(unused,TowerKind.Autocannon,null,out why) && g.Towers.Count==count && g.Credits==credits,"Full cap must reject extra construction atomically");
+            g.Tick(60,new V2());credits=g.Credits;
+            Assert(g.Cores==1 && g.TryFuse(3,g.TowerAt(4).Id,g.TowerAt(7).Id,4,null,out why),"Nested fusion must work at full cap");
+            Assert(g.Cores==0 && g.Credits==credits-80 && g.Towers.Count==count-1 && g.TowerAt(7)==null &&
+                g.TowerAt(4).Kind==TowerKind.Seal && g.TowerAt(4).InvestedCores==2,"Nested cost, catalysts, anchor and freed partner");
+            Assert(g.TryBuild(7,TowerKind.Autocannon,null,out why) && g.Towers.Count==count && g.Credits==credits-120,"Freed material site can refill to cap");
         }
     }
 }

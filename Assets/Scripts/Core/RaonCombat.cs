@@ -70,7 +70,8 @@ namespace Gatefall.Core
             if(Rules.Hunter==1) {copy.PlayerSpeed=6.4f;copy.PlayerHealth=85;copy.PlayerDamage=10;copy.PlayerFireInterval=.3f;}
             if(Rules.Hunter==2) {copy.PlayerSpeed=4.4f;copy.PlayerHealth=160;copy.PlayerDamage=24;copy.PlayerFireInterval=.7f;copy.PlayerRange=2.8f;}
             if(Rules.Stage!=null)copy.PlayerFireInterval*=.85f;
-            copy.PlayerHealth*=1+.025f*Rules.EarnedGrowth;copy.PlayerDamage*=1+.02f*Rules.EarnedGrowth;
+            copy.PlayerHealth*=1+CampaignCatalog.GrowthHealthPerRank*Rules.EarnedGrowth;
+            copy.PlayerDamage*=1+CampaignCatalog.GrowthDamagePerRank*Rules.EarnedGrowth;
             return copy;
         }
         void ConfigureRaon()
@@ -158,6 +159,11 @@ namespace Gatefall.Core
             if(Rules!=null && Rules.Stage!=null) {
                 if(kind==TowerKind.Autocannon)s.Interval=.46f;
                 else if(kind!=TowerKind.Barrier)s.Interval*=.85f;
+                if(TowerCatalog.Get(kind).Tier==2) {
+                    float scale=Rules.Stage.HybridDamage;
+                    s.Damage*=scale;s.Secondary*=scale;
+                    if(s.Chain!=null)for(int i=0;i<s.Chain.Length;i++)s.Chain[i]*=scale;
+                }
             }
             return s;
         }
@@ -165,16 +171,17 @@ namespace Gatefall.Core
         {
             if(Rules==null)return;
             TowerTag tags=TowerCatalog.Get(kind).Tags;
-            // Damage research uses the current level's unmodified value, not card-amplified damage.
-            if((tags&TowerTag.Ballistic)!=0) {
-                float fraction=.04f*Rules.Research[0];
-                float cardScale=1+.15f*Cards[(int)CardKind.Ballistic];
+            // Both research lines add from the same unmodified value, once; cards never multiply research.
+            float fraction=((tags&TowerTag.Ballistic)!=0 ? .08f*Rules.Research[0] : 0)+
+                ((tags&TowerTag.Blast)!=0 ? .06f*Rules.Research[2] : 0);
+            if(fraction>0) {
+                float cardScale=(tags&TowerTag.Ballistic)!=0 ? 1+.15f*Cards[(int)CardKind.Ballistic] : 1;
                 s.Damage+=s.Damage/cardScale*fraction;s.Secondary+=s.Secondary/cardScale*fraction;
                 if(s.Chain!=null)for(int i=0;i<s.Chain.Length;i++)s.Chain[i]+=s.Chain[i]/cardScale*fraction;
             }
-            if((tags&TowerTag.Control)!=0)s.SlowSeconds+=.05f*Rules.Research[1];
-            if((tags&TowerTag.Blast)!=0)s.Radius+=.05f*Rules.Research[2];
-            if(kind==TowerKind.Barrier)s.Interval*=1-.03f*Rules.Research[3];
+            if((tags&TowerTag.Control)!=0){s.Slow=Math.Min(.75f,s.Slow+.03f*Rules.Research[1]);s.SlowSeconds+=.1f*Rules.Research[1];}
+            if((tags&TowerTag.Blast)!=0)s.Radius+=.1f*Rules.Research[2];
+            if(kind==TowerKind.Barrier)s.Interval*=1-.06f*Rules.Research[3];
         }
         bool ActiveForResonance(Tower t)
         { return t.Kind!=TowerKind.Marker && t.Commission<=0 && (t.Kind!=TowerKind.Barrier || t.Cooldown<=0) && TowerCatalog.Get(t.Kind).Tier==1; }
@@ -213,7 +220,7 @@ namespace Gatefall.Core
             if(Rules==null || State!=RunState.Running || SupportCooldown>0)return false;
             SupportCooldown=35;CoreShield=5;Emit(EventKind.Upgrade,new V2(),new V2(),0);return true;
         }
-        public float WardMaximum(Tower t) { return t.Level==1 ? 55 : t.Level==2 ? 90 : 115; }
+        public float WardMaximum(Tower t) { return (t.Level==1 ? 55 : t.Level==2 ? 90 : 115)*(1+(Rules==null ? 0 : .1f*Rules.Research[3])); }
         void UpdateWard(Tower t,float dt)
         {
             if(t.Cooldown>0) {t.Cooldown=Math.Max(0,t.Cooldown-dt);if(t.Cooldown==0)t.WardHealth=WardMaximum(t);return;}

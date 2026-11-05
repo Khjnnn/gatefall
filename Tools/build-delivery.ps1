@@ -13,7 +13,7 @@ if (Test-Path -LiteralPath $taskApk) {
     if (-not (Test-Path -LiteralPath $taskPreviousApk)) { Copy-Item -LiteralPath $taskApk -Destination $taskPreviousApk }
     if ((Get-FileHash -LiteralPath $taskPreviousApk -Algorithm SHA256).Hash -ne $taskPreviousHash) { throw 'Previous APK backup verification failed' }
 }
-foreach ($taskCheck in @('test-simulation.ps1','test-mobile.ps1','test-campaign.ps1','test-fusion-reachability.ps1','test-allocation.ps1','test-active-combat-timing.ps1','../Tests/PerfSummaryChecks.ps1','verify-source.ps1','verify-design.ps1','verify-campaign-runtime.ps1','verify-combat-pace.ps1','verify-tower-density.ps1','verify-four-fronts.ps1','verify-evacuation-route.ps1','verify-alley-readability.ps1')) {
+foreach ($taskCheck in @('test-simulation.ps1','test-mobile.ps1','test-campaign.ps1','test-fusion-reachability.ps1','test-combat-roles.ps1','test-account-growth.ps1','test-allocation.ps1','test-active-combat-timing.ps1','../Tests/PerfSummaryChecks.ps1','verify-source.ps1','verify-design.ps1','verify-campaign-runtime.ps1','verify-combat-pace.ps1','verify-tower-density.ps1','verify-four-fronts.ps1','verify-evacuation-route.ps1','verify-alley-readability.ps1')) {
     & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot $taskCheck)
     if ($LASTEXITCODE -ne 0) { throw "Check failed: $taskCheck" }
 }
@@ -25,6 +25,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Swarm checks failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Wave-call checks failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-degenerate-strategies.ps1') -Enforce
 if ($LASTEXITCODE -ne 0) { throw 'Degenerate strategy gate failed' }
+& $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-competent-plans.ps1') -Enforce
+if ($LASTEXITCODE -ne 0) { throw 'Competent plan gate failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'verify-unity.ps1') -EditorPath $EditorPath -Target Android
 if ($LASTEXITCODE -ne 0) { throw 'Unity Android build failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'verify-apk.ps1') -EditorPath $EditorPath

@@ -84,7 +84,8 @@ namespace Gatefall
             foreach (Enemy enemy in game.Enemies) {
                 if (enemy.Kind != EnemyKind.Brute && enemy.Kind != EnemyKind.Siege) continue;
                 Vector2 point = controller.EnemyHealthReference(enemy);
-                Rect area = new Rect(point.x - 23, point.y - 8, 46, 16);
+                float width = enemy.Armor > 0 ? 64 : 46;
+                Rect area = new Rect(point.x - width/2, point.y - 8, width, 16);
                 if (area.xMin < 6 || area.xMax > W - 6 || area.yMin < 6 || area.yMax > H - 92) continue;
                 if (area.Overlaps(barrierHud) || area.Overlaps(waveHud) || area.Overlaps(creditsHud)) continue;
                 // Socket menus are drawn after the HUD. Keep their bounds and the movable
@@ -96,7 +97,8 @@ namespace Gatefall
                 if (overlaps) continue;
                 enemyHealthLabels.Add(area);
                 Fill(area, new Color(.07f, .09f, .12f, .83f));
-                Text(area, Mathf.CeilToInt(enemy.Health).ToString(), 12, Paper, TextAnchor.MiddleCenter, 2);
+                Text(area, (enemy.Armor > 0 ? "장갑 " : "") + Mathf.CeilToInt(enemy.Health), 12,
+                    enemy.Armor > 0 ? Amber : Paper, TextAnchor.MiddleCenter, 2);
                 if (enemyHealthLabels.Count == 8) break;
             }
         }

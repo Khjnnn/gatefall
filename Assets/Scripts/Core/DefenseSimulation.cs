@@ -49,7 +49,7 @@ namespace Gatefall.Core
         public float MarkRemaining, MarkBonus;
         public bool Engaged;
         public bool Swarm;
-        public float LaneOffset, IncomingDamage;
+        public float LaneOffset, IncomingDamage, Armor;
         internal int ClusterScore;
         public readonly List<SlowEffect> Slows = new List<SlowEffect>();
         public float SlowFraction { get { float best = 0; foreach (SlowEffect s in Slows) if (s.Remaining > 0) best = Math.Max(best,s.Fraction);
@@ -476,6 +476,8 @@ namespace Gatefall.Core
             if(Rules!=null && Rules.Stage!=null && !Rules.Crisis && (Rules.Stage.Index==10 || Rules.Stage.Index==11) && g.Wave>=3 && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege)){speed*=1.6f;hp*=Rules.Stage.Index==10 ? 1.35f : 1.6f;}
             if(g.Kind==EnemyKind.Boss) { hp=Rules!=null && Rules.Crisis ? 1100 : 800; speed=.65f; }
             Enemy enemy=new Enemy { Id=++nextId,Kind=g.Kind,Lane=g.Lane,Position=GatePositions[g.Lane],Health=hp,MaxHealth=hp,Speed=speed,Swarm=g.Swarm };
+            if(Rules!=null && Rules.Stage!=null && !g.Swarm && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege))
+                enemy.Armor=Rules.Stage.EliteArmor;
             if(g.Swarm) {
                 enemy.LaneOffset=(g.Spawned%3-1)*.32f;
                 V2 direction=(Roads[g.Lane][1]-Roads[g.Lane][0]).Normalized;
@@ -500,7 +502,8 @@ namespace Gatefall.Core
         public Enemy LivingEnemy(int id) {foreach(Enemy e in Enemies)if(e.Id==id && e.Health>0)return e;return null;}
         private void Shoot(V2 origin,Enemy target,Tower tower,TowerStats stats)
         {
-            float reservation=Rules!=null && Rules.Stage!=null && (stats==null || stats.Radius<=0 && stats.Chain==null) ? (tower==null ? Balance.PlayerDamage : stats.Damage) : 0;
+            float reservation=Rules!=null && Rules.Stage!=null && (stats==null || stats.Radius<=0 && stats.Chain==null) ?
+                ArmorAdjustedDamage(target,tower==null ? Balance.PlayerDamage : stats.Damage,tower==null ? TowerKind.Autocannon : tower.Kind,tower!=null) : 0;
             target.IncomingDamage+=reservation;
             Projectiles.Add(new Projectile { Id=++nextId,Position=origin,TargetId=target.Id,ImpactPosition=target.Position,
                 SourceId=tower==null ? 0 : tower.Id,Kind=tower==null ? TowerKind.Autocannon : tower.Kind,
@@ -532,9 +535,17 @@ namespace Gatefall.Core
                 foreach(Enemy e in targets) { if(count>=s.MaxTargets)break; Damage(e,s.Secondary>0 ? s.Secondary : s.Damage,p,position); count++; }
             } else Damage(primary,s.Damage,p,p.Position);
         }
+        // Light direct projectiles lose a fixed amount against elite armor. Area, chains and control attacks pierce it.
+        // Keep reservation and actual impact identical; the marker follow-up is applied afterwards and also pierces.
+        static float ArmorAdjustedDamage(Enemy enemy,float raw,TowerKind kind,bool fromTower)
+        {
+            if(enemy.Armor<=0 || fromTower && kind!=TowerKind.Autocannon)return raw;
+            return Math.Max(raw*.2f,raw-enemy.Armor);
+        }
         private void Damage(Enemy e,float damage,Projectile p,V2 from)
         {
             if(e==null || e.Health<=0)return;
+            damage=ArmorAdjustedDamage(e,damage,p.Kind,p.FromTower);
             if(p.FromTower && p.Kind!=TowerKind.Marker && p.Kind!=TowerKind.Beacon && e.MarkRemaining>0) {
                 // Record only bonus damage that can actually reduce the target's health.
                 Telemetry.MarkedHits++;

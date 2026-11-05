@@ -33,9 +33,9 @@ foreach($taskStage in [Gatefall.Core.CampaignCatalog]::Stages){
     if($taskG.SuppliesGranted -ne 5 -or $taskG.Credits -ne $taskStart+5*$taskSupply){throw 'Supply amount/cap mismatch'}
     $taskFunded=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]@{StartingCredits=100000;SpawnEnemies=$false;OfferCards=$false},7,$taskRules)
     $taskReason=''
-    # Post-seal operations allow ten towers at once: prove every site individually (build, then sell), then the limit itself.
+    # Prove every site individually (build, then sell), then the staged simultaneous limit itself.
     $taskLimit=$taskFunded.TowerLimit
-    if($taskLimit -ne $(if($taskIndex -ge 6){10}else{0})){throw "Stage$($taskIndex+1) tower limit mismatch: $taskLimit"}
+    if($taskLimit -ne $(if($taskIndex -ge 9){14}elseif($taskIndex -ge 6){12}else{0})){throw "Stage$($taskIndex+1) tower limit mismatch: $taskLimit"}
     for($taskI=0;$taskI -lt $taskFunded.BoardSockets.Length;$taskI++){
         if(-not $taskFunded.TryBuild($taskI,[Gatefall.Core.TowerKind]::Autocannon,"density-$taskIndex-$taskI",[ref]$taskReason)){throw "Cannot build site $taskI : $taskReason"}
         if($taskLimit -gt 0 -and -not $taskFunded.TrySell($taskFunded.TowerAt($taskI).Id,"density-sell-$taskIndex-$taskI",[ref]$taskReason)){throw "Cannot clear site $taskI : $taskReason"}
@@ -51,4 +51,4 @@ foreach($taskStage in [Gatefall.Core.CampaignCatalog]::Stages){
 if($taskTotal -ne 308 -or $taskPreserved -ne $taskExpectedPreserved){throw 'Wrong site totals'}
 [pscustomobject]@{total=$taskTotal;originalSitesPreserved=$taskPreserved;expectedPreserved=$taskExpectedPreserved;operations=$taskRows;scope='Geometry, short-range coverage, unchanged-layout original coordinates, quiet supply caps and full-board construction. Declared route redesigns intentionally regenerate their sites. Android and human play are separate.'}|ConvertTo-Json -Depth 5|Set-Content (Join-Path $taskProject "TestResults/tower-density-$Tag-checks.json")
 $taskRows|ConvertTo-Json|Set-Content (Join-Path $taskProject "TestResults/tower-density-$Tag-operations.json")
-Write-Output "PASS 308 road-clear reachable sites /$taskPreserved unchanged-layout original coordinates preserved /every socket constructible /14 capped budgets /post-seal limit of 10 towers enforced."
+Write-Output "PASS 308 road-clear reachable sites /$taskPreserved unchanged-layout original coordinates preserved /every socket constructible /14 capped budgets /post-seal limits12 then14 enforced."

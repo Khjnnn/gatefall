@@ -113,9 +113,12 @@ namespace Gatefall.Tests
             }
         }
 
-        public static DefenseSimulation Play(int stage, int seed, Plan plan, bool crisis = false)
+        public static DefenseSimulation Play(int stage, int seed, Plan plan, bool crisis = false,
+            int spendingLimit = int.MaxValue, CampaignBattle battle = null, Action<DefenseSimulation> afterTick = null)
         {
-            var g = new DefenseSimulation(new GameBalance(), seed, new CampaignBattle { Stage = CampaignCatalog.Stages[stage], Crisis = crisis });
+            if (spendingLimit < 0) throw new ArgumentOutOfRangeException(nameof(spendingLimit));
+            var g = new DefenseSimulation(new GameBalance(), seed, battle ?? new CampaignBattle { Stage = CampaignCatalog.Stages[stage], Crisis = crisis });
+            int spent = 0;
             int lanes = g.Roads.Length, sites = g.BoardSockets.Length;
             // Lane threat from the published schedule.
             var weight = new float[lanes]; float total = 0;
@@ -160,26 +163,31 @@ namespace Gatefall.Tests
             };
             Func<bool> construct = () => {
                 if (g.Towers.Count >= cap) return false;
-                TowerKind kind = nextKind(); if (g.Credits < TowerCatalog.Get(kind).BuildCost) return false;
+                TowerKind kind = nextKind(); int price = TowerCatalog.Get(kind).BuildCost;
+                if (g.Credits < price || price > spendingLimit - spent) return false;
                 int site = -1; float bestValue = -1;
                 for (int s = 0; s < sites; s++) { if (g.TowerAt(s) != null) continue; float v = value(s, kind); if (v > bestValue) { bestValue = v; site = s; } }
                 if (site < 0 || !g.TryBuild(site, kind, null, out why)) return false;
                 foreach (int lane in g.OpenLanes) assigned[lane] += coverage[kind][site, lane];
-                built[kind]++; constructions++; return true;
+                built[kind]++; constructions++; spent += price; return true;
             };
             Func<bool> upgrade = () => {
                 Tower best = null; float bestValue = -1;
                 foreach (Tower t in g.Towers) {
-                    if (t.Kind == TowerKind.Barrier || g.CanUpgrade(t.Id) != "") continue;
+                    if (t.Kind == TowerKind.Barrier || g.CanUpgrade(t.Id) != "" ||
+                        TowerCatalog.Get(t.Kind).UpgradePrice(t.Level) > spendingLimit - spent) continue;
                     float v = siteValue(t.Socket) / TowerCatalog.Get(t.Kind).UpgradePrice(t.Level); if (v > bestValue) { bestValue = v; best = t; }
                 }
-                if (best == null || !g.TryUpgrade(best.Id, null, out why)) return false;
-                upgrades++; return true;
+                if (best == null) return false;
+                int price = TowerCatalog.Get(best.Kind).UpgradePrice(best.Level);
+                if (!g.TryUpgrade(best.Id, null, out why)) return false;
+                upgrades++; spent += price; return true;
             };
             Func<bool> fuse = () => {
                 if (g.Cores < 1) return false;
                 foreach (int recipe in new[] { 1, 0, 2, 3, 4, 5 }) {
-                    FusionRecipe r = TowerCatalog.Recipes[recipe]; if (g.Credits < r.Credits) continue;
+                    FusionRecipe r = TowerCatalog.Recipes[recipe];
+                    if (g.Credits < r.Credits || r.Credits > spendingLimit - spent) continue;
                     Tower first = null, second = null; float closest = float.MaxValue;
                     foreach (Tower a in g.Towers) foreach (Tower b in g.Towers) {
                         if (a.Kind != r.First || !r.Matches(a, b)) continue;
@@ -187,7 +195,7 @@ namespace Gatefall.Tests
                     }
                     if (first == null) continue;
                     int anchor = siteValue(first.Socket) >= siteValue(second.Socket) ? first.Socket : second.Socket;
-                    if (g.TryFuse(recipe, first.Id, second.Id, anchor, null, out why)) return true;
+                    if (g.TryFuse(recipe, first.Id, second.Id, anchor, null, out why)) { spent += r.Credits; return true; }
                 }
                 return false;
             };
@@ -204,7 +212,7 @@ namespace Gatefall.Tests
                 }
             };
             act(); g.Start();
-            while (g.State != RunState.Won && g.State != RunState.Lost && g.Elapsed < 400) { act(); g.Tick(1f / 30, new V2()); g.Events.Clear(); }
+            while (g.State != RunState.Won && g.State != RunState.Lost && g.Elapsed < 400) { act(); g.Tick(1f / 30, new V2()); if(afterTick!=null)afterTick(g); g.Events.Clear(); }
             return g;
         }
     }

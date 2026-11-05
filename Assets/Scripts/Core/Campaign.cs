@@ -15,6 +15,9 @@ namespace Gatefall.Core
         // multiplier for every other non-boss enemy. Set for post-seal operations in CampaignCatalog.
         public int TowerLimit;
         public float SwarmHealth = 1, Threat = 1;
+        public float EliteArmor, HybridDamage = 1;
+        public int RecommendedGrowth;
+        public int[] RecommendedResearch = new int[4];
         public bool Boss { get { return Index == 5; } }
         public bool HasAdjacency { get { return Index >= 1; } }
         public bool HasCatalysts { get { return Index >= 2; } }
@@ -81,11 +84,20 @@ namespace Gatefall.Core
         public static readonly string[] HunterRoles = { "미분류 귀환자 · 균형 사격 / 회피", "C급 정찰병 · 빠른 이동 / 질주", "B급 대장 · 근접 방호 / 방패" };
         public static readonly string[] Grades = { "F", "E", "D", "C", "B", "A", "S" };
         public static readonly int[] HunterStart = { 0, 3, 4 }, GrowthCosts = { 4, 6, 8, 12, 18, 26 };
+        public static readonly int[][] GrowthUnlocks = { new[]{0,0,6,9,12,14}, new[]{0,8,12}, new[]{0,11} };
+        public const float GrowthHealthPerRank = .08f, GrowthDamagePerRank = .05f;
         // Legacy long-campaign reference; current purchases use implemented operation milestones.
         public static readonly int[] GradeChapter = { 1, 1, 1, 2, 3, 5, 7 };
         public static readonly int[] ResearchCosts = { 2, 4, 6 };
         public static readonly string[] ResearchNames = { "창 · 피해", "봉인 · 감속 지속", "붕괴 · 폭발 반경", "방벽 · 재충전" };
-        public static readonly string[] ResearchEffects = { "+4 / 8 / 12%", "+0.05 / 0.10 / 0.15초", "+0.05 / 0.10 / 0.15", "시간 -3 / 6 / 9%" };
+        public static readonly string[] ResearchEffects = { "+8 / 16 / 24% 피해", "감속 +3%p · 지속 +0.1초 / 단계", "피해 +6% · 반경 +0.1 / 단계", "내구 +10% · 재충전 -6% / 단계" };
+        public static int RecommendedHunterGrowth(int stage,int hunter)
+        {
+            if(hunter==0)return Stages[stage].RecommendedGrowth;
+            int rank=0;foreach(int gate in GrowthUnlocks[hunter]){if(gate>stage)break;rank++;}return rank;
+        }
+        public static int ResearchFocus(int loadout)
+        { return (loadout&1)!=0 ? 0 : (loadout&4)!=0 ? 2 : (loadout&2)!=0 ? 1 : (loadout&(1<<7))!=0 ? 3 : -1; }
         internal const string ObserverRoutes = "북쪽 지름길과 서·동 우회로를 막으세요.";
         public const string Prologue = "낙하 7주년. 잿빛 탑의 범람 속에서 한 남자가 걸어 나왔다.\n7년 전 실종자, 강윤. 측정기는 그의 등급을 읽지 못했다.\n백도하: 신원 확인은 나중이다. 우선 뒤쪽 사람들부터 지켜.";
         public static readonly CampaignStage[] Stages = {
@@ -119,7 +131,7 @@ namespace Gatefall.Core
               "강윤: 저 문이 닫히면… 내가 돌아온 이유도 알 수 있을까.",
               "백도하: 불이 켜졌다. 종현동에… 다시 불이 켜졌어.\n최초의 탑 봉인. 백도하와 위기 작전 해금.\n다솜동에서 실종자들의 소지품이 발견되었다. 다음 구역은 제작 중입니다.",
               "마지막 웨이브에 문지기 등장. 붉은 원을 피하고 남은 마수까지 모두 처치하세요."),
-            PostSeal(S(6,"복귀 대피로",24,new[]{0,2,3},new[]{48,60,84,108,120,132},"서·동의 긴 우회로와 남쪽 지름길.\n결계주는 최대 10기 · 강화·조합으로 보강하세요.","세희: 남쪽 대피로가 더 짧아. 먼저 막고 양옆의 시민들을 지키자!","유채린: 대피로의 잔광이 줄었어요.","남쪽 지름길을 먼저 지키고 서·동은 길게 돌아오는 동안 보강하세요. 세 방향에 화력을 나누세요."),2f),
+            PostSeal(S(6,"복귀 대피로",24,new[]{0,2,3},new[]{48,60,84,108,120,132},"정예·공성 장갑 · 붕괴와 조합은 관통\n최대 12기 · 1-10부터 14기","세희: 남쪽 대피로가 더 짧아. 먼저 막고 양옆의 시민들을 지키자!","유채린: 대피로의 잔광이 줄었어요.","남쪽 지름길을 먼저 지키세요. 장갑은 창·헌터의 단일 사격을 줄입니다. 붕괴와 조합으로 보강하세요."),2f),
             PostSeal(S(7,"남쪽 골목",22,new[]{0,1,2},new[]{48,72,96,120,132,144},"서·북·동의 빠른 마수 뒤로 정예·공성이 이어집니다.","강윤: 균열은 닫혀도 흔적이 남는군요.","세희: 다음 골목은 내가 살필게.","서·북·동에 창을 나눠 세우세요. 북쪽은 짧고 서·동은 길어 도착 시점이 다릅니다."),2.5f),
             PostSeal(S(8,"임시 배급로",24,new[]{0,2},new[]{60,72,96,120,132,144},"후반에는 정예와 마수가 양쪽에서 짧게 몰려옵니다.","유채린: 이곳을 지키면 보급이 다시 이어져요.","백도하: 방어선이 조금씩 돌아오는군.","후반에는 양쪽에서 짧게 몰려옵니다. 붕괴의 범위 공격과 정예를 상대할 화력을 준비하세요."),2f),
             PostSeal(S(9,"관측소 확보",24,new[]{0,1,2,3},new[]{80,96,128,160,192,208},"사방의 긴 우회로에서 범람이 합류합니다.\n길목을 나눠 관측소를 지키세요.","유채린: 남쪽 균열도 열렸어요. 네 방향의 접근로를 확인해 주세요.","표식 결계주 해금! 편성에서 선택할 수 있습니다.","서·북·동·남의 바깥 길목부터 나눠 지키고 합류부를 보강하세요. 클리어 후 표식 결계주가 열립니다."),1.5f),
@@ -128,16 +140,21 @@ namespace Gatefall.Core
             PostSeal(S(12,"북쪽 연결로",24,new[]{0,1,2},new[]{80,112,144,176,192,224},"분산 방어와 집중 공격을 함께 준비하세요.","백도하: 표적 하나에 집중하더라도 다른 길은 비우지 마라.","세희: 다음 균열은 관측창 설계의 마지막 시험이야.","집중 화력과 다른 전선의 방어를 함께 고려하세요."),2f),
             PostSeal(S(13,"관측창 설계 시험",24,new[]{0,1,2},new[]{80,112,144,176,208,224},ObserverRoutes+"\n클리어 후 관측창 조합이 열립니다.","유채린: 이 자료가 있으면 표식과 창을 합칠 수 있어요.","관측창 조합 해금! 표식 Lv2와 창 Lv2를 합치세요.","짧은 북쪽을 먼저 지키고 서·동을 보강하세요. 표식과 창은 같은 길을 노리세요."),1f)
         };
-        // Post-seal operations (1-7 onwards): at most ten towers at once, so upgrades, fusions and placement carry the
-        // defence instead of filling every site. Swarm followers take two Lv1 spear shots but one Lv2 shot, and the
-        // per-operation threat scales every other non-boss enemy. Calibrated with Tools/review-degenerate-strategies.ps1
-        // and Tools/review-competent-plans.ps1 (Docs/Design/GATEFALL_POST_SEAL_BALANCE_2026-11-05.md).
-        public const int PostSealTowerLimit = 10;
+        // Twelve towers on 1-7~1-9, fourteen from 1-10. Keep room for multiple fronts and fusion refills without
+        // requiring every socket to be filled. Later followers cross additional spear damage breakpoints.
+        // Calibrated with the progression review and both degenerate/competent plan gates; see the growth/role report.
+        public const int PostSealTowerLimit = 12;
         public const float PostSealSwarmHealth = 1.8f;
         static CampaignStage PostSeal(CampaignStage stage, float threat)
-        { stage.TowerLimit = PostSealTowerLimit; stage.SwarmHealth = PostSealSwarmHealth; stage.Threat = threat; return stage; }
+        { stage.TowerLimit = stage.Index >= 9 ? 14 : PostSealTowerLimit;
+            // Late follower health crosses the unresearched Lv2 spear breakpoint. In-battle Lv3, area/fusion
+            // attacks and account research provide distinct responses; the early ten operations stay unchanged.
+            stage.SwarmHealth = stage.Index>=12 ? 3f : stage.Index>=10 ? 2.7f : PostSealSwarmHealth; stage.Threat = threat;
+            stage.EliteArmor = 6; stage.HybridDamage = 1.25f; return stage; }
         static CampaignStage S(int i,string name,int sockets,int[] lanes,int[] counts,string briefing,string story,string clear,string lesson)
-        { return new CampaignStage { Index=i,Name=name,SocketCount=sockets,Lanes=lanes,Counts=counts,FirstReward=10+2*i,Briefing=briefing,Story=story,ClearStory=clear,Lesson=lesson }; }
+        { return new CampaignStage { Index=i,Name=name,SocketCount=sockets,Lanes=lanes,Counts=counts,FirstReward=10+2*i,Briefing=briefing,Story=story,ClearStory=clear,Lesson=lesson,
+            RecommendedGrowth=i==0 ? 0 : i<3 ? 1 : i<6 ? 2 : i<10 ? 3 : i<12 ? 4 : 5,
+            RecommendedResearch=new[]{i==0 ? 0 : i<5 ? 1 : i<10 ? 2 : 3,i<1 ? 0 : i<5 ? 1 : 2,i<3 ? 0 : i<5 ? 1 : 2,i<4 ? 0 : i<6 ? 1 : 2} }; }
         public static int Stars(bool won, float minimumHealth, float maximumHealth)
         {
             if(!won || maximumHealth<=0 || float.IsNaN(minimumHealth))return 0;
@@ -338,8 +355,8 @@ namespace Gatefall.Core
             int index=CampaignCatalog.HunterStart[hunter]+Profile.Growth[hunter];
             if(index>=6)return "최대 성장 단계";
             int growth=Profile.Growth[hunter];
-            if(hunter==0 && growth==2 && !Profile.FirstSealComplete)return "1-6 첫 탑 봉인 후 성장";
-            if(hunter==0 && growth>=3 || hunter!=0 && growth>=1)return "후속 구역 업데이트 후 추가 성장";
+            int milestone=CampaignCatalog.GrowthUnlocks[hunter][growth];
+            if(milestone>0 && !Profile.FirstCleared[milestone-1])return "1-"+milestone+" 클리어 후 성장";
             return Profile.MagicCores<CampaignCatalog.GrowthCosts[index] ? "마핵 부족" : "";
         }
         public int GrowthPrice(int hunter)
@@ -356,7 +373,7 @@ namespace Gatefall.Core
             if(line==2 && Profile.BestStars[2]==0 || line==3 && Profile.BestStars[3]==0)return "해당 결계주를 먼저 해금하세요.";
             int rank=Profile.Research[line];if(rank>=3)return "최대 연구 단계";
             if(rank==1 && Profile.BestStars[4]==0)return "1-5 클리어 후 연구2단계";
-            if(rank==2)return "2챕터 클리어 후 연구3단계";
+            if(rank==2 && !Profile.FirstCleared[9])return "1-10 클리어 후 연구3단계";
             return Profile.MagicCores<CampaignCatalog.ResearchCosts[rank] ? "마핵 부족" : "";
         }
         public bool Research(int line)
