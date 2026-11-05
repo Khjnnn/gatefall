@@ -542,6 +542,41 @@ namespace Gatefall.Tests
                     Assert(skill.SkillCooldown > 7 && !skill.UseSkill(), "effect expires before reuse");
                 }
             });
+            Check("Sehee sprint increases real travel and returns to normal speed after expiry",()=>{
+                var g=new DefenseSimulation(new GameBalance{SpawnEnemies=false,OfferCards=false},7,new CampaignBattle{Hunter=1});
+                Assert(!g.UseSkill(),"skill before battle");g.Start();
+                V2 start=g.PlayerPosition;g.Tick(.2f,new V2(1,0));float normal=V2.Distance(start,g.PlayerPosition);
+                Assert(g.UseSkill(),"sprint activation");start=g.PlayerPosition;g.Tick(.2f,new V2(1,0));
+                Near(V2.Distance(start,g.PlayerPosition),normal*1.65f);
+                g.Tick(3.1f,new V2());Near(g.HunterSkillActiveRemaining,0);
+                start=g.PlayerPosition;g.Tick(.2f,new V2(1,0));Near(V2.Distance(start,g.PlayerPosition),normal);
+                Assert(!g.UseSkill(),"sprint reused before cooldown");
+            });
+            Check("Doha shield protects after opening invulnerability and stops protecting on expiry",()=>{
+                foreach(int growth in new[]{0,2}) {
+                    var g=new DefenseSimulation(new GameBalance{SpawnEnemies=false,OfferCards=false},7,new CampaignBattle{Hunter=2,EarnedGrowth=growth});g.Start();
+                    Action attack=()=>{g.Events.Clear();g.Enemies.Add(new Enemy{Id=980,Kind=EnemyKind.Grunt,Health=100000,MaxHealth=100000,Speed=0,Position=g.PlayerPosition+new V2(.4f,0)});g.Tick(.05f,new V2());g.Enemies.Clear();};
+                    float full=g.PlayerHealth;Assert(g.UseSkill(),"shield activation");attack();
+                    Near(g.PlayerHealth,full);Assert(!g.Events.Exists(e=>e.Kind==EventKind.HunterHurt),"opening protection failed");
+                    g.Tick(.7f,new V2());attack();Near(full-g.PlayerHealth,1.75f);
+                    var hits=g.Events.FindAll(e=>e.Kind==EventKind.HunterHurt);
+                    Assert(hits.Count==1,"protected hit missing");Near(hits[0].Value,1.75f);
+                    g.Tick(4f,new V2());Near(g.HunterSkillActiveRemaining,0);
+                    float before=g.PlayerHealth;attack();Near(before-g.PlayerHealth,7);
+                    Assert(!g.UseSkill(),"shield reused before cooldown");
+                }
+            });
+            Check("Kang dodge follows last movement despite changed aim and stays within the arena",()=>{
+                var g=new DefenseSimulation(new GameBalance{SpawnEnemies=false,OfferCards=false},7,new CampaignBattle());g.Start();
+                g.Tick(.1f,new V2(1,0));g.Enemies.Add(new Enemy{Id=981,Kind=EnemyKind.Grunt,Health=100000,MaxHealth=100000,Speed=0,Position=g.PlayerPosition+new V2(0,2)});
+                g.Tick(.02f,new V2());Assert(g.PlayerAim.Y>.9f,"fixture did not turn aim toward enemy");
+                V2 start=g.PlayerPosition;Assert(g.UseSkill(),"dodge activation");Near(g.PlayerPosition.X-start.X,2.8f);Near(g.PlayerPosition.Y,start.Y);
+                Assert(g.HunterInvulnerability>.7f,"dodge protection missing");
+                g.Enemies.Clear();g.Tick(13f,new V2(1,0));g.TogglePause();start=g.PlayerPosition;
+                Assert(!g.UseSkill(),"paused skill activation");Near(V2.Distance(start,g.PlayerPosition),0);
+                g.TogglePause();Assert(g.UseSkill(),"cooled dodge at boundary");
+                Assert(Math.Abs(g.PlayerPosition.X)<=g.HalfWidth && Math.Abs(g.PlayerPosition.Y)<=g.HalfHeight,"dodge left arena");
+            });
             Check("Automatic emergency ward triggers below half and respects pause duration and cooldown",()=>{
                 var g=New();g.Enemies.Add(new Enemy {Id=901,Kind=EnemyKind.Siege,Health=100000,MaxHealth=100000,Speed=0,Position=new V2(1.1f,0),Waypoint=4});g.Start();
                 for(int i=0;i<300 && g.CoreShield<=0;i++) {g.Tick(.05f,new V2());if(g.CoreHealth>=150)Assert(g.CoreShield==0,"early trigger");}
