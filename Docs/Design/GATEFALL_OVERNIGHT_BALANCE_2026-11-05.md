@@ -409,6 +409,11 @@ Unity실제응답파일의`-langversion:9.0`과이전컴파일된`Targets`의매
 0.28.7→0.28.8실제업데이트전후와두포기·콜드328바이트SHA`1b58422c39ce5200322018d4566cca22fd8cdfaa5569256eae639544f843f6af`동일/214마핵39별·강윤5·연구3,2,2,0/편성263·과거34보상ID·1-14미완료·Pending없음/새보상0을확인했다.회귀·두전략Enforce위반0·Unity6000.6.7f1Android·v2/ZIP/세ARM64ELF16KB·실설치추출해시도통과했다. 최종`Gatefall-v0.28.8.apk`/동일`Gatefall.apk`는100458237바이트/SHA`4603a243df9e2432a1666ea6b5a5f244702e3fefa83f23e9b2ef108d700a6685`/code125이다. `delivery-v0288.json`,`health-native-v0288.json`,`health-setup-correction-v0288.json`,`Tools/verify-enemy-health-delivery.ps1`참조.
 
 5686/GatefallHealthV288/QEMU39376·런처31600은Normal복원/정상종료·PID0·전용절대경로·재분석0뒤디스크정리완료이며잠긴stdout15358/stderr41과사본만남았다. 최종4586시작Asset1/EGL4·첫PERF뒤Surface46,7656뒤Surface15/8178첫PERF없음·세PID Fatal0/보존패키지ANRCrash0범위다. 시작진단·Surface의원인/실기기영향은미해결이며전체오류0/성능벤치마크라고하지않는다.
+## 스물아홉 번째 반복: 프로필 기반 QA 좌표 — 제품 유지
+
+3z의준비A입력혼선을재발하지않도록`export-qa-map-actions.ps1 -ProfilePath 추출사본.sav`를추가했다. 기존저장Decode/Valid와CampaignService.Battle의읽기결과에서실제편성/표식·관측창해금을가져와메뉴폭을계산하고출처해시를남긴다. 수동편성플래그와동시에주면거절하며손상사본은좌표를출력하지않는다. 기본수동호출과모든기존좌표계산은유지했다. 출력에건설칸수·종류순서도표시하며실제메뉴/카드확인은여전히필요하다.
+
+확인된1-14/263/표식해금·관측창잠김사본에서2400/1920/1280의24지점씩72좌표가명시적정확플래그와같았다. 저장해시불변,충돌플래그/손상사본거절,기존수동24행원본CSV와정확동일을확인했다.2400의실제4칸Spear위치는앞선Native화면과일치하며1920/1280메뉴를새로눌렀다는뜻은아니다. 제품/APK/새AVD변경없다. `Tools/test-qa-profile-projection.ps1`과`qa-profile-projection-v0288.json`참조.
 ## 재현 자료와 한계
 
 - 로컬 기준: `TestResults/night-crisis-baseline.json`, `night-crisis-stage11.json`, `night-normal-harness-guard.json`, `night-balance-20261105/harness-normal-equivalence.json`.
