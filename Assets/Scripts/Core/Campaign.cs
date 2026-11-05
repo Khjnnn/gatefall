@@ -11,6 +11,10 @@ namespace Gatefall.Core
         public int Index, SocketCount, FirstReward;
         public string Name, Briefing, Story, ClearStory, Lesson;
         public int[] Lanes, Counts;
+        // Operation data (1 / 0 = unchanged): towers allowed at once, swarm follower health and a health
+        // multiplier for every other non-boss enemy. Set for post-seal operations in CampaignCatalog.
+        public int TowerLimit;
+        public float SwarmHealth = 1, Threat = 1;
         public bool Boss { get { return Index == 5; } }
         public bool HasAdjacency { get { return Index >= 1; } }
         public bool HasCatalysts { get { return Index >= 2; } }
@@ -115,15 +119,23 @@ namespace Gatefall.Core
               "강윤: 저 문이 닫히면… 내가 돌아온 이유도 알 수 있을까.",
               "백도하: 불이 켜졌다. 종현동에… 다시 불이 켜졌어.\n최초의 탑 봉인. 백도하와 위기 작전 해금.\n다솜동에서 실종자들의 소지품이 발견되었다. 다음 구역은 제작 중입니다.",
               "마지막 웨이브에 문지기 등장. 붉은 원을 피하고 남은 마수까지 모두 처치하세요."),
-            S(6,"복귀 대피로",24,new[]{0,2,3},new[]{48,60,84,108,120,132},"서·동의 긴 우회로와 남쪽 지름길.\n짧은 남쪽을 먼저 막고 양옆을 보강하세요.","세희: 남쪽 대피로가 더 짧아. 먼저 막고 양옆의 시민들을 지키자!","유채린: 대피로의 잔광이 줄었어요.","남쪽 지름길을 먼저 지키고 서·동은 길게 돌아오는 동안 보강하세요. 세 방향에 화력을 나누세요."),
-            S(7,"남쪽 골목",22,new[]{0,1,2},new[]{48,72,96,120,132,144},"서·북·동의 빠른 마수 뒤로 정예·공성이 이어집니다.","강윤: 균열은 닫혀도 흔적이 남는군요.","세희: 다음 골목은 내가 살필게.","서·북·동에 창을 나눠 세우세요. 북쪽은 짧고 서·동은 길어 도착 시점이 다릅니다."),
-            S(8,"임시 배급로",24,new[]{0,2},new[]{60,72,96,120,132,144},"후반에는 정예와 마수가 양쪽에서 짧게 몰려옵니다.","유채린: 이곳을 지키면 보급이 다시 이어져요.","백도하: 방어선이 조금씩 돌아오는군.","후반에는 양쪽에서 짧게 몰려옵니다. 붕괴의 범위 공격과 정예를 상대할 화력을 준비하세요."),
-            S(9,"관측소 확보",24,new[]{0,1,2,3},new[]{80,96,128,160,192,208},"사방의 긴 우회로에서 범람이 합류합니다.\n길목을 나눠 관측소를 지키세요.","유채린: 남쪽 균열도 열렸어요. 네 방향의 접근로를 확인해 주세요.","표식 결계주 해금! 편성에서 선택할 수 있습니다.","서·북·동·남의 바깥 길목부터 나눠 지키고 합류부를 보강하세요. 클리어 후 표식 결계주가 열립니다."),
-            S(10,"표식 훈련로",24,new[]{0,2},new[]{64,96,128,160,176,192},"서쪽 우회로와 동남쪽 진입로를 지키세요.\nLv3 강화 · 표식과 봉인으로 추적 조합","유채린: 표식된 적은 다른 결계주가 더 큰 피해를 줘요.","세희: 표식을 따라 쏘니 정예가 빨리 쓰러져.","4웨이브에는 동남쪽을 먼저 보강하세요. 표식과 봉인으로 추적을 만든 뒤 길목의 결계주를 Lv3까지 강화하세요."),
-            S(11,"서쪽 교차로",24,new[]{0,1},new[]{80,96,128,176,192,208},"서쪽과 북쪽을 번갈아 보강하세요.\n후반 공성이 일반 마수와 함께 몰려옵니다.","강윤: 앞선 적에게 화력을 모아야겠어요.","유채린: 표식과 창을 더 강하게 연결할 수 있겠어요.","붕괴는 입구 쪽에 두세요. 표식과 창은 같은 길을 노리세요."),
-            S(12,"북쪽 연결로",24,new[]{0,1,2},new[]{80,112,144,176,192,224},"분산 방어와 집중 공격을 함께 준비하세요.","백도하: 표적 하나에 집중하더라도 다른 길은 비우지 마라.","세희: 다음 균열은 관측창 설계의 마지막 시험이야.","집중 화력과 다른 전선의 방어를 함께 고려하세요."),
-            S(13,"관측창 설계 시험",24,new[]{0,1,2},new[]{80,112,144,176,208,224},ObserverRoutes+"\n클리어 후 관측창 조합이 열립니다.","유채린: 이 자료가 있으면 표식과 창을 합칠 수 있어요.","관측창 조합 해금! 표식 Lv2와 창 Lv2를 합치세요.","짧은 북쪽을 먼저 지키고 서·동을 보강하세요. 표식과 창은 같은 길을 노리세요.")
+            PostSeal(S(6,"복귀 대피로",24,new[]{0,2,3},new[]{48,60,84,108,120,132},"서·동의 긴 우회로와 남쪽 지름길.\n봉인 이후 결계주는 최대 10기 · 강화와 조합으로 화력을 높이세요.","세희: 남쪽 대피로가 더 짧아. 먼저 막고 양옆의 시민들을 지키자!","유채린: 대피로의 잔광이 줄었어요.","남쪽 지름길을 먼저 지키고 서·동은 길게 돌아오는 동안 보강하세요. 세 방향에 화력을 나누세요."),2f),
+            PostSeal(S(7,"남쪽 골목",22,new[]{0,1,2},new[]{48,72,96,120,132,144},"서·북·동의 빠른 마수 뒤로 정예·공성이 이어집니다.","강윤: 균열은 닫혀도 흔적이 남는군요.","세희: 다음 골목은 내가 살필게.","서·북·동에 창을 나눠 세우세요. 북쪽은 짧고 서·동은 길어 도착 시점이 다릅니다."),2.5f),
+            PostSeal(S(8,"임시 배급로",24,new[]{0,2},new[]{60,72,96,120,132,144},"후반에는 정예와 마수가 양쪽에서 짧게 몰려옵니다.","유채린: 이곳을 지키면 보급이 다시 이어져요.","백도하: 방어선이 조금씩 돌아오는군.","후반에는 양쪽에서 짧게 몰려옵니다. 붕괴의 범위 공격과 정예를 상대할 화력을 준비하세요."),2f),
+            PostSeal(S(9,"관측소 확보",24,new[]{0,1,2,3},new[]{80,96,128,160,192,208},"사방의 긴 우회로에서 범람이 합류합니다.\n길목을 나눠 관측소를 지키세요.","유채린: 남쪽 균열도 열렸어요. 네 방향의 접근로를 확인해 주세요.","표식 결계주 해금! 편성에서 선택할 수 있습니다.","서·북·동·남의 바깥 길목부터 나눠 지키고 합류부를 보강하세요. 클리어 후 표식 결계주가 열립니다."),1.5f),
+            PostSeal(S(10,"표식 훈련로",24,new[]{0,2},new[]{64,96,128,160,176,192},"서쪽 우회로와 동남쪽 진입로를 지키세요.\nLv3 강화 · 표식과 봉인으로 추적 조합","유채린: 표식된 적은 다른 결계주가 더 큰 피해를 줘요.","세희: 표식을 따라 쏘니 정예가 빨리 쓰러져.","4웨이브에는 동남쪽을 먼저 보강하세요. 표식과 봉인으로 추적을 만든 뒤 길목의 결계주를 Lv3까지 강화하세요."),1f),
+            PostSeal(S(11,"서쪽 교차로",24,new[]{0,1},new[]{80,96,128,176,192,208},"서쪽과 북쪽을 번갈아 보강하세요.\n후반 공성이 일반 마수와 함께 몰려옵니다.","강윤: 앞선 적에게 화력을 모아야겠어요.","유채린: 표식과 창을 더 강하게 연결할 수 있겠어요.","붕괴는 입구 쪽에 두세요. 표식과 창은 같은 길을 노리세요."),1f),
+            PostSeal(S(12,"북쪽 연결로",24,new[]{0,1,2},new[]{80,112,144,176,192,224},"분산 방어와 집중 공격을 함께 준비하세요.","백도하: 표적 하나에 집중하더라도 다른 길은 비우지 마라.","세희: 다음 균열은 관측창 설계의 마지막 시험이야.","집중 화력과 다른 전선의 방어를 함께 고려하세요."),2f),
+            PostSeal(S(13,"관측창 설계 시험",24,new[]{0,1,2},new[]{80,112,144,176,208,224},ObserverRoutes+"\n클리어 후 관측창 조합이 열립니다.","유채린: 이 자료가 있으면 표식과 창을 합칠 수 있어요.","관측창 조합 해금! 표식 Lv2와 창 Lv2를 합치세요.","짧은 북쪽을 먼저 지키고 서·동을 보강하세요. 표식과 창은 같은 길을 노리세요."),1f)
         };
+        // Post-seal operations (1-7 onwards): at most ten towers at once, so upgrades, fusions and placement carry the
+        // defence instead of filling every site. Swarm followers take two Lv1 spear shots but one Lv2 shot, and the
+        // per-operation threat scales every other non-boss enemy. Calibrated with Tools/review-degenerate-strategies.ps1
+        // and Tools/review-competent-plans.ps1 (Docs/Design/GATEFALL_POST_SEAL_BALANCE_2026-11-05.md).
+        public const int PostSealTowerLimit = 10;
+        public const float PostSealSwarmHealth = 1.8f;
+        static CampaignStage PostSeal(CampaignStage stage, float threat)
+        { stage.TowerLimit = PostSealTowerLimit; stage.SwarmHealth = PostSealSwarmHealth; stage.Threat = threat; return stage; }
         static CampaignStage S(int i,string name,int sockets,int[] lanes,int[] counts,string briefing,string story,string clear,string lesson)
         { return new CampaignStage { Index=i,Name=name,SocketCount=sockets,Lanes=lanes,Counts=counts,FirstReward=10+2*i,Briefing=briefing,Story=story,ClearStory=clear,Lesson=lesson }; }
         public static int Stars(bool won, float minimumHealth, float maximumHealth)

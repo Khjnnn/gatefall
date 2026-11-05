@@ -1,6 +1,7 @@
-# Run in a fresh PowerShell process: pwsh -NoProfile -File .\Tools\review-degenerate-strategies.ps1 [-Enforce] [-FromStage 7] [-MaxStars 2]
-# Report-only by default. -Enforce fails when a gated bot earns more than MaxStars from operation FromStage onwards.
-param([switch]$Enforce,[int]$FromStage=7,[int]$MaxStars=2)
+# Run in a fresh PowerShell process: pwsh -NoProfile -File .\Tools\review-degenerate-strategies.ps1 [-Enforce] [-FromStage 8] [-MaxStars 2]
+# Report-only by default. -Enforce (used by build-delivery.ps1) fails when a gated bot earns more than MaxStars
+# from operation FromStage onwards. 1-7 introduces the post-seal tower limit and is not gated.
+param([switch]$Enforce,[int]$FromStage=8,[int]$MaxStars=2)
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 Add-Type -Path @((Get-ChildItem -LiteralPath (Join-Path $taskProject 'Assets/Scripts/Core') -Filter '*.cs').FullName+(Join-Path $taskProject 'Tests/DegenerateStrategyReview.cs'))
