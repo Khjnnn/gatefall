@@ -118,6 +118,7 @@ namespace Gatefall.Editor
         public static void ConfigureMobile()
         {
             ImportArtwork();
+            IncludeRuntimeHudShader();
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
@@ -143,6 +144,24 @@ namespace Gatefall.Editor
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Debug.Log("GATEFALL MOBILE SETTINGS: landscape, ARM64/IL2CPP Android, iOS, identifiers configured. Device builds require installed modules.");
+        }
+
+        // The HUD is created entirely at runtime, so no scene material keeps this shader in a player build.
+        private static void IncludeRuntimeHudShader()
+        {
+            Shader shader = Shader.Find("UI/Default");
+            if (shader == null) throw new BuildFailedException("uGUI's UI/Default shader is unavailable.");
+            var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
+            if (assets.Length != 1) throw new BuildFailedException("Graphics settings could not be loaded.");
+            var settings = new SerializedObject(assets[0]);
+            SerializedProperty shaders = settings.FindProperty("m_AlwaysIncludedShaders");
+            if (shaders == null || !shaders.isArray) throw new BuildFailedException("Always included shader list is unavailable.");
+            for (int i = 0; i < shaders.arraySize; i++)
+                if (shaders.GetArrayElementAtIndex(i).objectReferenceValue == shader) return;
+            int index = shaders.arraySize++;
+            shaders.GetArrayElementAtIndex(index).objectReferenceValue = shader;
+            settings.ApplyModifiedPropertiesWithoutUndo();
+            Debug.Log("GATEFALL HUD SHADER: UI/Default retained for runtime-created canvas.");
         }
 
         public static void PrepareMobileProject() { ConfigureMobile(); ValidateProject(); }
