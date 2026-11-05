@@ -33,7 +33,7 @@ namespace Gatefall
         private static readonly Color Paper = GatefallArt.Paper, Muted = GatefallArt.Muted, Ink = GatefallArt.Ink, Amber = GatefallArt.Amber, Ally = GatefallArt.Ally, Threat = GatefallArt.Threat;
 
         public MobileHud(GatefallGame controller, GatefallArt art) { this.controller = controller; this.art = art; }
-        public void Dispose() { }
+        public void Dispose() { DisposeCanvas(); }
 
         public void Refresh()
         {
@@ -579,14 +579,22 @@ namespace Gatefall
             if (enabled) controller.TouchInput.Regions.Add(new TouchRegion(id, b));
         }
 
+        // Shared by the IMGUI and canvas back ends so a skin looks the same in both.
+        private Texture2D SkinTexture(string name)
+        { return name == "ui-bar-back" ? art.Texture("ui-bar") : name == "ui-button-danger" ? art.Texture("ui-button") : art.Texture(name); }
+        private static int SkinBorder(string name)
+        { return name == "ui-panel" ? 26 : name == "ui-chip" ? 22 : name.StartsWith("ui-bar") ? 7 : 16; }
+        private static Color SkinTint(Item item)
+        { return item.Skin == "ui-bar-back" ? new Color(.05f, .07f, .1f, .8f) : item.Skin == "ui-button-danger" ? new Color(1, .45f, .5f, 1) : item.Color; }
+        private static readonly Color TextShadow = new Color(.04f, .06f, .09f, .85f);
+
         private GUIStyle SkinStyle(string name)
         {
             GUIStyle style;
             if (skins.TryGetValue(name, out style)) return style;
-            Texture2D texture = name == "ui-bar-back" ? art.Texture("ui-bar") : name == "ui-button-danger" ? art.Texture("ui-button") : art.Texture(name);
-            int border = name == "ui-panel" ? 26 : name == "ui-chip" ? 22 : name.StartsWith("ui-bar") ? 7 : 16;
+            int border = SkinBorder(name);
             style = new GUIStyle { border = new RectOffset(border, border, border, border) };
-            style.normal.background = texture;
+            style.normal.background = SkinTexture(name);
             skins[name] = style;
             return style;
         }
@@ -603,13 +611,12 @@ namespace Gatefall
                     case Kind.Texture: GUI.color = item.Color; GUI.DrawTexture(item.Rect, item.Texture, ScaleMode.ScaleToFit); break;
                     case Kind.Crop: GUI.color = item.Color; GUI.DrawTextureWithTexCoords(item.Rect, item.Texture, item.Uv); break;
                     case Kind.Skin:
-                        Color tint = item.Skin == "ui-bar-back" ? new Color(.05f, .07f, .1f, .8f) : item.Skin == "ui-button-danger" ? new Color(1, .45f, .5f, 1) : item.Color;
-                        GUI.color = tint; SkinStyle(item.Skin).Draw(item.Rect, false, false, false, false); break;
+                        GUI.color = SkinTint(item); SkinStyle(item.Skin).Draw(item.Rect, false, false, false, false); break;
                     case Kind.Text:
-                        label.font = item.Weight >= 2 ? art.Heavy : item.Weight == 1 ? art.Bold : art.Regular;
+                        label.font = TextFont(item.Weight);
                         label.fontSize = item.Size; label.alignment = item.Align; label.fontStyle = FontStyle.Normal;
                         GUI.color = Color.white;
-                        if (item.Shadow) { label.normal.textColor = new Color(.04f, .06f, .09f, .85f); GUI.Label(new Rect(item.Rect.x + 1.5f, item.Rect.y + 2, item.Rect.width, item.Rect.height), item.Text, label); }
+                        if (item.Shadow) { label.normal.textColor = TextShadow; GUI.Label(new Rect(item.Rect.x + 1.5f, item.Rect.y + 2, item.Rect.width, item.Rect.height), item.Text, label); }
                         label.normal.textColor = item.Color; GUI.Label(item.Rect, item.Text, label); break;
                 }
             }
