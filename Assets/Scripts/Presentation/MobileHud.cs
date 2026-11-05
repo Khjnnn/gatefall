@@ -9,6 +9,11 @@ namespace Gatefall
     public sealed partial class MobileHud
     {
         public const string SlowResistanceHint = "정예·공성 감속 저항";
+        public const float ArmoredHealthLabelWidth = 86, PlainHealthLabelWidth = 58;
+        public static string EnemyHealthText(float health, bool armored)
+        {
+            return "HP " + Mathf.CeilToInt(health) + (armored ? " · 장갑" : "");
+        }
         private enum Kind { Skin, Texture, Text, Fill, Crop }
         public enum Look { Primary, Secondary, Ghost, Danger }
         private struct Item
@@ -85,7 +90,7 @@ namespace Gatefall
             foreach (Enemy enemy in game.Enemies) {
                 if (enemy.Kind != EnemyKind.Brute && enemy.Kind != EnemyKind.Siege) continue;
                 Vector2 point = controller.EnemyHealthReference(enemy);
-                float width = enemy.Armor > 0 ? 64 : 46;
+                float width = enemy.Armor > 0 ? ArmoredHealthLabelWidth : PlainHealthLabelWidth;
                 Rect area = new Rect(point.x - width/2, point.y - 8, width, 16);
                 if (area.xMin < 6 || area.xMax > W - 6 || area.yMin < 6 || area.yMax > H - 92) continue;
                 if (area.Overlaps(barrierHud) || area.Overlaps(waveHud) || area.Overlaps(creditsHud)) continue;
@@ -98,7 +103,7 @@ namespace Gatefall
                 if (overlaps) continue;
                 enemyHealthLabels.Add(area);
                 Fill(area, new Color(.07f, .09f, .12f, .83f));
-                Text(area, (enemy.Armor > 0 ? "장갑 " : "") + Mathf.CeilToInt(enemy.Health), 12,
+                Text(area, EnemyHealthText(enemy.Health, enemy.Armor > 0), 12,
                     enemy.Armor > 0 ? Amber : Paper, TextAnchor.MiddleCenter, 2);
                 if (enemyHealthLabels.Count == 8) break;
             }

@@ -316,6 +316,7 @@ namespace Gatefall.Editor
             ValidateObserverMenuFont();
             ValidateGrowthHintFont();
             ValidateSlowResistanceHeaderFont();
+            ValidateEnemyHealthFont();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);
@@ -611,6 +612,25 @@ namespace Gatefall.Editor
             }
             Directory.CreateDirectory("TestResults");File.WriteAllText("TestResults/slow-resistance-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
             Debug.Log("GATEFALL SLOW RESISTANCE FONT PASSED: "+report.titles+" titles and hint fit existing header.");
+        }
+
+        [Serializable] private sealed class EnemyHealthFontReport {
+            public int labels; public float maxArmoredWidth, maxPlainWidth, maxHeight;
+            public float armoredWidth=MobileHud.ArmoredHealthLabelWidth, plainWidth=MobileHud.PlainHealthLabelWidth;
+        }
+        private static void ValidateEnemyHealthFont()
+        {
+            var report=new EnemyHealthFontReport();
+            var style=new GUIStyle {font=Resources.Load<Font>("Fonts/NanumGothic-ExtraBold"),fontSize=12,wordWrap=true,padding=new RectOffset()};
+            foreach(bool armored in new[]{false,true})foreach(float hp in new[]{.1f,1,99,999,9999}){
+                string text=MobileHud.EnemyHealthText(hp,armored);style.font.RequestCharactersInTexture(text,12,FontStyle.Normal);
+                var content=new GUIContent(text);float width=style.CalcSize(content).x,available=armored?report.armoredWidth:report.plainWidth,height=style.CalcHeight(content,available);
+                report.labels++;report.maxHeight=Mathf.Max(report.maxHeight,height);
+                if(armored)report.maxArmoredWidth=Mathf.Max(report.maxArmoredWidth,width);else report.maxPlainWidth=Mathf.Max(report.maxPlainWidth,width);
+                if(width+2>available || height>16)throw new BuildFailedException("Enemy HP label wraps: "+text);
+            }
+            Directory.CreateDirectory("TestResults");File.WriteAllText("TestResults/enemy-health-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
+            Debug.Log("GATEFALL ENEMY HP FONT PASSED: "+report.labels+" labels fit existing single-row health overlay.");
         }
 
         [Serializable] private sealed class ObserverFontReport {
