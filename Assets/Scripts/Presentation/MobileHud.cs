@@ -8,6 +8,7 @@ namespace Gatefall
     // every button here registers a TouchRegion with the same box it draws.
     public sealed partial class MobileHud
     {
+        public const string SlowResistanceHint = "정예·공성 감속 저항";
         private enum Kind { Skin, Texture, Text, Fill, Crop }
         public enum Look { Primary, Secondary, Ghost, Danger }
         private struct Item
@@ -315,10 +316,12 @@ namespace Gatefall
             Rect r = PlacePanel(tower.Socket, 464, 222);
             Skin(r, "ui-panel");
             Tex(new Rect(r.x + 12, r.y + 8, 56, 70), art.TowerIcon(tower.Kind, tower.Level), GatefallArt.TowerTint(tower.Kind, tower.Level));
-            Text(new Rect(r.x + 76, r.y + 10, 330, 28), d.Name + "  Lv" + tower.Level, 19, Paper, TextAnchor.MiddleLeft, 2);
-            Button(100, new Box2(r.x + r.width - 44, r.y + 8, 32, 30), "×", true, Look.Secondary, null, 18);
             TowerStats now = game.Stats(tower);
             TowerStats next = canLevel ? game.Stats(tower, tower.Level + 1) : null;
+            bool hasSlow = now.Slow > 0 || tower.Kind == TowerKind.Barrier;
+            Text(new Rect(r.x + 76, r.y + 10, hasSlow ? 170 : 330, 28), d.Name + "  Lv" + tower.Level, 19, Paper, TextAnchor.MiddleLeft, 2);
+            if (hasSlow) Text(new Rect(r.x + 250, r.y + 10, 158, 28), SlowResistanceHint, 12, Amber, TextAnchor.MiddleLeft, 1);
+            Button(100, new Box2(r.x + r.width - 44, r.y + 8, 32, 30), "×", true, Look.Secondary, null, 18);
             string line = StatLine(tower.Kind, now, next) + " · 사거리 " + now.Range.ToString("0.#");
             if (tower.Kind == TowerKind.Beacon && next != null && next.Range != now.Range) line += "→" + next.Range.ToString("0.#");
             Text(new Rect(r.x + 76, r.y + 40, r.width - 90, 22), line, 14, Muted, TextAnchor.MiddleLeft, 0);

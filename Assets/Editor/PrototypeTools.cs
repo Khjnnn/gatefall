@@ -312,6 +312,7 @@ namespace Gatefall.Editor
             ValidateBattleModeFont();
             ValidateObserverMenuFont();
             ValidateGrowthHintFont();
+            ValidateSlowResistanceHeaderFont();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);
@@ -583,6 +584,30 @@ namespace Gatefall.Editor
             }
             Directory.CreateDirectory("TestResults");File.WriteAllText("TestResults/growth-hint-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
             Debug.Log("GATEFALL GROWTH HINT FONT PASSED: "+report.labels+" labels fit344x22.");
+        }
+
+        [Serializable] private sealed class SlowResistanceFontReport {
+            public int titles;
+            public float titleWidth=170,hintWidth=158,height=28,maxTitleWidth,hintActualWidth,maxHeight;
+            public string widest,hint=MobileHud.SlowResistanceHint;
+        }
+        private static void ValidateSlowResistanceHeaderFont()
+        {
+            var report=new SlowResistanceFontReport();
+            var title=new GUIStyle {font=Resources.Load<Font>("Fonts/NanumGothic-ExtraBold"),fontSize=19,wordWrap=true,padding=new RectOffset()};
+            var hint=new GUIStyle {font=Resources.Load<Font>("Fonts/NanumGothic-Bold"),fontSize=12,wordWrap=true,padding=new RectOffset()};
+            hint.font.RequestCharactersInTexture(report.hint,12,FontStyle.Normal);
+            var content=new GUIContent(report.hint);report.hintActualWidth=hint.CalcSize(content).x;report.maxHeight=hint.CalcHeight(content,report.hintWidth);
+            if(report.hintActualWidth>report.hintWidth || report.maxHeight>report.height)throw new BuildFailedException("Slow resistance hint wraps");
+            foreach(TowerDefinition d in TowerCatalog.All)for(int level=1;level<=d.Levels.Length;level++){
+                if(d.Levels[level-1].Slow<=0 && d.Kind!=TowerKind.Barrier)continue;
+                string text=d.Name+"  Lv"+level;title.font.RequestCharactersInTexture(text,19,FontStyle.Normal);content=new GUIContent(text);
+                float width=title.CalcSize(content).x,height=title.CalcHeight(content,report.titleWidth);report.titles++;
+                if(width>report.maxTitleWidth){report.maxTitleWidth=width;report.widest=text;}report.maxHeight=Mathf.Max(report.maxHeight,height);
+                if(width>report.titleWidth || height>report.height)throw new BuildFailedException("Slow tower title wraps: "+text);
+            }
+            Directory.CreateDirectory("TestResults");File.WriteAllText("TestResults/slow-resistance-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
+            Debug.Log("GATEFALL SLOW RESISTANCE FONT PASSED: "+report.titles+" titles and hint fit existing header.");
         }
 
         [Serializable] private sealed class ObserverFontReport {
