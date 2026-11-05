@@ -33,12 +33,22 @@ foreach($taskStage in [Gatefall.Core.CampaignCatalog]::Stages){
     if($taskG.SuppliesGranted -ne 5 -or $taskG.Credits -ne $taskStart+5*$taskSupply){throw 'Supply amount/cap mismatch'}
     $taskFunded=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]@{StartingCredits=100000;SpawnEnemies=$false;OfferCards=$false},7,$taskRules)
     $taskReason=''
-    for($taskI=0;$taskI -lt $taskFunded.BoardSockets.Length;$taskI++){if(-not $taskFunded.TryBuild($taskI,[Gatefall.Core.TowerKind]::Autocannon,"density-$taskIndex-$taskI",[ref]$taskReason)){throw "Cannot build site $taskI : $taskReason"}}
-    if($taskFunded.Towers.Count -ne $taskExpectedSites[$taskIndex]){throw 'Full board construction incomplete'}
-    $taskRows += [pscustomobject]@{stage=$taskIndex+1;layout=$taskLayout.Id;declaredRouteChange=$taskChanged;sites=$taskG.BoardSockets.Length;start=$taskStart;waveSupply=$taskSupply;totalWaveSupply=5*$taskSupply;minRoadDistance=$taskMinRoad;minSpacing=$taskMinSpacing;everySocketConstructible=$true}
+    # Post-seal operations allow ten towers at once: prove every site individually (build, then sell), then the limit itself.
+    $taskLimit=$taskFunded.TowerLimit
+    if($taskLimit -ne $(if($taskIndex -ge 6){10}else{0})){throw "Stage$($taskIndex+1) tower limit mismatch: $taskLimit"}
+    for($taskI=0;$taskI -lt $taskFunded.BoardSockets.Length;$taskI++){
+        if(-not $taskFunded.TryBuild($taskI,[Gatefall.Core.TowerKind]::Autocannon,"density-$taskIndex-$taskI",[ref]$taskReason)){throw "Cannot build site $taskI : $taskReason"}
+        if($taskLimit -gt 0 -and -not $taskFunded.TrySell($taskFunded.TowerAt($taskI).Id,"density-sell-$taskIndex-$taskI",[ref]$taskReason)){throw "Cannot clear site $taskI : $taskReason"}
+    }
+    if($taskLimit -eq 0 -and $taskFunded.Towers.Count -ne $taskExpectedSites[$taskIndex]){throw 'Full board construction incomplete'}
+    if($taskLimit -gt 0){
+        for($taskI=0;$taskI -lt $taskLimit;$taskI++){if(-not $taskFunded.TryBuild($taskI,[Gatefall.Core.TowerKind]::Autocannon,"density-limit-$taskIndex-$taskI",[ref]$taskReason)){throw "Cannot build up to the limit: $taskReason"}}
+        if($taskFunded.TryBuild($taskLimit,[Gatefall.Core.TowerKind]::Autocannon,"density-over-$taskIndex",[ref]$taskReason)){throw 'Tower limit not enforced'}
+    }
+    $taskRows += [pscustomobject]@{stage=$taskIndex+1;layout=$taskLayout.Id;declaredRouteChange=$taskChanged;sites=$taskG.BoardSockets.Length;start=$taskStart;waveSupply=$taskSupply;totalWaveSupply=5*$taskSupply;towerLimit=$taskLimit;minRoadDistance=$taskMinRoad;minSpacing=$taskMinSpacing;everySocketConstructible=$true}
     $taskTotal+=$taskG.BoardSockets.Length
 }
 if($taskTotal -ne 308 -or $taskPreserved -ne $taskExpectedPreserved){throw 'Wrong site totals'}
 [pscustomobject]@{total=$taskTotal;originalSitesPreserved=$taskPreserved;expectedPreserved=$taskExpectedPreserved;operations=$taskRows;scope='Geometry, short-range coverage, unchanged-layout original coordinates, quiet supply caps and full-board construction. Declared route redesigns intentionally regenerate their sites. Android and human play are separate.'}|ConvertTo-Json -Depth 5|Set-Content (Join-Path $taskProject "TestResults/tower-density-$Tag-checks.json")
 $taskRows|ConvertTo-Json|Set-Content (Join-Path $taskProject "TestResults/tower-density-$Tag-operations.json")
-Write-Output "PASS 308 road-clear reachable sites /$taskPreserved unchanged-layout original coordinates preserved /every socket constructible /14 capped budgets."
+Write-Output "PASS 308 road-clear reachable sites /$taskPreserved unchanged-layout original coordinates preserved /every socket constructible /14 capped budgets /post-seal limit of 10 towers enforced."

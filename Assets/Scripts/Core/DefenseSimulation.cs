@@ -279,8 +279,12 @@ namespace Gatefall.Core
             string reason=CanAct(); if(reason!="")return reason; reason=NearSocket(socket); if(reason!="")return reason;
             if((int)kind<0 || (int)kind>=TowerCatalog.All.Length || TowerCatalog.Get(kind).Tier!=1)return "상위 결계주는 융합으로 만드세요.";
             if(!Allows(kind))return "아직 해금되지 않은 결계주입니다.";
-            if(TowerAt(socket)!=null)return "이미 타워가 있는 지점입니다."; return Funds(TowerCatalog.Get(kind).BuildCost);
+            if(TowerAt(socket)!=null)return "이미 타워가 있는 지점입니다.";
+            if(TowerLimit>0 && Towers.Count>=TowerLimit)return "결계주는 최대 "+TowerLimit+"기입니다. 조합하거나 판매해 자리를 만드세요.";
+            return Funds(TowerCatalog.Get(kind).BuildCost);
         }
+        // Towers allowed at once (0 = every site). Fusion turns two towers into one and sale removes one.
+        public int TowerLimit { get { return Rules!=null && Rules.Stage!=null ? Rules.Stage.TowerLimit : 0; } }
         public bool TryBuild(int socket,out string reason) { return TryBuild(socket,TowerKind.Autocannon,null,out reason); }
         public bool TryBuild(int socket,TowerKind kind,string command,out string reason)
         {
@@ -466,6 +470,8 @@ namespace Gatefall.Core
                 else if(g.Kind==EnemyKind.Siege)speed*=1.1f;
                     if(Rules.Stage.Index==8 && !Rules.Crisis && g.Wave>=3 && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege))speed*=1.25f;
                     if(Rules.Stage.Index==4 && !Rules.Crisis && g.Wave>=3 && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege))speed*=1.15f;
+                // Operation data: both are 1 before the first seal. The boss's health is set below regardless.
+                hp*=g.Swarm ? Rules.Stage.SwarmHealth : Rules.Stage.Threat;
             }
             if(Rules!=null && Rules.Stage!=null && !Rules.Crisis && (Rules.Stage.Index==10 || Rules.Stage.Index==11) && g.Wave>=3 && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege)){speed*=1.6f;hp*=Rules.Stage.Index==10 ? 1.35f : 1.6f;}
             if(g.Kind==EnemyKind.Boss) { hp=Rules!=null && Rules.Crisis ? 1100 : 800; speed=.65f; }

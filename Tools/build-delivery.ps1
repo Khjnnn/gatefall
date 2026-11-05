@@ -23,6 +23,8 @@ $taskCurrentVersion = [regex]::Match($taskSettingsText, '(?m)^  bundleVersion: (
 if ($LASTEXITCODE -ne 0) { throw 'Swarm checks failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-wave-call.ps1') -ChecksOnly
 if ($LASTEXITCODE -ne 0) { throw 'Wave-call checks failed' }
+& $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-degenerate-strategies.ps1') -Enforce
+if ($LASTEXITCODE -ne 0) { throw 'Degenerate strategy gate failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'verify-unity.ps1') -EditorPath $EditorPath -Target Android
 if ($LASTEXITCODE -ne 0) { throw 'Unity Android build failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'verify-apk.ps1') -EditorPath $EditorPath

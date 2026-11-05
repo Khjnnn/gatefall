@@ -172,7 +172,9 @@ namespace Gatefall
             Skin(new Rect(right - 128, 10, 128, 50), "ui-chip");
             Icon(new Rect(right - 122, 15, 40, 40), "icon-stone", Color.white);
             Text(new Rect(right - 80, 12, 74, 46), game.Credits.ToString(), 24, Amber, TextAnchor.MiddleCenter, 2);
-            Text(new Rect(right - 118, 62, 118, 18), "결계주 " + game.Towers.Count + "/" + game.BoardSockets.Length, 12, Paper, TextAnchor.MiddleRight, 1);
+            int towerCapacity = game.TowerLimit > 0 ? game.TowerLimit : game.BoardSockets.Length;
+            Text(new Rect(right - 118, 62, 118, 18), "결계주 " + game.Towers.Count + "/" + towerCapacity, 12,
+                game.TowerLimit > 0 && game.Towers.Count >= game.TowerLimit ? Threat : Paper, TextAnchor.MiddleRight, 1);
             if (controller.Menu != GameMenu.Pause && !game.AwaitingCard && (game.State == RunState.Running || game.IsPreparing))
                 IconButton((int)MobileAction.Pause, layout.Button(MobileAction.Pause), "icon-pause");
 
@@ -283,7 +285,8 @@ namespace Gatefall
                 float w = 28 + kinds.Count * 124 + (kinds.Count - 1) * 8;
                 Rect r = PlacePanel(socket, Mathf.Max(w, 160), 196);
                 Skin(r, "ui-panel");
-                Text(new Rect(r.x + 18, r.y + 10, 200, 24), "결계주 건설", 15, Muted, TextAnchor.MiddleLeft, 1);
+                bool atLimit = game.TowerLimit > 0 && game.Towers.Count >= game.TowerLimit;
+                Text(new Rect(r.x + 18, r.y + 10, 200, 24), atLimit ? "결계주 상한 " + game.TowerLimit + "기" : "결계주 건설", 15, atLimit ? Threat : Muted, TextAnchor.MiddleLeft, 1);
                 for (int i = 0; i < kinds.Count; i++) {
                     TowerKind k = kinds[i]; TowerDefinition d = TowerCatalog.Get(k);
                     string reason = game.CanBuild(socket, k);

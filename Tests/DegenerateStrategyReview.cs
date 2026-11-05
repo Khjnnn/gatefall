@@ -6,8 +6,8 @@ namespace Gatefall.Tests
 {
     // Bots that skip every decision the campaign means to teach: no lane reasoning, upgrades, fusions, sales,
     // wave calls, hunter movement, skills or account growth. When such a bot clears an operation with three stars,
-    // that operation does not yet require those decisions. Report-only by default;
-    // Tools/review-degenerate-strategies.ps1 -Enforce turns the target into a failing gate.
+    // that operation does not yet require those decisions. Tools/review-degenerate-strategies.ps1 -Enforce (part of
+    // build-delivery.ps1) fails when a gated bot earns three stars from 1-8.
     // A lower bound from scripted play, not a human difficulty rating.
     public static class DegenerateStrategyReview
     {
@@ -48,7 +48,7 @@ namespace Gatefall.Tests
             return rows.ToArray();
         }
 
-        static Row Play(Policy policy, int stage, int seed)
+        public static Row Play(Policy policy, int stage, int seed)
         {
             // Kang Yun without growth or research, default loadout (spear, seal, collapse, barrier), normal operation.
             var g = new DefenseSimulation(new GameBalance(), seed, new CampaignBattle { Stage = CampaignCatalog.Stages[stage] });

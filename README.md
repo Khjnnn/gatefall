@@ -100,6 +100,7 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 - 시작 마석은1-1~1-3 240,1-4~1-9 280,1-10~1-14 320입니다.
 - 보급은30초 간격5회,초반 세 작전80씩 총400·이후100씩 총500입니다. 처치 보상과 카드의 즉시 마석은 별도입니다.
+- 첫 봉인 이후 작전(1-7~1-14)은 결계주를 동시에 최대 10기까지 세울 수 있습니다. 조합(두 기→한 기)과 판매로 자리를 만듭니다. 군집 마수는 창 Lv1 두 발·Lv2 한 발에 쓰러지고, 그 밖의 마수 체력은 작전별 위협 배율(1-7 2.0 · 1-8 2.5 · 1-9 2.0 · 1-10 1.5 · 1-11 1.0 · 1-12 1.0 · 1-13 2.0 · 1-14 1.0)을 따릅니다. [근거와 보정](Docs/Design/GATEFALL_POST_SEAL_BALANCE_2026-11-05.md)
 - 성장 카드는 1·3·5번째 보급에 최대 3회, 공명 촉매는 해금 작전에서 2·4번째 보급에 각 1개를 지급합니다. 호출 없이 진행하면 카드는 30/90/150초, 촉매는 60/120초입니다.
 - 일반 1-4 이후의 선택 호출은 다음 웨이브를 최대 6초 앞당깁니다. 연결 보급을 먼저 받고 다음 보급도 당겨지므로 카드와 촉매 시각이 바뀔 수 있습니다. 위기 작전은 자동 일정으로 진행합니다.
 - 기본 결계주는 창·봉인·붕괴·방벽·표식입니다. 1-11부터 기본 결계주와 2단계 조합 결과를 Lv3까지 강화할 수 있습니다. Lv3 강화 비용은 같은 결계주의 Lv2 강화보다 마석 35개 높습니다.
@@ -125,7 +126,7 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 [HANDOFF_CLAUDE.md](HANDOFF_CLAUDE.md) 최상단·[task_plan.md](task_plan.md)·[progress.md](progress.md)와 버전별 JSON을 우선합니다. 오래된 해시 가드 도구는 현행에서 무조건 다시 실행하지 않습니다. 보호5556/5558과 보호 저장 경로는 조작하지 않습니다.
 
-밸런스 하한 점검은 [퇴화 전략 검토](Docs/Design/GATEFALL_DEGENERATE_STRATEGY_REVIEW_2026-11-05.md)와 `Tools/review-degenerate-strategies.ps1`(기본은 보고 전용, `-Enforce`로 실패 처리)을 사용합니다. 매 스텝·매 프레임 경로의 할당 회귀는 빌드 전 검사 `Tools/test-allocation.ps1`이 확인합니다.
+밸런스 하한 점검은 [퇴화 전략 검토](Docs/Design/GATEFALL_DEGENERATE_STRATEGY_REVIEW_2026-11-05.md)와 `Tools/review-degenerate-strategies.ps1`을 사용하며, 빌드 전 검사가 `-Enforce`로 1-8부터 판단 없는 봇의 3별을 막습니다. 잘 짠 운영으로 3별이 가능한지는 `Tools/review-competent-plans.ps1`(보고 전용, 수 분 소요)로 확인합니다. 매 스텝·매 프레임 경로의 할당 회귀는 빌드 전 검사 `Tools/test-allocation.ps1`이 확인합니다.
 
 시작 씬은 `Assets/Scenes/Gatefall.unity`입니다. Editor를 닫고 `Build-Gatefall.cmd` 또는 아래로 Android만 빌드합니다.
 
