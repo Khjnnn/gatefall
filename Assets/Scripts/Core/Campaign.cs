@@ -338,7 +338,7 @@ namespace Gatefall.Core
                 }
                 p.MagicCores+=reward;
             }
-            p.LastReward=reward;p.LastRewardRun=id;p.PendingRun="";p.PendingStage=-1;
+            p.LastReward=reward;p.LastRewardRun=id;p.PendingRun="";p.PendingStage=-1;p.PendingCrisis=false;
             if(!Commit(p)) { reward=0;return false; } return true;
         }
         public bool Abandon(string id)

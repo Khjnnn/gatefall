@@ -132,6 +132,18 @@ namespace Gatefall.Core
             new[]{Gates[2],new V2(11,0),new V2(7,-3),new V2(3,-3),new V2()}
         };
         public readonly GameBalance Balance;
+        public readonly int Seed;
+        // Optional local QA context; reading it must never consume combat RNG or mutate the account.
+        public string RunContext()
+        {
+            bool campaign=Rules!=null && Rules.Stage!=null;
+            return "Context stage="+(campaign ? CampaignCatalog.StageId(Rules.Stage.Index) : "lab")+
+                " mode="+(campaign ? (Rules.Crisis ? "Crisis" : "Normal") : "Lab")+
+                " seed="+Seed.ToString(System.Globalization.CultureInfo.InvariantCulture)+
+                " hunter="+(Rules==null ? 0 : Rules.Hunter)+" growth="+(Rules==null ? 0 : Rules.EarnedGrowth)+
+                " research="+(Rules==null ? "0,0,0,0" : string.Join(",",Rules.Research))+
+                " loadout="+(Rules==null ? 135 : Rules.Loadout)+" cards="+string.Join(",",Cards);
+        }
         public readonly List<Enemy> Enemies = new List<Enemy>();
         public readonly List<Tower> Towers = new List<Tower>();
         public readonly List<Projectile> Projectiles = new List<Projectile>();
@@ -226,7 +238,7 @@ namespace Gatefall.Core
             if (balance == null) throw new ArgumentNullException("balance");
             if (balance.Duration <= 0 || balance.PlayerHealth <= 0 || balance.CoreHealth <= 0 || balance.PlayerFireInterval <= 0)
                 throw new ArgumentException("Duration, health and attack interval must be positive.");
-            Rules=rules==null ? null : rules.Copy(); Balance = ConfigureBalance(balance); balance=Balance; random = new Random(seed);
+            Rules=rules==null ? null : rules.Copy(); Balance = ConfigureBalance(balance); balance=Balance; Seed=seed; random = new Random(seed);
             PlayerPosition = new V2(0,-2.2f); PlayerAim = new V2(0,1);
             PlayerHealth = balance.PlayerHealth; CoreHealth = balance.CoreHealth; MinimumCoreHealth=CoreHealth;
             Credits = balance.StartingCredits; State = RunState.Ready; DefeatReason = "";

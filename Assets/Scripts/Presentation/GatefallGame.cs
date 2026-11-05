@@ -508,6 +508,7 @@ namespace Gatefall
                     "\nTower damage: " + string.Join(",", Simulation.Telemetry.TowerDamage) +
                     "\nCore damage by lane W/N/E/S: " + string.Join(",", Simulation.Telemetry.CoreDamageByLane) +
                     "\nMark hits=" + Simulation.Telemetry.MarkedHits + " effective bonus damage=" + Simulation.Telemetry.MarkBonusDamage.ToString("F1") +
+                    "\n" + Simulation.RunContext() +
                     "\n" + string.Join("\n", Simulation.Telemetry.Purchases);
                 System.IO.File.WriteAllText(System.IO.Path.Combine(Application.persistentDataPath, "last-run.txt"), report);
             } catch (System.Exception e) { Debug.LogWarning("Could not save optional run telemetry: " + e.Message); }
