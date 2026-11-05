@@ -473,7 +473,7 @@ namespace Gatefall.Core
                 // Operation data: both are 1 before the first seal. The boss's health is set below regardless.
                 hp*=g.Swarm ? Rules.Stage.SwarmHealth : Rules.Stage.Threat;
             }
-            if(Rules!=null && Rules.Stage!=null && !Rules.Crisis && (Rules.Stage.Index==10 || Rules.Stage.Index==11) && g.Wave>=3 && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege)){speed*=1.6f;hp*=Rules.Stage.Index==10 ? 1.35f : 1.6f;}
+            if(Rules!=null && Rules.Stage!=null && (Rules.Stage.Index==10 || Rules.Stage.Index==11) && g.Wave>=3 && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege)){speed*=1.6f;hp*=Rules.Stage.Index==10 ? 1.35f : 1.6f;}
             if(g.Kind==EnemyKind.Boss) { hp=Rules!=null && Rules.Crisis ? 1100 : 800; speed=.65f; }
             Enemy enemy=new Enemy { Id=++nextId,Kind=g.Kind,Lane=g.Lane,Position=GatePositions[g.Lane],Health=hp,MaxHealth=hp,Speed=speed,Swarm=g.Swarm };
             if(Rules!=null && Rules.Stage!=null && !g.Swarm && (g.Kind==EnemyKind.Brute || g.Kind==EnemyKind.Siege))
