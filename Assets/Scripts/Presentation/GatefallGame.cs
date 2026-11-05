@@ -265,7 +265,8 @@ namespace Gatefall
             int readySocket = -1;
             if (live) foreach (Tower t in Simulation.Towers) {
                 if (t.Level < 2 || t.Socket >= selection.FusionReady.Length) continue;
-                foreach (FusionOption o in FusionOptions(t)) if (o.Reason == "") { selection.FusionReady[t.Socket] = true; readySocket = t.Socket; break; }
+                // Every frame for every Lv2+ tower: same answer as an empty FusionOptions reason, without its lists and strings.
+                if (Simulation.HasReadyFusion(t)) { selection.FusionReady[t.Socket] = true; readySocket = t.Socket; }
             }
             // Tutorial pointers: only on first attempts, only while nothing is open.
             if (!IsCampaign || !TutorialRun || Menu != GameMenu.None || !live) return;

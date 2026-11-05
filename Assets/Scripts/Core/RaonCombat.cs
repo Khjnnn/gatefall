@@ -9,7 +9,7 @@ namespace Gatefall.Core
         public float BlockRemaining, BlockImmunity, BossWindup, BossNext = 5;
         public V2 BossTarget;
     }
-    public sealed partial class Tower { public float WardHealth; internal int HeldCount; }
+    public sealed partial class Tower { public float WardHealth; internal int HeldCount; internal float BlockRange; }
     public sealed partial class DefenseSimulation
     {
         public CampaignBattle Rules { get; private set; }
@@ -217,8 +217,13 @@ namespace Gatefall.Core
         void UpdateWard(Tower t,float dt)
         {
             if(t.Cooldown>0) {t.Cooldown=Math.Max(0,t.Cooldown-dt);if(t.Cooldown==0)t.WardHealth=WardMaximum(t);return;}
-            bool holding=Enemies.Exists(e=>e.Health>0 && e.BlockOwner==t.Id);
-            if(!holding)t.WardHealth=Math.Min(WardMaximum(t),t.WardHealth+dt*8);
+            if(!IsHolding(t))t.WardHealth=Math.Min(WardMaximum(t),t.WardHealth+dt*8);
+        }
+        // Runs for every ward on every step: a plain loop avoids a capturing predicate allocation.
+        bool IsHolding(Tower ward)
+        {
+            foreach(Enemy e in Enemies)if(e.Health>0 && e.BlockOwner==ward.Id)return true;
+            return false;
         }
         void ReleaseBlock(Enemy e)
         { if(e.BlockOwner>0) {Tower ward=TowerById(e.BlockOwner);if(ward!=null)ward.HeldCount=Math.Max(0,ward.HeldCount-1);}e.BlockOwner=0;e.BlockRemaining=0;e.Engaged=false;e.BlockImmunity=4; }
@@ -250,7 +255,9 @@ namespace Gatefall.Core
                         e.BlockOwner>0 && (ward==null || ward.Cooldown>0 || ward.Commission>0))ReleaseBlock(e);
                 }
             }
-            int engaged=0;foreach(Tower t in Towers)t.HeldCount=0;
+            // A ward's range comes from its level and range cards, which change only between steps; resonance never
+            // affects range. Resolve it once per ward here instead of once per (enemy, ward) pair below: Stats() allocates.
+            int engaged=0;foreach(Tower t in Towers) {t.HeldCount=0;if(t.Kind==TowerKind.Barrier)t.BlockRange=Stats(t).Range;}
             foreach(Enemy e in Enemies)if(e.Health>0) {
                 if(e.BlockOwner<0)engaged++;
                 else if(e.BlockOwner>0) {Tower ward=TowerById(e.BlockOwner);if(ward!=null)ward.HeldCount++;}
@@ -262,7 +269,7 @@ namespace Gatefall.Core
                 if(e.BlockOwner==0 && e.BlockImmunity<=0 && blockable) {
                     if(!HunterDown && engaged<2 && V2.Distance(e.Position,PlayerPosition)<2.5f) {e.BlockOwner=-1;e.BlockRemaining=3;e.Engaged=true;engaged++;}
                     else foreach(Tower t in Towers) {
-                        if(t.Kind!=TowerKind.Barrier || t.Cooldown>0 || t.Commission>0 || V2.Distance(t.Position,e.Position)>Stats(t).Range)continue;
+                        if(t.Kind!=TowerKind.Barrier || t.Cooldown>0 || t.Commission>0 || V2.Distance(t.Position,e.Position)>t.BlockRange)continue;
                         if(t.HeldCount>=2)continue;
                         e.BlockOwner=t.Id;t.HeldCount++;e.BlockRemaining=HasResonance(t) ? 3.15f : 3;break;
                     }

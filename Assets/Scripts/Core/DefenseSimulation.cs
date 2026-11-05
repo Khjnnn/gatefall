@@ -252,8 +252,9 @@ namespace Gatefall.Core
                 float d=V2.Distance(PlayerPosition,BoardSockets[i]); if (d<=distance) { found=i; distance=d; } } return found;
         }
         public int NearestEmptySocket() { return NearestSocket(true); }
-        public Tower TowerAt(int socket) { return Towers.Find(t=>t.Socket==socket); }
-        public Tower TowerById(int id) { return Towers.Find(t=>t.Id==id); }
+        // Called from per-step and per-frame paths: plain loops avoid a capturing predicate allocation per lookup.
+        public Tower TowerAt(int socket) { foreach(Tower t in Towers)if(t.Socket==socket)return t; return null; }
+        public Tower TowerById(int id) { foreach(Tower t in Towers)if(t.Id==id)return t; return null; }
         public TowerStats Stats(Tower tower) { return Stats(tower,tower.Level); }
         // Preview a level at this socket without changing the tower or spending currency.
         public TowerStats Stats(Tower tower,int level) { TowerStats s=Stats(tower.Kind,level); ApplyAdjacency(tower,s,level); return s; }
@@ -330,6 +331,24 @@ namespace Gatefall.Core
             Paid(r.Credits,command,"fusion "+result.Lineage+" -> "+r.Result+" @"+anchor);
             Cores--; Towers.Remove(a); Towers.Remove(b); Towers.Add(result); Telemetry.Fusions++;
             if(Telemetry.FirstFusion<0)Telemetry.FirstFusion=Elapsed; Emit(EventKind.Fusion,result.Position,new V2(),recipeId); return true;
+        }
+        // Allocation-free per-frame HUD query: true when the fusion menu would list a recipe for this tower with an empty
+        // reason. Like the menu, it validates the first Lv2+ partner; partner-specific rules are only kind and level.
+        // Credits and catalysts are checked first because CanFuse formats a new message string when they are short.
+        public bool HasReadyFusion(Tower tower)
+        {
+            if(tower==null || tower.Level<2 || Cores<1)return false;
+            foreach(FusionRecipe r in TowerCatalog.Recipes) {
+                if((r.First!=tower.Kind && r.Second!=tower.Kind) || Credits<r.Credits)continue;
+                TowerKind other=r.First==tower.Kind ? r.Second : r.First;
+                if(!Allows(r.Result) || !Allows(other))continue;
+                foreach(Tower partner in Towers) {
+                    if(partner.Id==tower.Id || partner.Kind!=other || partner.Level<2)continue;
+                    if(CanFuse(r.Id,tower.Id,partner.Id,tower.Socket)=="")return true;
+                    break;
+                }
+            }
+            return false;
         }
         public int SaleRefund(Tower t) { return State==RunState.Ready && Rules!=null ? t.PaidCredits : t.PaidCredits*3/4; }
         public string CanSell(int id) { string r=CanAct(); Tower t=TowerById(id); return r!="" ? r : t==null ? "타워가 없습니다." : NearSocket(t.Socket); }
