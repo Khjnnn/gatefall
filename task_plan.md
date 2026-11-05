@@ -683,3 +683,4 @@ The user explicitly resumes Claude's stopped work. Codex now owns these edits; e
 332. 계정 성장 경제와 스테이지별 기준 강화, 일반/상위 조합의 비용·공간·완성 시점·기여를 현행에서 계측하고 챕터별 설계와 우선 적용 범위를 문서화한다.
 332 완료. v0.27.36의 14작전 207조건/계정 성장·동액 종결·맵 검토. 다음 후보 1-11 성장 격차와 1-14 북쪽 종결 가치 및 Android.
 333. GitHub Khjnnn/gatefall에 현행 Unity 소스·자체 에셋·설계와 필요한 검증 자료를 초기 업로드하고 원격 커밋을 대조한다.
+333 완료. Khjnnn/gatefall main에 초기 소스 push 완료. 공개 범위781파일/78MiB·QA/빌드/저장 제외. 커밋에서 새로 추출한 소스로 구조·전투25·모바일31·캠페인56·조합검사 통과.
