@@ -42,6 +42,9 @@ namespace Gatefall
         private ArenaView view;
         private PrototypeAudio sound;
         private MobileHud hud;
+        // HUD back end: uGUI canvas by default; tick to fall back to the previous IMGUI renderer (F2 toggles in the Editor).
+        [SerializeField] private bool imguiHud;
+        private HudImguiDriver imguiDriver;
         private readonly ArenaSelection selection = new ArenaSelection();
         private float visualTime;
         public bool Overview { get; private set; }
@@ -74,8 +77,22 @@ namespace Gatefall
             art = new GatefallArt();
             sound = new PrototypeAudio(gameObject);
             hud = new MobileHud(this, art);
+            ApplyHudRenderer();
             InitCampaign(); NewRun(false);
         }
+
+        private void ApplyHudRenderer()
+        {
+            if (imguiHud && imguiDriver == null) {
+                imguiDriver = gameObject.AddComponent<HudImguiDriver>();
+                imguiDriver.Draw = DrawImguiHud;
+            } else if (!imguiHud && imguiDriver != null) {
+                Destroy(imguiDriver);
+                imguiDriver = null;
+            }
+            hud.SetCanvasVisible(!imguiHud);
+        }
+        private void DrawImguiHud() { if (hud != null && Simulation != null) hud.Draw(); }
 
         private void NewRun(bool start)
         {
@@ -449,6 +466,7 @@ namespace Gatefall
             if (Input.GetKeyDown(KeyCode.Escape)) Pause();
             if (ScreenPage == CampaignScreen.Battle && Input.GetKeyDown(KeyCode.Return) && Simulation.State == RunState.Ready) StartRun();
             if (ScreenPage == CampaignScreen.Battle && Input.GetKeyDown(KeyCode.Space)) Simulation.UseSkill();
+            if (Input.GetKeyDown(KeyCode.F2)) { imguiHud = !imguiHud; ApplyHudRenderer(); Debug.Log("GATEFALL HUD renderer=" + (imguiHud ? "IMGUI" : "Canvas")); }
         }
 
         // One fixed camera frames the whole 36 x 20 board with a strip on top for the HUD.
@@ -493,13 +511,13 @@ namespace Gatefall
                 System.IO.File.WriteAllText(System.IO.Path.Combine(Application.persistentDataPath, "last-run.txt"), report);
             } catch (System.Exception e) { Debug.LogWarning("Could not save optional run telemetry: " + e.Message); }
         }
-        private void OnGUI() { if (hud != null && Simulation != null) hud.Draw(); }
-
         // Keep diagnostic cadence, but sample only consecutive focused combat frames.
         private readonly ActiveCombatTiming frameTiming = new ActiveCombatTiming();
         private float perfClock;
         private void LateUpdate()
         {
+            // After Update's final hud.Refresh(): the canvas shows the same snapshot IMGUI would draw this frame.
+            if (!imguiHud && hud != null && Simulation != null) hud.RenderCanvas();
             if (!Debug.isDebugBuild) return;
             bool active = Application.isFocused && ScreenPage == CampaignScreen.Battle && Simulation != null &&
                 Simulation.State == RunState.Running && !Simulation.AwaitingCard;
