@@ -235,7 +235,7 @@ APK크기차이는공통중앙목록사이에최종0.28.3만4351809바이트의�
 
 ## 현재 후속 우선순위
 
-세희/백도하51조건·스킬실효·선두판정8후보·시작진단 읽기와 부족한 연구 안내는 완료했다. 다음은 현재 성장/장갑 규칙의 위기1-12에서 동일한110마석 보충 선택(봉인Lv2+기존창 강화 대 창Lv2+창Lv1)의 제한 파일럿을 기획한다. 실제 가격·공통 구매 전 상태와 재화·위치·기수의 기회비용을 구분하고, 근거 없는 봉인 버프나 새로운 기능은 추가하지 않는다. 08:30 검증 정리/09시 마감을 유지한다.
+세희/백도하51조건·스킬실효·선두판정8후보·시작진단 읽기와 부족한 연구 안내는 완료했다. 다음은 현재 성장/장갑 규칙의 위기1-12에서 동일한170마석 보충 선택(봉인Lv2 두 기 대 창Lv2 두 기+기존 창 하나 강화)의 제한 파일럿을 기획한다. 두 쪽의 새 지점 수는2개로 같다. 실제 가격·공통 구매 전 상태와 재화·위치·사격/감속·전멸·결계의 기회비용을 구분하고, 근거 없는 봉인 버프나 새로운 기능은 추가하지 않는다. 08:30 검증 정리/09시 마감을 유지한다.
 
 ## 열두 번째 반복: 세희·백도하의 성장과 이동 역할 — 분석 완료, 제품 유지
 
@@ -298,6 +298,8 @@ APK크기차이는공통중앙목록사이에최종0.28.3만4351809바이트의�
 재현/감사는 `Tools/verify-research-hint-delivery.ps1` PASS, 로컬`delivery-v0285.json`, `research-hint-native-observations-v0285.json`, `research-hint-equivalence-v0285.json`, `diagnostics-v0285.json`과`cleanup-v0285.json`이다. 사람의 재미·손조작·실기기/iOS·청감은 후속이다. 새 APK의 모든 작전 완주로 확대하지 않는다.
 
 ## 재현 자료와 한계
+
+다음 보충 비교의 원가 예비 확인: 봉인은45건설+40강화=85, 창은40건설+30강화=70이다. 최초110마석 구상은 봉인 강화35라는 오래된 가정이 있어 비교 전에 폐기했다. 가격을 보정하지 않고 봉인Lv2×2=170 대 창Lv2×2+기존창Lv1→2=170으로 바꿨다. 현재는 `reinforcement-cost-preflight-v0285.json`의 가격/정책 기획 단계이며 새 전투는 아직0이다.
 
 - 로컬 기준: `TestResults/night-crisis-baseline.json`, `night-crisis-stage11.json`, `night-normal-harness-guard.json`, `night-balance-20261105/harness-normal-equivalence.json`.
 - 후보: `TestResults/night-crisis-heavy-candidate.json`, `night-balance-20261105/inherit-heavy-core`, `run-heavy-candidate.ps1`와 `heavy-baseline-spawn-samples.json`.
