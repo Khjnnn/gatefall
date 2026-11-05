@@ -125,6 +125,8 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 [HANDOFF_CLAUDE.md](HANDOFF_CLAUDE.md) 최상단·[task_plan.md](task_plan.md)·[progress.md](progress.md)와 버전별 JSON을 우선합니다. 오래된 해시 가드 도구는 현행에서 무조건 다시 실행하지 않습니다. 보호5556/5558과 보호 저장 경로는 조작하지 않습니다.
 
+밸런스 하한 점검은 [퇴화 전략 검토](Docs/Design/GATEFALL_DEGENERATE_STRATEGY_REVIEW_2026-11-05.md)와 `Tools/review-degenerate-strategies.ps1`(기본은 보고 전용, `-Enforce`로 실패 처리)을 사용합니다. 매 스텝·매 프레임 경로의 할당 회귀는 빌드 전 검사 `Tools/test-allocation.ps1`이 확인합니다.
+
 시작 씬은 `Assets/Scenes/Gatefall.unity`입니다. Editor를 닫고 `Build-Gatefall.cmd` 또는 아래로 Android만 빌드합니다.
 
 ```powershell
