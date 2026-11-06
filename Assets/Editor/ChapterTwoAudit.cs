@@ -20,9 +20,23 @@ namespace Gatefall.Editor
                 var stage=CampaignCatalog.Stages[i];var g=new DefenseSimulation(new GameBalance(),7,new CampaignBattle{Stage=stage});
                 if(stage.Boss || g.BoardSockets.Length!=stage.SocketCount || g.WaveCount!=stage.Waves.Length)throw new BuildFailedException("Chapter2 geometry/wave mismatch");
                 var text=new GUIStyle{font=art.Bold,fontSize=15,wordWrap=true};
-                if(text.CalcHeight(new GUIContent(stage.Briefing),344)>50 || text.CalcHeight(new GUIContent(stage.Lesson),344)>70)
+                if(text.CalcHeight(new GUIContent(stage.Briefing),344)>50 || text.CalcHeight(new GUIContent(stage.Lesson.Replace(". ",".\n")),344)>70)
                     throw new BuildFailedException("Chapter2 Korean briefing overflow: "+CampaignCatalog.StageId(i));
             }
+            var roleFont=new GUIStyle{font=art.Regular,fontSize=GatefallUiStyle.FontSizeLabel,wordWrap=false};
+            var titleFont=new GUIStyle{font=art.Bold,fontSize=GatefallUiStyle.FontSizeSection,wordWrap=false};
+            foreach(var kind in new[]{TowerKind.Scatter,TowerKind.Barrage}) {
+                if(roleFont.CalcSize(new GUIContent(MobileHud.ArmorHint(kind))).x>158)throw new BuildFailedException("Chapter2 armor role overflow");
+                for(int level=1;level<=3;level++)if(titleFont.CalcSize(new GUIContent(TowerCatalog.Get(kind).Name+"  Lv"+level)).x>170)throw new BuildFailedException("Chapter2 armor title overflow");
+            }
+            foreach(var kind in new[]{TowerKind.Barrage,TowerKind.Seal,TowerKind.Beacon})for(int targets=1;targets<=9;targets++) {
+                Vector2 size=roleFont.CalcSize(new GUIContent(MobileHud.FusionRole(kind,targets)));
+                if(size.x>150 || size.y>20)throw new BuildFailedException("Chapter2 fusion role overflow");
+            }
+            var priceFont=new GUIStyle{font=art.Bold,fontSize=GatefallUiStyle.FontSizeAction,wordWrap=true};
+            foreach(string price in new[]{"100","125","160","999"})
+                if(priceFont.CalcSize(new GUIContent(price)).x>48 || priceFont.CalcHeight(new GUIContent(price),48)>26)
+                    throw new BuildFailedException("Chapter2 three-digit cost overflow: "+price);
             ValidateControllerCalls();
             Directory.CreateDirectory("TestResults/chapter2-implementation");
             File.WriteAllText("TestResults/chapter2-implementation/unity-audit.txt","PASS4 normalized tower sprites,6 staged maps/Korean briefing bounds and actual controller action dispatch through all6/7/8 waves with supply/catalyst caps. Android gameplay separately required.");

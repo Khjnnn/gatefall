@@ -9,6 +9,15 @@ namespace Gatefall
     public sealed partial class MobileHud
     {
         public const string SlowResistanceHint = "정예·공성 감속 저항";
+        public static string ArmorHint(TowerKind kind)
+        { return kind==TowerKind.Scatter ? "장갑 피해 감소" : kind==TowerKind.Barrage ? "장갑 관통" : ""; }
+        public static string FusionRole(TowerKind result,int maximumTargets)
+        {
+            if(result==TowerKind.Beacon)return maximumTargets+"명 표식·감속";
+            if(result==TowerKind.Barrage)return maximumTargets+"명 · 장갑 관통";
+            if(result==TowerKind.Seal)return maximumTargets+"명 · 범위·감속";
+            return "재료 2개 소비";
+        }
         public const float ArmoredHealthLabelWidth = 86, PlainHealthLabelWidth = 58;
         public static string EnemyHealthText(float health, bool armored)
         {
@@ -365,8 +374,9 @@ namespace Gatefall
             TowerStats now = game.Stats(tower);
             TowerStats next = canLevel ? game.Stats(tower, tower.Level + 1) : null;
             bool hasSlow = now.Slow > 0 || tower.Kind == TowerKind.Barrier;
-            Text(new Rect(r.x + 76, r.y + 10, hasSlow ? 170 : 330, 28), d.Name + "  Lv" + tower.Level, GatefallUiStyle.FontSizeSection, Paper, TextAnchor.MiddleLeft, 2);
-            if (hasSlow) Text(new Rect(r.x + 250, r.y + 10, 158, 28), SlowResistanceHint, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
+            string headerHint=hasSlow ? SlowResistanceHint : ArmorHint(tower.Kind);
+            Text(new Rect(r.x + 76, r.y + 10, headerHint!="" ? 170 : 330, 28), d.Name + "  Lv" + tower.Level, GatefallUiStyle.FontSizeSection, Paper, TextAnchor.MiddleLeft, 2);
+            if (headerHint!="") Text(new Rect(r.x + 250, r.y + 10, 158, 28), headerHint, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
             Button(100, new Box2(r.x + r.width - 44, r.y + 8, 32, 30), "", true, Look.Ghost);
             Glyph(new Rect(r.x+r.width-40,r.y+11,26,26),"ui-glyph-close",Muted);
             string line = StatLine(tower.Kind, now, next) + " · 사거리 " + now.Range.ToString("0.#");
@@ -433,9 +443,8 @@ namespace Gatefall
                 Tex(new Rect(t.x + 6, t.y + 4, 44, 55), art.TowerIcon(recipe.Result, 1), tint);
                 Text(new Rect(t.x + 54, t.y + 10, 150, 25), TowerCatalog.Get(recipe.Result).Name.Replace(" 결계주", ""), GatefallUiStyle.FontSizeAction, Paper, TextAnchor.MiddleLeft, 2);
                 if (o.Reason == "") {
-                    string description = recipe.Result == TowerKind.Beacon
-                        ? game.Stats(recipe.Result, 1).MaxTargets + "명 표식·감속"
-                        : recipe.Result==TowerKind.Seal ? "범위·감속 · 재료2개" : "재료 2개 소비";
+                    bool counted=recipe.Result==TowerKind.Beacon || recipe.Result==TowerKind.Barrage || recipe.Result==TowerKind.Seal;
+                    string description=FusionRole(recipe.Result,counted ? game.Stats(recipe.Result,1).MaxTargets : 0);
                     Text(new Rect(t.x + 54, t.y + 36, 150, 20), description, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 1);
                     Cost(new Rect(t.x + 32, t.y + 70, 148, 26), recipe.Credits, 1);
                 } else Text(new Rect(t.x + 54, t.y + 36, 150, 58), o.Reason, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
@@ -475,12 +484,13 @@ namespace Gatefall
 
         private void Cost(Rect r, int credits, int catalysts)
         {
-            float total = 52 + (catalysts > 0 ? 44 : 0), x = r.x + (r.width - total) / 2;
+            float numberWidth = credits >= 100 ? 48 : 30, extra = numberWidth - 30;
+            float total = 52 + extra + (catalysts > 0 ? 44 : 0), x = r.x + (r.width - total) / 2;
             Icon(new Rect(x, r.y + 2, 22, 22), "icon-stone", Color.white);
-            Text(new Rect(x + 24, r.y, 30, r.height), credits.ToString(), GatefallUiStyle.FontSizeAction, game.Credits >= credits ? Amber : Paper, TextAnchor.MiddleLeft, 2);
+            Text(new Rect(x + 24, r.y, numberWidth, r.height), credits.ToString(), GatefallUiStyle.FontSizeAction, game.Credits >= credits ? Amber : Paper, TextAnchor.MiddleLeft, 2);
             if (catalysts > 0) {
-                Icon(new Rect(x + 58, r.y + 2, 22, 22), "icon-catalyst", Color.white);
-                Text(new Rect(x + 82, r.y, 20, r.height), catalysts.ToString(), GatefallUiStyle.FontSizeAction, game.Cores >= catalysts ? Paper : Muted, TextAnchor.MiddleLeft, 2);
+                Icon(new Rect(x + 58 + extra, r.y + 2, 22, 22), "icon-catalyst", Color.white);
+                Text(new Rect(x + 82 + extra, r.y, 20, r.height), catalysts.ToString(), GatefallUiStyle.FontSizeAction, game.Cores >= catalysts ? Paper : Muted, TextAnchor.MiddleLeft, 2);
             }
         }
 
