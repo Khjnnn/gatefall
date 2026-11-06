@@ -136,7 +136,7 @@ namespace Gatefall
             Text(new Rect(x, y, w, 22), "작전 " + CampaignCatalog.StageId(stage.Index) + (stage.Boss ? "  ·  탑 봉인전" : ""), 14, Amber, TextAnchor.MiddleLeft, 1);
             Text(new Rect(x, y + 22, w, 38), stage.Name, 26, Paper, TextAnchor.MiddleLeft, 2);
             string lanes = ""; foreach (int lane in stage.Lanes) lanes += (lanes == "" ? "" : "·") + Lanes[lane];
-            Text(new Rect(x, y + 64, w, 22), "진입로 " + lanes + "  ·  지점 " + stage.SocketCount + "  ·  6웨이브", 14, Muted, TextAnchor.MiddleLeft, 0);
+            Text(new Rect(x, y + 64, w, 22), "진입로 " + lanes + "  ·  지점 " + stage.SocketCount + "  ·  " + stage.Counts.Length + "웨이브", 14, Muted, TextAnchor.MiddleLeft, 0);
             bool first = stage.Index == 0 && profile.BestStars[0] == 0;
             bool showDeployment = stage.Index >= 3;
             float storyHeight = stage.Index>=6 ? 56 : showDeployment ? 80 : 112;

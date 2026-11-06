@@ -324,7 +324,7 @@ namespace Gatefall
         private void HandleAction(MobileAction action)
         {
             int id=(int)action;
-            if(id>=MobileLayout.WaveCallActionBase && id<MobileLayout.WaveCallActionBase+6) { CallWave(id-MobileLayout.WaveCallActionBase);return; }
+            if(id>=MobileLayout.WaveCallActionBase && id<MobileLayout.WaveCallActionBase+Simulation.WaveCount) { CallWave(id-MobileLayout.WaveCallActionBase);return; }
             switch (action) {
                 case MobileAction.Start: StartRun(); break;
                 case MobileAction.Pause:
