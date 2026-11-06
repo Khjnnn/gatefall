@@ -15,7 +15,7 @@ namespace Gatefall
             return "HP " + Mathf.CeilToInt(health) + (armored ? " · 장갑" : "");
         }
         private enum Kind { Skin, Texture, Text, Fill, Crop }
-        public enum Look { Primary, Secondary, Ghost, Danger }
+        public enum Look { Primary, Secondary, Ghost, Danger, Upgrade, Fusion }
         private struct Item
         {
             public Kind Kind; public Rect Rect, Uv; public string Skin, Text; public Texture Texture; public Color Color;
@@ -45,7 +45,7 @@ namespace Gatefall
         private static readonly Color Paper = GatefallArt.Paper, Muted = GatefallArt.Muted, Ink = GatefallArt.Ink, Amber = GatefallArt.Amber, Ally = GatefallArt.Ally, Threat = GatefallArt.Threat;
 
         public MobileHud(GatefallGame controller, GatefallArt art) { this.controller = controller; this.art = art; }
-        public void Dispose() { DisposeCanvas(); }
+        public void Dispose() { DisposeCanvas(); DisposeTheme(); }
 
         public void Refresh()
         {
@@ -340,7 +340,7 @@ namespace Gatefall
                     TowerKind k = kinds[i]; TowerDefinition d = TowerCatalog.Get(k);
                     string reason = game.CanBuild(socket, k);
                     Rect t = new Rect(r.x + 14 + i * 132, r.y + 40, 124, 144);
-                    Button(200 + (int)k, Box(t), "", reason == "", Look.Secondary);
+                    Button(200 + (int)k, Box(t), "", reason == "", Look.Secondary, null, 18, GatefallArt.RoleColor(k));
                     Tex(new Rect(t.x + 22, t.y + 2, 80, 100), art.TowerIcon(k, 1), reason == "" || reason.StartsWith("마석") ? Color.white : new Color(1, 1, 1, .4f));
                     Skin(new Rect(t.x + 6, t.y + 6, 44, 22), "ui-chip");
                     Text(new Rect(t.x + 6, t.y + 6, 44, 22), ShortRole(k), 12, GatefallArt.RoleColor(k), TextAnchor.MiddleCenter, 2);
@@ -378,7 +378,7 @@ namespace Gatefall
             float x = r.x + 14, y = r.y + 86;
             Rect up = new Rect(x, y, 140, 124);
             string reason = canLevel ? game.CanUpgrade(tower.Id) : "강화 완료";
-            Button(210, Box(up), "", canLevel && reason == "", Look.Secondary);
+            Button(210, Box(up), "", canLevel && reason == "", Look.Upgrade);
             Icon(new Rect(up.x + 46, up.y + 8, 48, 48), "icon-upgrade", canLevel ? Color.white : new Color(1, 1, 1, .35f));
             Text(new Rect(up.x, up.y + 58, up.width, 24), canLevel ? "Lv" + (tower.Level + 1) + " 강화" : "강화 완료", 17, Paper, TextAnchor.MiddleCenter, 2);
             if (canLevel) Cost(new Rect(up.x, up.y + 88, up.width, 26), d.UpgradePrice(tower.Level), 0);
@@ -388,7 +388,7 @@ namespace Gatefall
             string fusionStatus = ready > 0 ? "가능 " + ready + "개" : "재료 확인";
             if (options.Count == 0)
                 fusionStatus = System.Array.Exists(TowerCatalog.Recipes, r => r.First == tower.Kind || r.Second == tower.Kind) ? "해금·편성 필요" : "후속 조합 없음";
-            Button(212, Box(fusion), "", options.Count > 0, Look.Secondary);
+            Button(212, Box(fusion), "", options.Count > 0, Look.Fusion);
             Tex(new Rect(fusion.x + 46, fusion.y + 8, 48, 48), art.TowerIcon(tower.Kind, 2), options.Count > 0 ? Color.white : new Color(1, 1, 1, .35f));
             Text(new Rect(fusion.x, fusion.y + 58, fusion.width, 24), "조합", 17, Ally, TextAnchor.MiddleCenter, 2);
             Text(new Rect(fusion.x, fusion.y + 88, fusion.width, 26), fusionStatus, 14, ready > 0 ? Amber : Muted, TextAnchor.MiddleCenter, 1);
@@ -421,7 +421,7 @@ namespace Gatefall
             for (int i = 0; i < options.Count; i++) {
                 GatefallGame.FusionOption o = options[i]; FusionRecipe recipe = TowerCatalog.Recipes[o.Recipe];
                 Rect t = new Rect(r.x + 14 + (i % 2) * 224, r.y + 68 + (i / 2) * 116, 212, 104);
-                Button(220 + o.Recipe, Box(t), "", o.Reason == "", Look.Secondary);
+                Button(220 + o.Recipe, Box(t), "", o.Reason == "", Look.Secondary, null, 18, GatefallArt.RoleColor(recipe.Result));
                 Color tint = GatefallArt.TowerTint(recipe.Result, 1);
                 if (o.Reason != "") tint.a = .5f;
                 Tex(new Rect(t.x + 6, t.y + 4, 44, 55), art.TowerIcon(recipe.Result, 1), tint);
@@ -515,11 +515,11 @@ namespace Gatefall
             for (int i = 0; i < n; i++) {
                 CardKind c = game.CardOffers[i];
                 Rect r = new Rect(x0 + i * (cw + gap), titleTop + 54, cw, 280);
-                Button(500 + (int)c, Box(r), "", controller.CanSelectGrowthCard, Look.Secondary);
-                Skin(r, "ui-panel");
+                Color accent=GrowthColor(c);
+                Button(500 + (int)c, Box(r), "", controller.CanSelectGrowthCard, Look.Secondary, null, 18, accent);
                 Texture icon = CardIcon(c);
                 Tex(new Rect(r.x + cw / 2 - 44, r.y + 18, 88, c <= CardKind.Blast ? 110 : 88), icon, Color.white);
-                Text(new Rect(r.x + 10, r.y + 140, cw - 20, 32), TowerCatalog.CardName(c), 21, Amber, TextAnchor.MiddleCenter, 2);
+                Text(new Rect(r.x + 10, r.y + 140, cw - 20, 32), TowerCatalog.CardName(c), 21, accent, TextAnchor.MiddleCenter, 2);
                 Text(new Rect(r.x + 16, r.y + 176, cw - 32, 56), CardText(c, reachable), 16, Paper, TextAnchor.MiddleCenter, 0);
                 Text(new Rect(r.x + 10, r.y + 240, cw - 20, 24), c == CardKind.Credits ? "즉시 획득" : "보유 " + game.Cards[(int)c] + " / 2", 13, Muted, TextAnchor.MiddleCenter, 0);
             }
@@ -595,6 +595,7 @@ namespace Gatefall
         // ---------------------------------------------------------------- kit
         private static Box2 Box(Rect r) { return new Box2(r.x, r.y, r.width, r.height); }
         private void Skin(Rect r, string skin) { items.Add(new Item { Kind = Kind.Skin, Rect = r, Skin = skin, Color = Color.white }); }
+        private void Skin(Rect r, string skin,Color tint) { items.Add(new Item { Kind = Kind.Skin, Rect = r, Skin = skin, Color = tint }); }
         private void Fill(Rect r, Color c) { items.Add(new Item { Kind = Kind.Fill, Rect = r, Color = c }); }
         private void Tex(Rect r, Texture t, Color c) { if (t != null) items.Add(new Item { Kind = Kind.Texture, Rect = r, Texture = t, Color = c }); }
         private void Crop(Rect r, Texture t, Rect uv, Color c) { if (t != null) items.Add(new Item { Kind = Kind.Crop, Rect = r, Texture = t, Uv = uv, Color = c }); }
@@ -614,11 +615,13 @@ namespace Gatefall
             Icon(new Rect(r.center.x - s / 2, r.center.y - s / 2, s, s), icon, Color.white);
             controller.TouchInput.Regions.Add(new TouchRegion(id, b));
         }
-        private void Button(int id, Box2 b, string text, bool enabled, Look look, string icon = null, int size = 18)
+        private void Button(int id, Box2 b, string text, bool enabled, Look look, string icon = null, int size = 18,Color? accent=null)
         {
             Rect r = new Rect(b.X, b.Y, b.Width, b.Height);
-            string skin = !enabled ? "ui-button-disabled" : look == Look.Primary ? "ui-button-primary" : look == Look.Danger ? "ui-button-danger" : look == Look.Ghost ? null : "ui-button";
-            if (skin != null) Skin(r, skin);
+            Color? card=accent ?? (look==Look.Upgrade?(Color?)Amber:look==Look.Fusion?FusionColor:null);
+            string skin = !enabled ? "ui-button-disabled" : card.HasValue ? "ui-role-card" : look == Look.Primary ? "ui-button-primary" : look == Look.Danger ? "ui-button-danger" : look == Look.Ghost ? null : "ui-button";
+            if (skin != null) Skin(r, skin,enabled && card.HasValue?card.Value:Color.white);
+            if(enabled && card.HasValue)CardAccent(r,card.Value);
             Color color = !enabled ? Muted : look == Look.Primary ? Ink : Paper;
             if (!string.IsNullOrEmpty(text)) {
                 if (icon != null) {
@@ -632,11 +635,11 @@ namespace Gatefall
 
         // Shared by the IMGUI and canvas back ends so a skin looks the same in both.
         private Texture2D SkinTexture(string name)
-        { return name == "ui-bar-back" ? art.Texture("ui-bar") : name == "ui-button-danger" ? art.Texture("ui-button") : art.Texture(name); }
+        { return ThemeTexture(name) ?? (name == "ui-bar-back" ? art.Texture("ui-bar") : name == "ui-button-danger" ? art.Texture("ui-button") : art.Texture(name)); }
         private static int SkinBorder(string name)
-        { return name == "ui-panel" ? 26 : name == "ui-chip" ? 22 : name.StartsWith("ui-bar") ? 7 : 16; }
+        { return name == "ui-chip" ? 14 : name.StartsWith("ui-bar") ? 9 : 26; }
         private static Color SkinTint(Item item)
-        { return item.Skin == "ui-bar-back" ? new Color(.05f, .07f, .1f, .8f) : item.Skin == "ui-button-danger" ? new Color(1, .45f, .5f, 1) : item.Color; }
+        { return item.Color; }
         private static readonly Color TextShadow = new Color(.04f, .06f, .09f, .85f);
 
         private GUIStyle SkinStyle(string name)

@@ -52,7 +52,7 @@ namespace Gatefall
             Fill(full, GatefallArt.Hex("1A222C"));
             Tex(map, art.Texture("district-map"), Color.white);
             Fill(new Rect(W - 420, full.y, full.xMax - (W - 420), full.height), new Color(.06f, .08f, .11f, .55f));
-            Header("라온시 · 종현동", false);
+            Header("종현동 · 1챕터", false);
             bool crisis = controller.CrisisSelection;
             string starsLabel = crisis ? "위기 ★ " + profile.CrisisStarsTotal : "★ " + profile.StarsTotal;
             Text(new Rect(260, 14, 192, 40), starsLabel + " / " + (CampaignCatalog.Stages.Length * 3), 17, Amber, TextAnchor.MiddleLeft, 2);
@@ -91,7 +91,7 @@ namespace Gatefall
             }
             Button(655,new Box2(map.x+12,map.yMax-52,100,44),"이전",controller.CanMoveMapPage(-1),Look.Secondary,null,14);
             Button(656,new Box2(map.x+120,map.yMax-52,100,44),"다음",controller.CanMoveMapPage(1),Look.Secondary,null,14);
-            Text(new Rect(map.x+230,map.yMax-52,150,44),(controller.MapPage+1)+" / "+GatefallGame.MapPageCount,14,Paper,TextAnchor.MiddleLeft,1);
+            Text(new Rect(map.x+230,map.yMax-52,150,44),"작전 목록 "+(controller.MapPage+1)+" / "+GatefallGame.MapPageCount,14,Paper,TextAnchor.MiddleLeft,1);
             Briefing(new Rect(W - 404, 78, 388, H - 92));
         }
 
@@ -113,6 +113,7 @@ namespace Gatefall
             for(int i=0;i<kinds.Length;i++) {
                 TowerKind kind=kinds[i];bool chosen=(profile.Loadout&(1<<(int)kind))!=0;
                 Rect r=new Rect(30+i*(width+10),140,width,H-210);Skin(r,chosen?"ui-selected":"ui-panel");
+                CardAccent(r,GatefallArt.RoleColor(kind));
                 Tex(new Rect(r.center.x-45,r.y+8,90,115),art.TowerIcon(kind,1),Color.white);
                 Text(new Rect(r.x+4,r.y+130,r.width-8,32),TowerCatalog.Get(kind).Name.Replace(" 결계주",""),18,Paper,TextAnchor.MiddleCenter,2);
                 Text(new Rect(r.x+8,r.y+166,r.width-16,70),TowerCatalog.Get(kind).Role,13,Muted,TextAnchor.UpperCenter,0);
@@ -200,7 +201,7 @@ namespace Gatefall
                 else Text(new Rect(c.xMax - 162, c.y + 8, 150, 40), "출전 중", 15, Amber, TextAnchor.MiddleCenter, 2);
                 string reason = controller.Campaign.GrowthReason(i);
                 string growthLabel = reason.Contains("후속 구역") ? "추가 성장 예정" : reason.Contains("1-6") ? "1-6 봉인 후" : reason;
-                Button(630 + i, new Box2(c.xMax - 162, c.yMax - 56, 150, 48), reason == "" ? "승급 · " + controller.Campaign.GrowthPrice(i) : growthLabel, reason == "", Look.Secondary, reason == "" ? "icon-core" : null, 14);
+                Button(630 + i, new Box2(c.xMax - 162, c.yMax - 56, 150, 48), reason == "" ? "승급 · " + controller.Campaign.GrowthPrice(i) : growthLabel, reason == "", Look.Upgrade, reason == "" ? "icon-core" : null, 14);
             }
 
             Text(new Rect(right.x + 20, right.y + 12, 300, 30), "결계 연구", 20, Paper, TextAnchor.MiddleLeft, 2);
@@ -211,13 +212,14 @@ namespace Gatefall
                 int rank = profile.Research[i];
                 Rect row = new Rect(right.x + 14, right.y + 52 + i * rh, right.width - 28, rh - 8);
                 Skin(row, "ui-panel-flat");
+                Skin(new Rect(row.x+2,row.y+8,4,row.height-16),"ui-bar",GatefallArt.RoleColor(kinds[i]));
                 Tex(new Rect(row.x + 6, row.center.y - 30, 48, 60), art.TowerIcon(kinds[i], 1), Color.white);
                 float tx = row.x + 66;
                 Text(new Rect(tx, row.y + 4, row.xMax - 84 - tx, 26), CampaignCatalog.ResearchNames[i], 17, Paper, TextAnchor.MiddleLeft, 2);
                 Text(new Rect(tx, row.y + 30, row.xMax - 162 - tx, 40), CampaignCatalog.ResearchEffects[i], 13, Muted, TextAnchor.UpperLeft, 0);
                 for (int k = 0; k < 3; k++) Fill(new Rect(row.xMax - 76 + k * 20, row.y + 6, 14, 14), k < rank ? Ally : new Color(1, 1, 1, .15f));
                 string reason = controller.Campaign.ResearchReason(i);
-                Button(640 + i, new Box2(row.xMax - 150, row.yMax - 50, 140, 48), reason == "" ? "연구 · " + CampaignCatalog.ResearchCosts[rank] : rank >= 3 ? "최대" : "잠김", reason == "", Look.Secondary, reason == "" ? "icon-core" : null, 14);
+                Button(640 + i, new Box2(row.xMax - 150, row.yMax - 50, 140, 48), reason == "" ? "연구 · " + CampaignCatalog.ResearchCosts[rank] : rank >= 3 ? "최대" : "잠김", reason == "", Look.Upgrade, reason == "" ? "icon-core" : null, 14);
             }
             int invested = controller.Campaign.ResearchInvestment();
             Button(645, new Box2(right.x + 14, right.yMax - 70, right.width - 28, 52), "연구 초기화 · 마핵 " + invested + " 반환", invested > 0, Look.Ghost, "icon-back", 15);

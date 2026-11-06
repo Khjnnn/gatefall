@@ -318,6 +318,7 @@ namespace Gatefall.Editor
             ValidateSlowResistanceHeaderFont();
             ValidateEnemyHealthFont();
             ValidateCoreStatusFont();
+            ValidateSoftHudSkins();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);
@@ -638,6 +639,32 @@ namespace Gatefall.Editor
             report.sealRoleWidth=roleStyle.CalcSize(role).x;report.sealRoleHeight=roleStyle.CalcHeight(role,150);
             if(report.sealRoleWidth>150 || report.sealRoleHeight>20)throw new BuildFailedException("Seal role hint wraps");
             File.WriteAllText("TestResults/core-status-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
+        }
+        [Serializable] private sealed class SoftHudReport {
+            public int surfaces,partialAlphaPixels;public float chapterWidth,pageWidth;
+            public string rendererContract="Canvas and IMGUI share SkinTexture/SkinTint/SkinBorder; touch rectangles unchanged";
+        }
+        private static void ValidateSoftHudSkins()
+        {
+            var report=new SoftHudReport();var hud=new MobileHud(null,new GatefallArt());
+            var theme=typeof(MobileHud).GetMethod("ThemeTexture",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            string folder="TestResults/soft-ui-20261106/skins";Directory.CreateDirectory(folder);
+            foreach(string name in new[]{"ui-panel","ui-panel-flat","ui-selected","ui-chip","ui-button-primary","ui-button","ui-button-danger","ui-button-disabled","ui-role-card","ui-bar","ui-bar-back"}) {
+                var texture=(Texture2D)theme.Invoke(hud,new object[]{name});
+                if(texture==null || texture.width!=128 || texture.height!=128 || texture.GetPixel(0,0).a!=0 || texture.GetPixel(64,64).a<.99f ||
+                    !ReferenceEquals(texture,theme.Invoke(hud,new object[]{name})))throw new BuildFailedException("Soft HUD texture/cache contract failed:"+name);
+                foreach(Color32 p in texture.GetPixels32())if(p.a>0 && p.a<255)report.partialAlphaPixels++;
+                File.WriteAllBytes(folder+"/"+name+".png",texture.EncodeToPNG());report.surfaces++;
+            }
+            var title=new GUIStyle{font=Resources.Load<Font>("Fonts/NanumGothic-ExtraBold"),fontSize=24,padding=new RectOffset()};
+            title.font.RequestCharactersInTexture("종현동 · 1챕터",24,FontStyle.Normal);report.chapterWidth=title.CalcSize(new GUIContent("종현동 · 1챕터")).x;
+            var page=new GUIStyle{font=Resources.Load<Font>("Fonts/NanumGothic-Bold"),fontSize=14,padding=new RectOffset()};
+            page.font.RequestCharactersInTexture("작전 목록 3 / 3",14,FontStyle.Normal);report.pageWidth=page.CalcSize(new GUIContent("작전 목록 3 / 3")).x;
+            if(report.partialAlphaPixels==0 || report.chapterWidth>236 || report.pageWidth>150)throw new BuildFailedException("Soft HUD antialias/font bounds failed");
+            File.WriteAllText("TestResults/soft-ui-20261106/skin-font-audit.json",JsonUtility.ToJson(report,true));
+            var cache=(System.Collections.IDictionary)typeof(MobileHud).GetField("themeTextures",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(hud);
+            foreach(Texture2D texture in cache.Values)UnityEngine.Object.DestroyImmediate(texture);cache.Clear();
+            Debug.Log("GATEFALL SOFT HUD PASSED:11 cached original AA surfaces and chapter/page font bounds; no combat/input changes.");
         }
         [Serializable] private sealed class EnemyHealthFontReport {
             public int labels; public float maxArmoredWidth, maxPlainWidth, maxHeight;
