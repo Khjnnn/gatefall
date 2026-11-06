@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "design_proposal_not_runtime",
+  "runtimeBaseline": "0.28.10",
+  "uiCandidate": "0.28.11_native_review_pending",
+  "implementedChapterCount": 1,
+  "implementedStageCount": 14,
+  "plannedChapterCount": 10,
+  "plannedRegularStages": 240,
+  "blackTowerCount": 7,
+  "preserveFirstChapterStageCount": 14,
+  "chapter1CapScope": "existing_post_seal12_and14_only;early_stage_limits_unchanged",
+  "loadoutLimit": 4,
+  "baseTowerBudget": 9,
+  "newBaseTowerBudget": 4,
+  "newRecipeBudget": 8,
+  "defaultCatalystsGranted": 2,
+  "newRecipeUnlockStages": {"tier2After":4,"tier3RouteAfter":5},
+  "growthAnchor": { "Kang": 5, "Sehee": 3, "Baek": 2 },
+  "chapters": [
+    {"id":1,"title":"종현동 — 잿빛 귀환","stageCount":14,"status":"implemented14_preserve","towerId":1,"sealsTower":true,"sealStage":6,"unlockAfter":null,"visual":"낮은 구도심·황갈색 콘크리트·옥색 결계","palette":["#B49B79","#3FD6C6"],"topology":"중앙 방어와 비대칭 긴 우회/짧은 지름길","decision":"건설·강화·첫 조합과 빈자리 보충","pressure":"기존 일반/빠른/정예/공성","featured":"창과 뇌격","newBase":null,"growthDelta":[0,0],"researchFocusMax":3,"waves":[6,6],"normalMinutes":[3,4],"sites":[14,24],"towerCap":[12,14]},
+    {"id":2,"title":"다솜동 — 빼앗긴 시장","stageCount":22,"status":"proposal","towerId":2,"sealsTower":true,"sealStage":22,"unlockAfter":"C01-S014","visual":"주황 차양·크림색 상가·따뜻한 저녁","palette":["#DE9955","#F4E1B6"],"topology":"가판대 사이 꺾인 골목과 짧은 합류목","decision":"입구 밀집 화력과 다른 전선의 재료 보충","pressure":"군집 뒤 장갑 정예의 교대 도착","featured":"산탄과 파쇄 계열","newBase":"Scatter","growthDelta":[0,1],"researchFocusMax":4,"waves":[6,8],"normalMinutes":[3,4],"sites":[24,28],"towerCap":[14,14]},
+    {"id":3,"title":"라온역 — 멈춘 철길","stageCount":24,"status":"proposal","towerId":3,"sealsTower":false,"sealStage":null,"unlockAfter":"C02-S022","visual":"청회색 승강장·호박색 신호등·저녁 비","palette":["#708DA8","#F0BD62"],"topology":"긴 평행 선로와 엇갈린 합류","decision":"직선 관통축과 빠른 우회로 분리 투자","pressure":"정렬된 장갑 대열/짧은 길의 빠른 적","featured":"관통과 쇄도","newBase":"Rail","growthDelta":[1,2],"researchFocusMax":4,"waves":[7,9],"normalMinutes":[3.5,4.5],"sites":[24,30],"towerCap":[14,16]},
+    {"id":4,"title":"심층 환승구 — 끊어진 신호","stageCount":24,"status":"proposal","towerId":3,"sealsTower":true,"sealStage":24,"unlockAfter":"C03-S024","visual":"짙은 청록 지하철·백색 유도선·적색 신호","palette":["#234F59","#D9ECE7"],"topology":"분리된 출구와 짧은 귀환 고리","decision":"선행 처치보다 지연 제어와 후방 여유 확보","pressure":"여러 출구의 시간차 압박","featured":"봉인·추적/영웅 성장 이정표","newBase":null,"growthDelta":[2,3],"researchFocusMax":5,"waves":[7,9],"normalMinutes":[3.5,4.5],"sites":[24,30],"towerCap":[14,16]},
+    {"id":5,"title":"라온강 — 잠긴 방어선","stageCount":26,"status":"proposal","towerId":4,"sealsTower":true,"sealStage":26,"unlockAfter":"C04-S024","visual":"청록 수면·백색 수문·붉은 구조선","palette":["#3A8790","#E7E3D6"],"topology":"강을 낀 긴 굴곡과 다리 공유목","decision":"한 지점의 사거리 반복 활용과 지원 타워의 기회비용","pressure":"끊긴 군집 사이 공성 마수","featured":"가속등과 지원 조합","newBase":"Haste","growthDelta":[3,4],"researchFocusMax":5,"waves":[8,10],"normalMinutes":[4,5],"sites":[26,32],"towerCap":[16,16]},
+    {"id":6,"title":"한울 공단 — 녹슨 심장","stageCount":24,"status":"proposal","towerId":5,"sealsTower":true,"sealStage":24,"unlockAfter":"C05-S026","visual":"주홍 용광로·남색 철골·광택 없는 황동","palette":["#BC6449","#344355"],"topology":"길게 엇갈린 공장 외곽과 짧은 작업 통로","decision":"군집용 폭발과 공성용 집중 화력의 배분","pressure":"적 수가 적어도 위험한 장갑/공성 묶음","featured":"붕괴·파쇄/공방 연구 이정표","newBase":null,"growthDelta":[4,5],"researchFocusMax":6,"waves":[8,10],"normalMinutes":[4,5],"sites":[26,32],"towerCap":[16,18]},
+    {"id":7,"title":"누리 마천루 — 바람의 교량","stageCount":26,"status":"proposal","towerId":6,"sealsTower":false,"sealStage":null,"unlockAfter":"C06-S024","visual":"하늘색 낮·백색 옥상·주황 비상등","palette":["#91C3D9","#E6ECED"],"topology":"드문 옥상 고가길과 짧은 측면 연결","decision":"시야가 분리된 전선과 표적 우선순위","pressure":"공중/지상 혼합 후보, 미검증 시 지상 고속 우회로 대체","featured":"대공포, 비행 필터 기술 검증 선행","newBase":"Airgun","growthDelta":[5,6],"researchFocusMax":6,"waves":[8,10],"normalMinutes":[4,5],"sites":[26,32],"towerCap":[16,18]},
+    {"id":8,"title":"상층 균열 — 뒤집힌 거리","stageCount":24,"status":"proposal","towerId":6,"sealsTower":true,"sealStage":24,"unlockAfter":"C07-S026","visual":"보랏빛 잔광·옅은 도시 파편·밝은 길 윤곽","palette":["#806FAD","#D1DCEB"],"topology":"비대칭 부유 고리와 파형별 고정 진입로","decision":"종결을 완성할 전선과 재료를 남길 전선 선택","pressure":"예고된 방향 교대와 정예 후속","featured":"종결의 위치와 빈자리 보충","newBase":null,"growthDelta":[6,7],"researchFocusMax":7,"waves":[9,11],"normalMinutes":[4,5.5],"sites":[26,32],"towerCap":[16,18]},
+    {"id":9,"title":"시청 적선 — 마지막 대피권","stageCount":28,"status":"proposal","towerId":7,"sealsTower":false,"sealStage":null,"unlockAfter":"C08-S024","visual":"흰 석재 광장·나무 녹색·적선 경고색","palette":["#C5C6BA","#5F8167"],"topology":"넓은 광장을 감싸는 원거리 전선과 편중 합류","decision":"여러 타워의 표식 연계와 떨어진 전선의 자립","pressure":"동시에 강해지는 대신 번갈아 비대칭으로 오는 공성/빠른 적","featured":"표식·관측창/영웅 성장 이정표","newBase":null,"growthDelta":[7,8],"researchFocusMax":7,"waves":[9,11],"normalMinutes":[4.5,5.5],"sites":[28,32],"towerCap":[16,18]},
+    {"id":10,"title":"왕좌의 탑 — 귀환의 대가","stageCount":28,"status":"proposal","towerId":7,"sealsTower":true,"sealStage":28,"unlockAfter":"C09-S028","visual":"먹색 수정·백금 길·탑의 붉은 심장","palette":["#303243","#DED8C9"],"topology":"앞선 배치 원리를 재조합한 단계별 합류와 짧은 마지막 길","decision":"같은 예산의 조합·보강·성장 선택을 종합","pressure":"읽을 수 있는 순서로 배치된 기존 위협과 마지막 보스","featured":"4종 편성의 완성/신규 기본 타워 추가 없음","newBase":null,"growthDelta":[8,9],"researchFocusMax":8,"waves":[10,12],"normalMinutes":[5,6],"sites":[28,32],"towerCap":[16,18]}
+  ],
+  "newTowers": [
+    {"id":"Scatter","name":"산탄","chapter":2,"unlockStage":2,"shape":"Cone","role":"꺾인 길목의 가까운 군집 처리","weakness":"먼 정예·분산된 적","recipe":{"result":"Barrage","name":"탄막","partner":"Rupture","sealPartner":"Binding","fee":null,"upgrade":null,"sealFee":null}},
+    {"id":"Rail","name":"관통","chapter":3,"unlockStage":2,"shape":"Line","role":"긴 직선의 제한 관통","weakness":"굴곡·빠른 우회로","recipe":{"result":"Railbind","name":"쇄도","partner":"Binding","sealPartner":"Rupture","fee":null,"upgrade":null,"sealFee":null}},
+    {"id":"Haste","name":"가속등","chapter":5,"unlockStage":2,"shape":"Aura","role":"근처 공격 결계주 최대2기의 제한 지원 후보","weakness":"본체 피해 없음·분산된 배치·동종 중첩 불가","recipe":{"result":"Overcharge","name":"과충전","partner":"Autocannon","sealPartner":"Rupture","fee":null,"upgrade":null,"sealFee":null}},
+    {"id":"Airgun","name":"대공포","chapter":7,"unlockStage":2,"shape":"PrioritizedProjectile","role":"비행 우선·적이 없으면 지상 사격 후보","weakness":"군집 처리·전방 편중","recipe":{"result":"Skyburst","name":"대공진","partner":"Autocannon","sealPartner":"Rupture","fee":null,"upgrade":null,"sealFee":null}}
+  ],
+  "productionOrder": ["0.28.11_native_ui_review","stage_data_and_v2_to_v3_migration","chapter2_six_stage_slice","chapter2_full_review","later_chapters_in_six_stage_batches"],
+  "validationScope": "Counts, story continuity, unlock references, recipe/loadout/resource feasibility only. No new playable stages or balance/human-fun evidence."
+}
