@@ -34,6 +34,12 @@ namespace Gatefall
         private readonly List<Box2> headerRifts = new List<Box2>(4);
         private readonly List<Box2> fusionTowerGuards = new List<Box2>(24);
         private readonly List<Rect> enemyHealthLabels = new List<Rect>(8);
+        private readonly List<Box2> statusWorldGuards = new List<Box2>(32);
+        private DefenseSimulation statusGame;
+        private MobileLayout statusLayout;
+        private Box2 coreStatus;
+        private Vector3 statusCameraPosition;
+        private float statusCameraSize;
         private const float BossHealthBarY = 84, BossHealthBarHeight = 12;
         private const string BossWarningText = "문지기 공격 예고 · 붉은 원에서 벗어나세요";
         private static readonly Color Paper = GatefallArt.Paper, Muted = GatefallArt.Muted, Ink = GatefallArt.Ink, Amber = GatefallArt.Amber, Ally = GatefallArt.Ally, Threat = GatefallArt.Threat;
@@ -48,6 +54,7 @@ namespace Gatefall
             activeTowerPanel=new Box2();
             controller.TouchInput.Modal = controller.Menu != GameMenu.None || game.AwaitingCard || game.State == RunState.Won || game.State == RunState.Lost;
             if (controller.ScreenPage != CampaignScreen.Battle) { controller.TouchInput.Modal = true; CampaignPage(); return; }
+            ResolveCoreStatus();
             bool ended = game.State == RunState.Won || game.State == RunState.Lost;
             if (!ended && !game.AwaitingCard && controller.Menu == GameMenu.None && game.State == RunState.Running) EnemyHealthLabels();
             Enemy boss = ended ? null : game.Enemies.Find(e => e.Kind == EnemyKind.Boss && e.Health > 0);
@@ -81,6 +88,32 @@ namespace Gatefall
         }
 
         // ---------------------------------------------------------------- battle
+        private void ResolveCoreStatus()
+        {
+            Camera camera=controller.GameCamera;
+            if(statusGame==game && statusLayout==layout && (game.ExpandedArena ||
+                statusCameraPosition==camera.transform.position && Mathf.Approximately(statusCameraSize,camera.orthographicSize)))return;
+            statusGame=game;statusLayout=layout;statusCameraPosition=camera.transform.position;statusCameraSize=camera.orthographicSize;statusWorldGuards.Clear();
+            // The expanded 1-4 tracking camera moves continuously. Keep its existing fixed status.
+            if(!game.ExpandedArena) {
+                float unit=controller.WorldToReferenceScale(1);
+                foreach(V2 socket in game.BoardSockets) {
+                    Vector2 p=controller.WorldToReference(socket,0);
+                    statusWorldGuards.Add(new Box2(p.x-1.2f*unit,p.y-2.3f*unit,2.4f*unit,3.2f*unit));
+                }
+                foreach(int lane in game.OpenLanes) {
+                    Vector2 p=controller.WorldToReference(game.GatePositions[lane],0);
+                    statusWorldGuards.Add(new Box2(p.x-2.55f*unit,p.y-1.6f*unit,5.1f*unit,3.2f*unit));
+                }
+            }
+            coreStatus=layout.CoreStatusBox(statusWorldGuards);
+        }
+        public bool FusionBadgeOverlapsCore(V2 socket)
+        {
+            game=controller.Simulation;layout=controller.Layout;ResolveCoreStatus();
+            Vector2 p=controller.WorldToReference(socket,2.9f);float half=controller.WorldToReferenceScale(.55f);
+            return new Rect(p.x-half,p.y-half,half*2,half*2).Overlaps(new Rect(coreStatus.X,coreStatus.Y,coreStatus.Width,coreStatus.Height));
+        }
         private void EnemyHealthLabels(Rect? towerPanel = null)
         {
             enemyHealthLabels.Clear();
@@ -93,7 +126,7 @@ namespace Gatefall
                 float width = enemy.Armor > 0 ? ArmoredHealthLabelWidth : PlainHealthLabelWidth;
                 Rect area = new Rect(point.x - width/2, point.y - 8, width, 16);
                 if (area.xMin < 6 || area.xMax > W - 6 || area.yMin < 6 || area.yMax > H - 92) continue;
-                if (area.Overlaps(barrierHud) || area.Overlaps(waveHud) || area.Overlaps(creditsHud)) continue;
+                if (area.Overlaps(barrierHud) || area.Overlaps(new Rect(coreStatus.X,coreStatus.Y,coreStatus.Width,coreStatus.Height)) || area.Overlaps(waveHud) || area.Overlaps(creditsHud)) continue;
                 // Socket menus are drawn after the HUD. Keep their bounds and the movable
                 // wave header clear while preserving enemy labels in the rest of the arena.
                 if (towerPanel.HasValue && (area.yMin < 60 || area.Overlaps(towerPanel.Value))) continue;
@@ -130,13 +163,19 @@ namespace Gatefall
         private void TopBar(Enemy boss)
         {
             float hp = Mathf.Clamp01(game.CoreHealth / game.Balance.CoreHealth);
-            Skin(new Rect(14, 10, 252, 50), "ui-chip");
-            Icon(new Rect(24, 15, 40, 40), "icon-barrier", Color.white);
             bool crisis = game.Rules != null && !game.Rules.Lab && game.Rules.Crisis;
-            Text(new Rect(70, 12, 120, 18), crisis ? "위기 · 도시 결계" : "도시 결계", 13,
-                crisis ? Amber : Muted, TextAnchor.MiddleLeft, 0);
-            Bar(new Rect(70, 33, 136, 12), hp, hp < .3f ? Threat : Ally);
-            Text(new Rect(208, 14, 52, 40), Mathf.CeilToInt(game.CoreHealth).ToString(), 20, Paper, TextAnchor.MiddleCenter, 2);
+            Skin(new Rect(coreStatus.X,coreStatus.Y,coreStatus.Width,coreStatus.Height), "ui-chip");
+            if(coreStatus.Width<252) {
+                Icon(new Rect(coreStatus.X+8,coreStatus.Y+2,20,20),"icon-barrier",Color.white);
+                Text(new Rect(coreStatus.X+34,coreStatus.Y,88,17),crisis?"위기 · 도시 결계":"도시 결계",11,crisis?Amber:Muted,TextAnchor.MiddleLeft,0);
+                Bar(new Rect(coreStatus.X+34,coreStatus.Y+21,134,3),hp,hp<.3f?Threat:Ally);
+                Text(new Rect(coreStatus.X+128,coreStatus.Y,40,21),Mathf.CeilToInt(game.CoreHealth).ToString(),16,Paper,TextAnchor.MiddleCenter,2);
+            } else {
+                Icon(new Rect(24,15,40,40),"icon-barrier",Color.white);
+                Text(new Rect(70,12,120,18),crisis?"위기 · 도시 결계":"도시 결계",13,crisis?Amber:Muted,TextAnchor.MiddleLeft,0);
+                Bar(new Rect(70,33,136,12),hp,hp<.3f?Threat:Ally);
+                Text(new Rect(208,14,52,40),Mathf.CeilToInt(game.CoreHealth).ToString(),20,Paper,TextAnchor.MiddleCenter,2);
+            }
             if (game.HunterDown) {
                 Skin(new Rect(14, 68, 244, 42), "ui-chip");
                 Text(new Rect(22, 68, 228, 42), "헌터 부활까지 " + Mathf.CeilToInt(game.HunterRespawnRemaining) + "초", 16, Amber, TextAnchor.MiddleCenter, 2);
@@ -390,7 +429,7 @@ namespace Gatefall
                 if (o.Reason == "") {
                     string description = recipe.Result == TowerKind.Beacon
                         ? game.Stats(recipe.Result, 1).MaxTargets + "명 표식·감속"
-                        : "재료 2개 소비";
+                        : recipe.Result==TowerKind.Seal ? "범위·감속 · 재료2개" : "재료 2개 소비";
                     Text(new Rect(t.x + 54, t.y + 36, 150, 20), description, 12, Muted, TextAnchor.MiddleLeft, 1);
                     Cost(new Rect(t.x + 32, t.y + 70, 148, 26), recipe.Credits, 1);
                 } else Text(new Rect(t.x + 54, t.y + 36, 150, 58), o.Reason, 13, Muted, TextAnchor.MiddleLeft, 0);

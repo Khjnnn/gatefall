@@ -12,6 +12,7 @@ namespace Gatefall.Tests {
             public int Seed, Spent, Credits, Towers, Spawned, Remaining, CompletedOrders, TotalOrders, ChoiceCost, Budget;
             public bool Control, AllSpawned, Mixed, Front, Late;
             public int Hunter, Motion, Growth, AccountSpent, HunterShots, HunterDowns, SkillUses;
+            public int Stage; public bool Crisis, EarlyLaneSites, DeepBinding;
             public string State, PrefixHash;
             public double End, ChoiceAt, MaxPurchaseDelay, StrongSlowSamples, RunnerSlowSamples;
             public float Core;public int[] Cards, Shots;public float[] Damage, LaneDamage;public string[] Ledger;
@@ -21,20 +22,24 @@ namespace Gatefall.Tests {
             typeof(EarlyCombatDigest).GetMethod("Value",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{text,new object[]{g.RunContext(),g.State,g.Elapsed,g.Credits,g.Cores,g.Kills,g.CoreHealth,g.MinimumCoreHealth,g.PlayerHealth,g.Enemies,g.Towers,g.Projectiles,g.Schedule,g.Telemetry}});
             using(var hash=SHA256.Create())return string.Concat(hash.ComputeHash(Encoding.UTF8.GetBytes(text.ToString())).Select(x=>x.ToString("x2")));
         }
-        public static Row Play(int seed,bool control,bool mixed=false,bool front=false,bool late=false,int hunter=0,int motion=0) {
+        public static Row Play(int seed,bool control,bool mixed=false,bool front=false,bool late=false,int hunter=0,int motion=0,int stage=11,bool crisis=true,bool earlyLaneSites=false,bool deepBinding=false) {
             if(front && !mixed)throw new ArgumentException("Front placement is a separate mixed-policy pilot");
             if(late && (mixed || front))throw new ArgumentException("Order review uses the original170 package only");
             if(hunter<0 || hunter>2 || motion<0 || motion>2)throw new ArgumentException("Unknown hunter/motion policy");
-            foreach(var stage in CampaignCatalog.Stages)BattlefieldLayouts.Get(stage);
-            var profile=AccountGrowthChecks.Recommended(11,hunter,1);
-            var game=new DefenseSimulation(new GameBalance(),seed,new CampaignService(profile,null).Battle(11,true));
-            var row=new Row{Seed=seed,Control=control,Mixed=mixed,Front=front,Late=late,Hunter=hunter,Motion=motion,Growth=profile.Growth[hunter],AccountSpent=CampaignCatalog.Stages.Take(11).Sum(s=>s.FirstReward)-profile.MagicCores,Budget=mixed?650:710,Shots=new int[TowerCatalog.All.Length]};
+            if(stage!=7 && stage!=11)throw new ArgumentException("Selected stages only:1-8/1-12");
+            if(earlyLaneSites && (stage!=7 || mixed || front || late))throw new ArgumentException("Forward-site permutation uses the original stage8 package only");
+            if(deepBinding && (stage!=11 || !control || mixed || front || late || earlyLaneSites))throw new ArgumentException("Deep Binding uses the original stage12 control policy only");
+            foreach(var cachedStage in CampaignCatalog.Stages)BattlefieldLayouts.Get(cachedStage);
+            var profile=AccountGrowthChecks.Recommended(stage,hunter,1);
+            var game=new DefenseSimulation(new GameBalance(),seed,new CampaignService(profile,null).Battle(stage,crisis));
+            var row=new Row{Stage=stage+1,Crisis=crisis,EarlyLaneSites=earlyLaneSites,DeepBinding=deepBinding,Seed=seed,Control=control,Mixed=mixed,Front=front,Late=late,Hunter=hunter,Motion=motion,Growth=profile.Growth[hunter],AccountSpent=CampaignCatalog.Stages.Take(stage).Sum(s=>s.FirstReward)-profile.MagicCores,Budget=deepBinding?860:mixed?650:710,Shots=new int[TowerCatalog.All.Length]};
             int choicePrice=mixed?110:170;
             if(mixed && (TowerCatalog.Get(TowerKind.Binding).BuildCost+TowerCatalog.Get(TowerKind.Rupture).BuildCost!=110 ||
                 2*TowerCatalog.Get(TowerKind.Autocannon).BuildCost+TowerCatalog.Get(TowerKind.Autocannon).UpgradeCost!=110))throw new Exception("Mixed choice cost changed");
             var times=new List<float>();var actions=new List<Func<bool>>();string why;
-            Action<float,int,TowerKind> build=(time,site,kind)=>{times.Add(time);actions.Add(()=>game.TryBuild(site,kind,null,out why));};
-            Action<float,int> upgrade=(time,site)=>{times.Add(time);actions.Add(()=>game.TowerAt(site)!=null && game.TryUpgrade(game.TowerAt(site).Id,null,out why));};
+            Func<int,int> map=x=>!earlyLaneSites?x:x==7?3:x==3?7:x==8?17:x==17?8:x;
+            Action<float,int,TowerKind> build=(time,site,kind)=>{site=map(site);times.Add(time);actions.Add(()=>game.TryBuild(site,kind,null,out why));};
+            Action<float,int> upgrade=(time,site)=>{site=map(site);times.Add(time);actions.Add(()=>game.TowerAt(site)!=null && game.TryUpgrade(game.TowerAt(site).Id,null,out why));};
             foreach(int site in new[]{15,2,16,13,front?8:6,9})build(0,site,TowerKind.Autocannon);
             foreach(int site in new[]{15,2,16})upgrade(30,site);
             if(late){
@@ -56,6 +61,7 @@ namespace Gatefall.Tests {
                 build(90,4,TowerKind.Autocannon);upgrade(90,4);
                 foreach(int site in new[]{10,3}){build(120,site,TowerKind.Autocannon);upgrade(120,site);}
             }
+            if(deepBinding)foreach(int site in new[]{8,7})upgrade(150,site);
             int index=0,choiceSpent=0;bool captured=false,priced=false;
             Action act=()=>{
                 if(game.CardOffers.Count>0 && !game.ChooseCard(game.CardOffers[0]))throw new Exception("First offered card selection failed");

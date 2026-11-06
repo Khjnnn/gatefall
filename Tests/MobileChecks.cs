@@ -42,7 +42,8 @@ namespace Gatefall.Tests
             Check("Compact wave headers retain150 reference units and deterministic placement", CompactWaveHeader);
             Check("Impossible header clearance preserves a safe fallback", FallbackWaveHeader);
             Check("Fusion instructions leave every projected pad clear on 14 boards and four screens", FusionHeader);
-            results.Add("PASS: 31 mobile input/layout checks. Hardware touch and Android/iOS binaries are not covered.");
+            Check("Core HP avoids tower bodies/pads/rifts on14 boards and3 actual safe areas without moving controls", HudStatusChecks.Run);
+            results.Add("PASS: 32 mobile input/layout checks. Hardware touch and Android/iOS binaries are not covered.");
             return string.Join(Environment.NewLine, results.ToArray());
         }
         private static MobileLayout Layout() { return new MobileLayout(2400, 1080, new Box2(90, 24, 2220, 1056)); }

@@ -12,10 +12,11 @@ namespace Gatefall
         public int PreviewKind = -1;
         public readonly List<int> Partners = new List<int>();
         public bool[] FusionReady = new bool[0];
-        public void EnsureCapacity(int count) { if (FusionReady.Length != count) FusionReady = new bool[count]; }
+        public bool[] CompactFusionBadge = new bool[0];
+        public void EnsureCapacity(int count) { if (FusionReady.Length != count) {FusionReady = new bool[count];CompactFusionBadge=new bool[count];} }
         public bool HasPointer;
         public V2 Pointer;
-        public void Clear() { Selected = -1; ShowRange = false; PreviewKind = -1; Partners.Clear(); System.Array.Clear(FusionReady, 0, FusionReady.Length); HasPointer = false; }
+        public void Clear() { Selected = -1; ShowRange = false; PreviewKind = -1; Partners.Clear(); System.Array.Clear(FusionReady, 0, FusionReady.Length); System.Array.Clear(CompactFusionBadge,0,CompactFusionBadge.Length);HasPointer = false; }
     }
 
     // Battlefield presentation reads shared route data without changing simulation state.
@@ -206,7 +207,11 @@ namespace Gatefall
                 if (Mathf.Abs(tower.Aim.X) > .12f) visual.Body.flipX = tower.Aim.X < 0;
                 bool broken = tower.Kind == TowerKind.Barrier && tower.Cooldown > 0;
                 visual.Body.color = broken ? new Color(.55f, .58f, .66f, 1) : GatefallArt.TowerTint(tower.Kind, tower.Level);
-                if (glyphs[i].enabled) glyphs[i].transform.position = Point(tower.Position) + new Vector3(0, 2.9f + .15f * Mathf.Sin(time * 5), 0);
+                if (glyphs[i].enabled) {
+                    bool compact=i<selection.CompactFusionBadge.Length && selection.CompactFusionBadge[i];
+                    // A badge under the status chip moves beside the spire, inside its reserved body bounds.
+                    glyphs[i].transform.position=Point(tower.Position)+new Vector3(compact?.75f:0,(compact?1.7f:2.9f)+.15f*Mathf.Sin(time*5),0);
+                }
             }
         }
 

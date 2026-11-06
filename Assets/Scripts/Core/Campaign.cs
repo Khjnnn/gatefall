@@ -16,6 +16,8 @@ namespace Gatefall.Core
         public int TowerLimit;
         public float SwarmHealth = 1, Threat = 1;
         public float EliteArmor, HybridDamage = 1;
+        // Zero retains the introductory/lab definition. Later operations support denser upgraded control.
+        public int BindingLevel2Targets, BindingLevel3Targets;
         public int RecommendedGrowth;
         public int[] RecommendedResearch = new int[4];
         public bool Boss { get { return Index == 5; } }
@@ -160,7 +162,8 @@ namespace Gatefall.Core
             // Late follower health crosses the unresearched Lv2 spear breakpoint. In-battle Lv3, area/fusion
             // attacks and account research provide distinct responses; the early ten operations stay unchanged.
             stage.SwarmHealth = stage.Index>=12 ? 3f : stage.Index>=10 ? 2.7f : PostSealSwarmHealth; stage.Threat = threat;
-            stage.EliteArmor = 6; stage.HybridDamage = 1.25f; return stage; }
+            stage.EliteArmor = 6; stage.HybridDamage = 1.25f;
+            stage.BindingLevel2Targets=6;stage.BindingLevel3Targets=8;return stage; }
         static CampaignStage S(int i,string name,int sockets,int[] lanes,int[] counts,string briefing,string story,string clear,string lesson)
         { return new CampaignStage { Index=i,Name=name,SocketCount=sockets,Lanes=lanes,Counts=counts,FirstReward=10+2*i,Briefing=briefing,Story=story,ClearStory=clear,Lesson=lesson,
             RecommendedGrowth=i==0 ? 0 : i<3 ? 1 : i<6 ? 2 : i<10 ? 3 : i<12 ? 4 : 5,

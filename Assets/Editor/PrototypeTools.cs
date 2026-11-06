@@ -317,6 +317,7 @@ namespace Gatefall.Editor
             ValidateGrowthHintFont();
             ValidateSlowResistanceHeaderFont();
             ValidateEnemyHealthFont();
+            ValidateCoreStatusFont();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);
@@ -614,6 +615,30 @@ namespace Gatefall.Editor
             Debug.Log("GATEFALL SLOW RESISTANCE FONT PASSED: "+report.titles+" titles and hint fit existing header.");
         }
 
+        [Serializable] private sealed class CoreStatusFontReport {
+            public int labels; public float maxNameWidth,maxNameHeight,maxHpWidth,maxHpHeight,sealRoleWidth,sealRoleHeight;
+        }
+        private static void ValidateCoreStatusFont()
+        {
+            var report=new CoreStatusFontReport();
+            foreach(string text in new[]{"도시 결계","위기 · 도시 결계"}) {
+                var style=new GUIStyle{font=Resources.Load<Font>("Fonts/NanumGothic-Regular"),fontSize=11,wordWrap=true,padding=new RectOffset()};
+                style.font.RequestCharactersInTexture(text,11,FontStyle.Normal);var content=new GUIContent(text);
+                float w=style.CalcSize(content).x,h=style.CalcHeight(content,88);report.labels++;report.maxNameWidth=Mathf.Max(report.maxNameWidth,w);report.maxNameHeight=Mathf.Max(report.maxNameHeight,h);
+                if(w>88 || h>17)throw new BuildFailedException("Compact core title wraps");
+            }
+            foreach(string text in new[]{"0","1","99","300","9999"}) {
+                var style=new GUIStyle{font=Resources.Load<Font>("Fonts/NanumGothic-ExtraBold"),fontSize=16,wordWrap=true,padding=new RectOffset()};
+                style.font.RequestCharactersInTexture(text,16,FontStyle.Normal);var content=new GUIContent(text);
+                float w=style.CalcSize(content).x,h=style.CalcHeight(content,40);report.labels++;report.maxHpWidth=Mathf.Max(report.maxHpWidth,w);report.maxHpHeight=Mathf.Max(report.maxHpHeight,h);
+                if(w>40 || h>21)throw new BuildFailedException("Compact core HP wraps");
+            }
+            var roleStyle=new GUIStyle{font=Resources.Load<Font>("Fonts/NanumGothic-Bold"),fontSize=12,wordWrap=true,padding=new RectOffset()};
+            var role=new GUIContent("범위·감속 · 재료2개");roleStyle.font.RequestCharactersInTexture(role.text,12,FontStyle.Normal);
+            report.sealRoleWidth=roleStyle.CalcSize(role).x;report.sealRoleHeight=roleStyle.CalcHeight(role,150);
+            if(report.sealRoleWidth>150 || report.sealRoleHeight>20)throw new BuildFailedException("Seal role hint wraps");
+            File.WriteAllText("TestResults/core-status-font-v"+Application.version.Replace(".","")+".json",JsonUtility.ToJson(report,true));
+        }
         [Serializable] private sealed class EnemyHealthFontReport {
             public int labels; public float maxArmoredWidth, maxPlainWidth, maxHeight;
             public float armoredWidth=MobileHud.ArmoredHealthLabelWidth, plainWidth=MobileHud.PlainHealthLabelWidth;

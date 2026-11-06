@@ -84,6 +84,20 @@ namespace Gatefall.Core
         }
         // Separate the north off-screen warning from notices while leaving the wave bar visible.
         public Box2 NorthThreatTag() { return new Box2(Width / 2 - 65, 62, 130, 36); }
+        // Full-board views reserve tower bodies and vacant pads.
+        // Keep the normal chip when clear; use a smaller read-only status chip only when needed.
+        public Box2 CoreStatusBox(IList<Box2> worldGuards)
+        {
+            Box2 original=new Box2(14,10,252,50);
+            if(StatusClear(original,worldGuards))return original;
+            Box2 compact=new Box2(14,4,176,26);
+            return StatusClear(compact,worldGuards)?compact:original;
+        }
+        private static bool StatusClear(Box2 chip,IList<Box2> guards)
+        {
+            if(guards!=null)for(int i=0;i<guards.Count;i++)if(HeaderOverlaps(chip,guards[i]))return false;
+            return true;
+        }
         // Keep wave information together and clear of the largest entrance warning, without animation-time motion.
         // The right limit reserves both currency chips; the left limit follows the existing speed control.
         public Box2 WaveHeader(IList<Box2> northRifts)

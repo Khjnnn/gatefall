@@ -13,6 +13,15 @@ namespace Gatefall.Tests {
             if(g.State==RunState.Ready)g.Start();g.Tick(1f/60,new V2());
         }
         public static string Run(){
+            foreach(int level in new[]{2,3}) {
+                var pressure=New(11);pressure.Balance.PlayerDamage=0;string bindingReason;
+                Assert(pressure.TryBuild(0,TowerKind.Binding,null,out bindingReason),bindingReason);var binding=pressure.TowerAt(0);
+                for(int n=1;n<level;n++)Assert(pressure.TryUpgrade(binding.Id,null,out bindingReason),bindingReason);
+                for(int n=0;n<9;n++)pressure.Enemies.Add(new Enemy{Id=9100+n,Kind=EnemyKind.Grunt,Health=100,MaxHealth=100,Position=binding.Position+new V2(1+n*.1f,.2f),Speed=0});
+                pressure.Start();pressure.Tick(.3f,new V2());var targets=new System.Collections.Generic.HashSet<string>();
+                foreach(var crowdEvent in pressure.Events)if(crowdEvent.Kind==EventKind.TowerShot && crowdEvent.Source==(int)TowerKind.Binding)targets.Add(crowdEvent.Target.X+","+crowdEvent.Target.Y);
+                Assert(targets.Count==(level==2?6:8),"Upgraded Binding did not launch distinct crowd targets");
+            }
             foreach(var stage in CampaignCatalog.Stages){if(stage.Index<6){Near(stage.EliteArmor,0);Near(stage.HybridDamage,1);}else{Assert(stage.EliteArmor>0 && stage.HybridDamage>1,"Post-seal role data");}}
             var g=New();var e=Enemy(g);Hit(g,e,TowerKind.Autocannon);Near(1000-e.Health,8);Near(g.Telemetry.TowerDamage[0],8);
             g=New();e=Enemy(g);Hit(g,e,TowerKind.Autocannon,true);Near(1000-e.Health,6);

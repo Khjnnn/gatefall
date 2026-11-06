@@ -157,6 +157,10 @@ namespace Gatefall.Core
             TowerStats s=TowerCatalog.Get(kind).Levels[level-1].Copy();
             if(Rules!=null && kind==TowerKind.Autocannon) {s.Damage=level==1 ? 14 : level==2 ? 22 : 30;s.Interval=.7f;}
             if(Rules!=null && Rules.Stage!=null) {
+                if(kind==TowerKind.Binding && level>=2) {
+                    int targets=level==2?Rules.Stage.BindingLevel2Targets:Rules.Stage.BindingLevel3Targets;
+                    if(targets>0)s.MaxTargets=targets;
+                }
                 if(kind==TowerKind.Autocannon)s.Interval=.46f;
                 else if(kind!=TowerKind.Barrier)s.Interval*=.85f;
                 if(TowerCatalog.Get(kind).Tier==2) {
