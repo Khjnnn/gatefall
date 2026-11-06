@@ -41,8 +41,8 @@ namespace Gatefall.Tests
             Check("North entrance guards clear wave information without covering resource or speed controls", AvoidWaveHeader);
             Check("Compact wave headers retain150 reference units and deterministic placement", CompactWaveHeader);
             Check("Impossible header clearance preserves a safe fallback", FallbackWaveHeader);
-            Check("Fusion instructions leave every projected pad clear on 14 boards and four screens", FusionHeader);
-            Check("Core HP avoids tower bodies/pads/rifts on14 boards and3 actual safe areas without moving controls", HudStatusChecks.Run);
+            Check("Fusion instructions leave every projected pad clear on all implemented boards and four screens", FusionHeader);
+            Check("Core HP avoids tower bodies/pads/rifts on all implemented boards and3 actual safe areas without moving controls", HudStatusChecks.Run);
             results.Add("PASS: 32 mobile input/layout checks. Hardware touch and Android/iOS binaries are not covered.");
             return string.Join(Environment.NewLine, results.ToArray());
         }

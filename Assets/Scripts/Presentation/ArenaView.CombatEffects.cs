@@ -107,6 +107,12 @@ namespace Gatefall
             if (direction.sqrMagnitude < .01f) direction = Vector3.right;
             float length = hunterShot ? .92f : kind == TowerKind.Rupture ? .67f : .50f;
             Line(muzzle, muzzle + direction * length, .085f, hunterShot ? .15f : .12f, tint);
+            if(!hunterShot && (kind==TowerKind.Scatter || kind==TowerKind.Barrage) && effects.Count<96){
+                Vector3 side=new Vector3(-direction.y,direction.x,0);
+                float spread=kind==TowerKind.Barrage?.50f:.34f;
+                Line(muzzle,muzzle+direction*.85f+side*spread,.07f,.10f,tint);
+                Line(muzzle,muzzle+direction*.85f-side*spread,.07f,.10f,tint);
+            }
             if (hunterShot && effects.Count < 140) {
                 Vector3 cross = new Vector3(-direction.y, direction.x, 0);
                 Line(muzzle + cross * .23f, muzzle + direction * .69f + cross * .07f, .09f, .055f, Color.white);

@@ -370,8 +370,8 @@ namespace Gatefall
             if ((action == 212 || action == 213) && Menu == GameMenu.Socket && tower != null) {
                 TowerRecipesExpanded = action == 212; SellArmed = false; TouchInput.Reset(); return;
             }
-            if (action >= 200 && action < 210 && Menu == GameMenu.Socket) {
-                TowerKind kind = (TowerKind)(action - 200);
+            if ((action >= 200 && action < 210 || action==260) && Menu == GameMenu.Socket) {
+                TowerKind kind = action==260 ? TowerKind.Scatter : (TowerKind)(action - 200);
                 if (Simulation.TryBuild(SelectedSocket, kind, CommandId(), out reason)) { CloseMenu(); ShowNotice(TowerCatalog.Get(kind).Name + " 건설", 1.5f); }
                 else ShowNotice(reason, 2.4f);
                 return;

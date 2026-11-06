@@ -311,6 +311,7 @@ namespace Gatefall.Editor
             foreach (string weight in new[] { "Fonts/NanumGothic-Bold", "Fonts/NanumGothic-ExtraBold" })
                 if (Resources.Load<Font>(weight) == null) throw new Exception("Missing bundled font weight: " + weight);
             ValidateBaseTowerArt();
+            ChapterTwoAudit.Validate();
             ValidateWaveHeaderFont();
             ValidateBattleModeFont();
             ValidateObserverMenuFont();
@@ -319,6 +320,7 @@ namespace Gatefall.Editor
             ValidateEnemyHealthFont();
             ValidateCoreStatusFont();
             ValidateSoftHudSkins();
+            CityBarrierUiAudit.Validate();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);

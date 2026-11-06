@@ -11,7 +11,8 @@ namespace Gatefall
     public sealed partial class GatefallGame
     {
         internal const int OperationsPerPage = 6;
-        internal static int MapPageCount { get { return (CampaignCatalog.Stages.Length + OperationsPerPage - 1) / OperationsPerPage; } }
+        public int CurrentChapter => CampaignCatalog.Stages[SelectedStage].Chapter;
+        internal int MapPageCount => (CampaignCatalog.ChapterCount(CurrentChapter)+OperationsPerPage-1)/OperationsPerPage;
         public CampaignScreen ScreenPage { get; private set; } = CampaignScreen.City;
         public CampaignService Campaign { get; private set; }
         public CampaignProfile Profile { get { return Campaign.Profile; } }
@@ -49,13 +50,14 @@ namespace Gatefall
         private void SelectMapStage(int stage)
         {
             SelectedStage = stage;
-            MapPage = stage / OperationsPerPage;
+            MapPage = (stage-CampaignCatalog.ChapterStart(CurrentChapter)) / OperationsPerPage;
         }
         private int LatestOpenOnPage(int page)
         {
             if (page < 0 || page >= MapPageCount) return -1;
-            int start = page * OperationsPerPage;
-            for (int stage = Math.Min(start + OperationsPerPage, CampaignCatalog.Stages.Length) - 1; stage >= start; stage--)
+            int first=CampaignCatalog.ChapterStart(CurrentChapter),end=first+CampaignCatalog.ChapterCount(CurrentChapter);
+            int start = first+page * OperationsPerPage;
+            for (int stage = Math.Min(start + OperationsPerPage, end) - 1; stage >= start; stage--)
                 if (Profile.IsStageOpen(stage)) return stage;
             return -1;
         }
@@ -106,6 +108,7 @@ namespace Gatefall
             if (action == 602) { SetPage(CampaignScreen.Growth); return true; }
             if (action == 604) { SetPage(CampaignScreen.Settings); return true; }
             if (action == 605 && Profile.FirstSealComplete) { CrisisSelection = !CrisisSelection; return true; }
+            if(action==660 || action==661){int chapter=action==660?1:2;int start=CampaignCatalog.ChapterStart(chapter);if(Profile.IsStageOpen(start))SelectMapStage(start);return true;}
             if (action == 606) { BeginPreparation(); return true; }
             if (action == 607 && IsCampaign && ResultSaved && SelectedStage < CampaignCatalog.Stages.Length-1 && Profile.IsStageOpen(SelectedStage + 1)) {
                 SelectMapStage(SelectedStage + 1); ReturnCity(); return true;
@@ -118,7 +121,7 @@ namespace Gatefall
                 return true;
             }
             if(action>=710 && action<710+CampaignCatalog.Stages.Length) { int stage=action-710;if(Profile.IsStageOpen(stage))SelectMapStage(stage);return true; }
-            if(action>=700 && action<=704) { int[] kinds={0,1,2,7,8};int bit=1<<kinds[action-700];if(!Campaign.SetLoadout(Profile.Loadout^bit))CampaignError=Campaign.Error;else CampaignError="";return true; }
+            if(action>=700 && action<=705) { int[] kinds={0,1,2,7,8,11};int bit=1<<kinds[action-700];if(!Campaign.SetLoadout(Profile.Loadout^bit))CampaignError=Campaign.Error;else CampaignError="";return true; }
             if (action >= 620 && action < 623) { if (!Campaign.SelectHunter(action - 620)) CampaignError = Campaign.Error; return true; }
             if (action == 623) {
                 for (int k = 1; k <= 3; k++) {

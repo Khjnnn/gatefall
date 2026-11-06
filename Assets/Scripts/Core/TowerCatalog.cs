@@ -2,7 +2,7 @@ using System;
 
 namespace Gatefall.Core
 {
-    public enum TowerKind { Autocannon, Binding, Rupture, Arc, Shatter, Gravity, Seal, Barrier, Marker, Observer, Beacon }
+    public enum TowerKind { Autocannon, Binding, Rupture, Arc, Shatter, Gravity, Seal, Barrier, Marker, Observer, Beacon, Scatter, Barrage }
     [Flags] public enum TowerTag { None = 0, Ballistic = 1, Control = 2, Blast = 4, Ward = 8 }
     public enum CardKind { Ballistic, Control, Blast, Range, Credits, Hunter }
 
@@ -10,6 +10,7 @@ namespace Gatefall.Core
     public sealed class TowerStats
     {
         public float Damage, Secondary, Interval, Range, Radius, Slow, SlowSeconds, ChainRange, MarkBonus;
+        public float ConeCos;
         public int MaxTargets;
         public float[] Chain;
         public TowerStats Copy()
@@ -50,9 +51,9 @@ namespace Gatefall.Core
     public static class TowerCatalog
     {
         private static TowerStats S(float damage, float interval, float range, int max = 1, float radius = 0,
-            float slow = 0, float seconds = 0, float secondary = 0, float[] chain = null, float mark = 0)
+            float slow = 0, float seconds = 0, float secondary = 0, float[] chain = null, float mark = 0, float cone = 0)
         { return new TowerStats { Damage = damage, Interval = interval, Range = range, MaxTargets = max, Radius = radius,
-            Slow = slow, SlowSeconds = seconds, Secondary = secondary, Chain = chain, ChainRange = chain == null ? 0 : 2.5f, MarkBonus = mark }; }
+            Slow = slow, SlowSeconds = seconds, Secondary = secondary, Chain = chain, ChainRange = chain == null ? 0 : 2.5f, MarkBonus = mark, ConeCos=cone }; }
         private static TowerDefinition D(TowerKind kind, string name, string role, int tier, int build, int upgrade, TowerTag tags, params TowerStats[] levels)
         { return new TowerDefinition { Kind = kind, Name = name, Role = role, Tier = tier, BuildCost = build, UpgradeCost = upgrade, Tags = tags, Levels = levels }; }
         public static readonly TowerDefinition[] All = {
@@ -72,7 +73,11 @@ namespace Gatefall.Core
             D(TowerKind.Marker,"표식 결계주","아군 집중 사격 유도",1,45,40,TowerTag.None,S(4,.9f,5.2f,mark:3),S(6,.9f,5.2f,mark:5),S(8,.8f,5.5f,mark:6)),
             D(TowerKind.Observer,"관측창 결계주","표식 적 집중 공격",2,0,60,TowerTag.Ballistic,S(36,.8f,5.2f,mark:5),S(48,.7f,5.2f,mark:5),S(60,.65f,5.5f,mark:6)),
             D(TowerKind.Beacon,"추적 결계주","여러 적에게 표식과 감속",2,0,60,TowerTag.Control,
-                S(5,1.1f,5.2f,3,0,.30f,1.2f,mark:5),S(6,.95f,5.2f,4,0,.35f,1.35f,mark:5),S(8,.85f,5.5f,4,0,.40f,1.5f,mark:6))
+                S(5,1.1f,5.2f,3,0,.30f,1.2f,mark:5),S(6,.95f,5.2f,4,0,.35f,1.35f,mark:5),S(8,.85f,5.5f,4,0,.40f,1.5f,mark:6)),
+            D(TowerKind.Scatter,"산탄 결계주","가까운 부채꼴 · 장갑에 약함",1,50,45,TowerTag.Ballistic,
+                S(9,.65f,3.7f,4,cone:.8660254f),S(14,.60f,3.9f,5,cone:.8660254f),S(19,.55f,4.1f,6,cone:.8660254f)),
+            D(TowerKind.Barrage,"탄막 결계주","넓은 부채꼴 · 장갑 관통",2,0,65,TowerTag.Ballistic,
+                S(26,.65f,4.8f,7,cone:.7660444f),S(36,.60f,5f,8,cone:.7660444f),S(46,.55f,5.2f,9,cone:.7660444f))
         };
         public static readonly FusionRecipe[] Recipes = {
             R(0,TowerKind.Autocannon,TowerKind.Binding,TowerKind.Arc,40),
@@ -83,7 +88,9 @@ namespace Gatefall.Core
             R(5,TowerKind.Gravity,TowerKind.Autocannon,TowerKind.Seal,75),
             R(6,TowerKind.Marker,TowerKind.Autocannon,TowerKind.Observer,40),
             R(7,TowerKind.Marker,TowerKind.Binding,TowerKind.Beacon,50),
-            R(8,TowerKind.Observer,TowerKind.Rupture,TowerKind.Seal,80)
+            R(8,TowerKind.Observer,TowerKind.Rupture,TowerKind.Seal,80),
+            R(9,TowerKind.Scatter,TowerKind.Rupture,TowerKind.Barrage,50),
+            R(10,TowerKind.Barrage,TowerKind.Binding,TowerKind.Seal,80)
         };
         private static FusionRecipe R(int id, TowerKind a, TowerKind b, TowerKind result, int cost)
         { return new FusionRecipe { Id = id, First = a, Second = b, Result = result, Credits = cost }; }

@@ -86,7 +86,7 @@ namespace Gatefall.Tests
                 Assert(!retry.ShouldShowLesson(0),"cleared replay");
                 retry.TutorialMask=0;
                 Assert(retry.ShouldShowLesson(0),"old save without tutorial flag");
-                Assert(!retry.ShouldShowLesson(-1) && !retry.ShouldShowLesson(14),"invalid stage");
+                Assert(!retry.ShouldShowLesson(-1) && !retry.ShouldShowLesson(CampaignCatalog.Stages.Length),"invalid stage");
             });
             Check("Legacy six-stage profile migrates without changing progress and v2 roundtrips",()=>{
                 var original=ClearedProfile().Profile;original.SelectedHunter=1;original.Research[0]=2;original.Muted=true;

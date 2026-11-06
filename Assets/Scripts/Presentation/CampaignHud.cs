@@ -52,7 +52,7 @@ namespace Gatefall
             Fill(full, GatefallArt.Hex("1A222C"));
             Tex(map, art.Texture("district-map"), Color.white);
             Fill(new Rect(W - 420, full.y, full.xMax - (W - 420), full.height), new Color(.06f, .08f, .11f, .55f));
-            Header("종현동 · 1챕터", false);
+            Header(controller.CurrentChapter==1 ? "종현동 · 1챕터" : "다솜동 · 2챕터", false);
             bool crisis = controller.CrisisSelection;
             string starsLabel = crisis ? "위기 ★ " + profile.CrisisStarsTotal : "★ " + profile.StarsTotal;
             Text(new Rect(260, 14, 192, 40), starsLabel + " / " + (CampaignCatalog.Stages.Length * 3), 17, Amber, TextAnchor.MiddleLeft, 2);
@@ -67,7 +67,8 @@ namespace Gatefall
                 Vector2 n = MapNodes[i];
                 points[i] = new Vector2(map.x + map.width * n.x, map.y + map.height * n.y);
             }
-            int offset=controller.MapPage*GatefallGame.OperationsPerPage, count=Mathf.Min(GatefallGame.OperationsPerPage,CampaignCatalog.Stages.Length-offset);
+            int first=CampaignCatalog.ChapterStart(controller.CurrentChapter),end=first+CampaignCatalog.ChapterCount(controller.CurrentChapter);
+            int offset=first+controller.MapPage*GatefallGame.OperationsPerPage, count=Mathf.Min(GatefallGame.OperationsPerPage,end-offset);
             for (int i = 0; i < count-1; i++) {
                 bool lit = profile.BestStars[offset+i] > 0;
                 for (int k = 1; k < 10; k++) {
@@ -84,14 +85,16 @@ namespace Gatefall
                 if (selected) Tex(new Rect(r.x - 10, r.y - 10, r.width + 20, r.height + 20), art.Texture("fx-ring"), Amber);
                 Tex(r, art.Texture("fx-disc"), !open ? new Color(.16f, .19f, .23f, .95f) : stars > 0 ? GatefallArt.Hex("1E6E68") : GatefallArt.Hex("2A3442"));
                 Tex(r, art.Texture("fx-ring"), !open ? new Color(1, 1, 1, .25f) : stars > 0 ? Ally : Amber);
-                if (open) Text(r, "1-" + (stageIndex + 1), selected ? 21 : 18, Paper, TextAnchor.MiddleCenter, 2);
+                if (open) Text(r, CampaignCatalog.StageId(stageIndex), selected ? 21 : 18, Paper, TextAnchor.MiddleCenter, 2);
                 else Icon(new Rect(r.center.x - 16, r.center.y - 16, 32, 32), "icon-lock", Color.white);
                 if (stars > 0) for (int s = 0; s < 3; s++) Icon(new Rect(p.x - 33 + s * 22, r.yMax + 2, 22, 22), s < stars ? "icon-star" : "icon-star-empty", Color.white);
                 if (open) controller.TouchInput.Regions.Add(new TouchRegion(710 + stageIndex, new Box2(r.x - 12, r.y - 12, r.width + 24, r.height + 24)));
             }
             Button(655,new Box2(map.x+12,map.yMax-52,100,44),"이전",controller.CanMoveMapPage(-1),Look.Secondary,null,14);
             Button(656,new Box2(map.x+120,map.yMax-52,100,44),"다음",controller.CanMoveMapPage(1),Look.Secondary,null,14);
-            Text(new Rect(map.x+230,map.yMax-52,150,44),"작전 목록 "+(controller.MapPage+1)+" / "+GatefallGame.MapPageCount,14,Paper,TextAnchor.MiddleLeft,1);
+            Text(new Rect(map.x+230,map.yMax-52,150,44),"목록 "+(controller.MapPage+1)+" / "+controller.MapPageCount,14,Paper,TextAnchor.MiddleLeft,1);
+            Button(660,new Box2(map.x+12,map.y+8,132,38),"1 · 종현동",true,controller.CurrentChapter==1?Look.Primary:Look.Secondary,null,13);
+            Button(661,new Box2(map.x+154,map.y+8,164,38),profile.IsStageOpen(14)?"2 · 다솜동":"2 · 1-14 클리어",profile.IsStageOpen(14),controller.CurrentChapter==2?Look.Primary:Look.Secondary,null,13);
             Briefing(new Rect(W - 404, 78, 388, H - 92));
         }
 
@@ -108,8 +111,8 @@ namespace Gatefall
             var results=profile.LoadoutResults();
             string names="";foreach(TowerKind kind in results)names+=(names==""?"":" · ")+TowerCatalog.Get(kind).Name.Replace(" 결계주","");
             Text(new Rect(30,106,W-60,28),"조합 가능: "+(names==""?"없음":names)+"  ·  전투 중 강화와 촉매 필요",14,Ally,TextAnchor.MiddleLeft,0);
-            TowerKind[] kinds={TowerKind.Autocannon,TowerKind.Binding,TowerKind.Rupture,TowerKind.Barrier,TowerKind.Marker};
-            float width=(W-100)/5;
+            TowerKind[] kinds={TowerKind.Autocannon,TowerKind.Binding,TowerKind.Rupture,TowerKind.Barrier,TowerKind.Marker,TowerKind.Scatter};
+            float width=(W-110)/6;
             for(int i=0;i<kinds.Length;i++) {
                 TowerKind kind=kinds[i];bool chosen=(profile.Loadout&(1<<(int)kind))!=0;
                 Rect r=new Rect(30+i*(width+10),140,width,H-210);Skin(r,chosen?"ui-selected":"ui-panel");
@@ -117,8 +120,9 @@ namespace Gatefall
                 Tex(new Rect(r.center.x-45,r.y+8,90,115),art.TowerIcon(kind,1),Color.white);
                 Text(new Rect(r.x+4,r.y+130,r.width-8,32),TowerCatalog.Get(kind).Name.Replace(" 결계주",""),18,Paper,TextAnchor.MiddleCenter,2);
                 Text(new Rect(r.x+8,r.y+166,r.width-16,70),TowerCatalog.Get(kind).Role,13,Muted,TextAnchor.UpperCenter,0);
-                bool enabled = chosen ? !last : !full;
-                string action = chosen ? (last ? "1개 필수" : "해제") : (full ? "편성 가득 참" : "선택");
+                bool unlocked=profile.IsTowerUnlocked(kind);
+                bool enabled = unlocked && (chosen ? !last : !full);
+                string action = !unlocked ? (kind==TowerKind.Scatter?"2-2 클리어":"1-10 클리어") : chosen ? (last ? "1개 필수" : "해제") : (full ? "편성 가득 참" : "선택");
                 Button(700+i,new Box2(r.x+8,r.yMax-55,r.width-16,46),action,enabled,chosen?Look.Primary:Look.Secondary,null,14);
             }
         }

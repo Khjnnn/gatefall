@@ -408,6 +408,8 @@ namespace Gatefall
             switch (shot.Kind) {
                 case TowerKind.Autocannon: sprite.sprite = art.Sprite("fx-bolt"); sprite.color = Color.white; sprite.transform.localScale = new Vector3(2.0f, 1.05f, 1); break;
                 case TowerKind.Shatter: sprite.sprite = art.Sprite("fx-bolt"); sprite.color = GatefallArt.Hex("FFB070"); sprite.transform.localScale = new Vector3(2.15f, 1.35f, 1); break;
+                case TowerKind.Scatter: sprite.sprite=art.Sprite("fx-tracer");sprite.color=GatefallArt.RoleColor(shot.Kind);sprite.transform.localScale=new Vector3(1.3f,.65f,1);break;
+                case TowerKind.Barrage: sprite.sprite=art.Sprite("fx-tracer");sprite.color=GatefallArt.RoleColor(shot.Kind);sprite.transform.localScale=new Vector3(1.7f,.9f,1);break;
                 case TowerKind.Seal: sprite.sprite = art.Sprite("fx-bolt"); sprite.color = GatefallArt.Hex("FFF6DA"); sprite.transform.localScale = new Vector3(1.3f, 2f, 1); break;
                 case TowerKind.Rupture: sprite.sprite = art.Sprite("fx-shell"); sprite.color = Color.white; break;
                 case TowerKind.Binding: sprite.sprite = art.Sprite("fx-tracer"); sprite.color = GatefallArt.RoleColor(TowerKind.Binding); sprite.transform.localScale = new Vector3(1.7f, 1.35f, 1); break;

@@ -7,7 +7,7 @@ foreach ($taskRow in $taskDuels) {
     if ($taskRow.KillKind -ne $taskKind) {throw 'Death effect enemy kind missing'}
     if ($taskRow.Kind -eq 'Grunt' -and ($taskRow.Shots -gt 3 -or $taskRow.Seconds -gt 1.05)) {throw 'Common enemy kill pace exceeded'}
 }
-foreach ($taskStage in [Gatefall.Core.CampaignCatalog]::Stages) {
+foreach ($taskStage in [Gatefall.Core.CampaignCatalog]::LegacyStages) {
     $taskRules=[Gatefall.Core.CampaignBattle]::new();$taskRules.Stage=$taskStage
     $taskGame=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]::new(),7,$taskRules)
     foreach ($taskWave in 0..5) {

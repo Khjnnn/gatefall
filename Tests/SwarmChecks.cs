@@ -14,7 +14,7 @@ namespace Gatefall.Tests
         public static string Verify()
         {
             int waves=0;
-            foreach(var stage in CampaignCatalog.Stages) {
+            foreach(var stage in CampaignCatalog.LegacyStages) {
                 var g=new DefenseSimulation(new GameBalance(),7,new CampaignBattle {Stage=stage});
                 for(int wave=0;wave<6;wave++) {
                     int total=0,warnings=0;foreach(var group in g.Schedule)if(group.Wave==wave && group.Kind!=EnemyKind.Boss) {
@@ -49,7 +49,7 @@ namespace Gatefall.Tests
         static string Paths()
         {
             float maximum=0;int samples=0;
-            foreach(var stage in CampaignCatalog.Stages) {
+            foreach(var stage in CampaignCatalog.LegacyStages) {
                 var g=new DefenseSimulation(new GameBalance {OfferCards=false,CoreHealth=1000000,PlayerDamage=0,PlayerRange=0},7,new CampaignBattle {Stage=stage});
                 for(int i=0;i<100;i++)g.Tick(.1f,new V2(1,-1));g.Start();
                 for(int frame=0;frame<80;frame++) {

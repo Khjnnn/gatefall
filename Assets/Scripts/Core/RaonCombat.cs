@@ -39,6 +39,7 @@ namespace Gatefall.Core
             if(Rules.Lab)return true;
             if(!Rules.Stage.Allows(kind))return false;
             if((kind==TowerKind.Marker || kind==TowerKind.Beacon) && !Rules.MarkerUnlocked || kind==TowerKind.Observer && !Rules.ObserverUnlocked)return false;
+            if(kind==TowerKind.Scatter && !Rules.ScatterUnlocked || kind==TowerKind.Barrage && !Rules.BarrageUnlocked)return false;
             if(Rules.Stage.Index>=6 && TowerCatalog.Get(kind).Tier==1 && (Rules.Loadout&(1<<(int)kind))==0)return false;
             return true;
         }
@@ -66,7 +67,7 @@ namespace Gatefall.Core
                 PlayerRange=b.PlayerRange,PlayerDamage=b.PlayerDamage,PlayerFireInterval=b.PlayerFireInterval,StartingCredits=b.StartingCredits,
                 SpawnEnemies=b.SpawnEnemies,OfferCards=b.OfferCards};
             if(Rules==null)return copy;
-            if(Rules.Stage!=null) copy.StartingCredits+=Rules.Stage.StartingCreditBonus;
+            if(Rules.Stage!=null){copy.StartingCredits+=Rules.Stage.StartingCreditBonus;if(Rules.Stage.Waves!=null)copy.Duration=Rules.Stage.Waves.Length*30;}
             if(Rules.Hunter==1) {copy.PlayerSpeed=6.4f;copy.PlayerHealth=85;copy.PlayerDamage=10;copy.PlayerFireInterval=.3f;}
             if(Rules.Hunter==2) {copy.PlayerSpeed=4.4f;copy.PlayerHealth=160;copy.PlayerDamage=24;copy.PlayerFireInterval=.7f;copy.PlayerRange=2.8f;}
             if(Rules.Stage!=null)copy.PlayerFireInterval*=.85f;
@@ -85,6 +86,19 @@ namespace Gatefall.Core
             foreach(int lane in OpenLanes)GatePositions[lane]=Roads[lane][0];
             BoardSockets=(V2[])layout.Sockets.Clone();
             Schedule.Clear();
+            if(stage.Waves!=null){
+                waveDue=new double[stage.Waves.Length-1];
+                for(int wave=0;wave<stage.Waves.Length;wave++){
+                    var data=stage.Waves[wave];if(wave>0)waveDue[wave-1]=data.Start-5;
+                    var seen=new bool[Roads.Length];
+                    foreach(var source in data.Groups){
+                        Group(wave,source.Lane,source.Kind,source.Count,data.Start+source.Start,source.Interval);
+                        Schedule[Schedule.Count-1].Swarm=source.Swarm;
+                        Schedule[Schedule.Count-1].Warned=seen[source.Lane];seen[source.Lane]=true;
+                    }
+                }
+                return;
+            }
             for(int wave=0;wave<6;wave++) {
                 int multiplier=stage.SwarmMultiplier, formations=stage.Counts[wave]/multiplier;
                 bool[] seenLane=new bool[Roads.Length];

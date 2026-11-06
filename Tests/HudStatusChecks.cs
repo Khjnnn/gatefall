@@ -36,7 +36,7 @@ namespace Gatefall.Tests {
             return rows.ToArray();
         }
         public static void Run() {
-            var rows=Review();if(rows.Length!=42)throw new Exception("Missing status projection cases");
+            var rows=Review();if(rows.Length!=CampaignCatalog.Stages.Length*3)throw new Exception("Missing status projection cases");
             foreach(var r in rows)if(!r.Clear || r.Y<0 || r.Y+r.H>62 || r.SpeedX!=274)throw new Exception("Status hides a tower/pad/rift,or moved a control on1-"+r.Stage);
             var l=new MobileLayout(2400,1080,new Box2(0,0,2400,929));
             var clear=l.CoreStatusBox(null);if(clear.X!=14 || clear.Y!=10 || clear.Width!=252)throw new Exception("Clear chip changed");

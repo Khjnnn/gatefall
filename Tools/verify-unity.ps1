@@ -30,6 +30,7 @@ if (-not $taskProcess.WaitForExit($taskTimeoutMinutes * 60000)) {
 }
 if ($taskProcess.ExitCode -ne 0) { throw "Unity verification failed (exit $($taskProcess.ExitCode)). See $taskLog" }
 $taskOutput = Get-Content -LiteralPath $taskLog -Raw
+if($taskOutput -match 'error CS\d+|Destroy may not be called from edit mode') { throw "Unity compile/editor cleanup errors found. See $taskLog" }
 if (-not $taskOutput.Contains('GATEFALL VALIDATION PASSED')) { throw "Unity did not report completed validation. See $taskLog" }
 if (($Build -or $Target -in @('Preview','Android','iOS')) -and -not $taskOutput.Contains('GATEFALL BUILD:')) { throw "Unity did not report a completed build. See $taskLog" }
 Write-Output "Unity validation completed. Log: $taskLog"

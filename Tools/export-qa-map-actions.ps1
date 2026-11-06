@@ -4,7 +4,7 @@ param([int]$Stage,[string]$Tag,[double]$SafeLeft=136,[ValidateRange(640,4096)][i
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $taskProject
-if($Stage -lt 4 -or $Stage -gt 14 -or $Tag -notmatch '^[a-zA-Z0-9_-]+$'){throw 'Explicit expanded stage/plain tag required'}
+if($Stage -lt 4 -or $Stage -gt 20 -or $Tag -notmatch '^[a-zA-Z0-9_-]+$'){throw 'Explicit expanded stage/plain tag required'}
 if($SafeWidth -eq 0){$SafeWidth=$Width-$SafeLeft};if($SafeHeight -eq 0){$SafeHeight=$Height-$SafeBottom}
 if($Width -le $Height -or $SafeLeft -lt 0 -or $SafeBottom -lt 0 -or $SafeWidth -le 0 -or $SafeHeight -le 0 -or $SafeLeft+$SafeWidth -gt $Width -or $SafeBottom+$SafeHeight -gt $Height){throw 'Current landscape dimensions and complete valid safe area required'}
 Add-Type -Path (Get-ChildItem Assets/Scripts/Core -Filter '*.cs').FullName
@@ -20,10 +20,12 @@ if($ProfilePath){
     $Loadout=$taskProfileRules.Loadout;$MarkerUnlocked=$taskProfileRules.MarkerUnlocked;$ObserverUnlocked=$taskProfileRules.ObserverUnlocked
     $taskProfileSource=@{file=$taskProfileFile;sha256=(Get-FileHash -LiteralPath $taskProfileFile).Hash.ToLowerInvariant();readOnly=$true}
 }
-$taskG=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]::new(),7,[Gatefall.Core.CampaignBattle]@{Stage=[Gatefall.Core.CampaignCatalog]::Stages[$Stage-1];Loadout=$Loadout;MarkerUnlocked=[bool]$MarkerUnlocked;ObserverUnlocked=[bool]$ObserverUnlocked})
+$scatterUnlocked=if($taskProfileSource){$taskProfile.FirstCleared[15]}else{$false}
+$barrageUnlocked=if($taskProfileSource){$taskProfile.FirstCleared[17]}else{$false}
+$taskG=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]::new(),7,[Gatefall.Core.CampaignBattle]@{Stage=[Gatefall.Core.CampaignCatalog]::Stages[$Stage-1];Loadout=$Loadout;MarkerUnlocked=[bool]$MarkerUnlocked;ObserverUnlocked=[bool]$ObserverUnlocked;ScatterUnlocked=$scatterUnlocked;BarrageUnlocked=$barrageUnlocked})
 # Panel width follows the same available families and unlock flags as the observed profile.
 # Since v0.27.21 recipe order follows the catalog, filtered by stage and loadout.
-$taskBuildKinds=@([Gatefall.Core.TowerKind]::Autocannon,[Gatefall.Core.TowerKind]::Binding,[Gatefall.Core.TowerKind]::Rupture,[Gatefall.Core.TowerKind]::Barrier,[Gatefall.Core.TowerKind]::Marker)|Where-Object {$taskG.Allows($_)}
+$taskBuildKinds=@([Gatefall.Core.TowerKind]::Autocannon,[Gatefall.Core.TowerKind]::Binding,[Gatefall.Core.TowerKind]::Rupture,[Gatefall.Core.TowerKind]::Barrier,[Gatefall.Core.TowerKind]::Marker,[Gatefall.Core.TowerKind]::Scatter)|Where-Object {$taskG.Allows($_)}
 $taskReachable=$taskG.ReachableTowerFamilies()
 function RecipeCount([Gatefall.Core.TowerKind]$kind){
     return @([Gatefall.Core.TowerCatalog]::Recipes|Where-Object {
@@ -53,20 +55,20 @@ $taskPanels=[System.Collections.Generic.List[object]]::new()
 $taskRows=@(for($taskI=0;$taskI -lt $taskG.BoardSockets.Length;$taskI++){
     $taskP=$taskG.BoardSockets[$taskI];$taskX=$Width/2.0+$taskP.X*$taskWorldScale;$taskY=$Height/2.0-($taskP.Y-$taskCameraY)*$taskWorldScale
     $taskBuild=Panel $taskX $taskY $taskBuildWidth 196
-    $taskTower=Panel $taskX $taskY (TowerWidth 3) 222
-    $taskFusion=Panel $taskX $taskY (TowerWidth 3) 222
-    $taskArc=Panel $taskX $taskY (TowerWidth 3) 222
+    $taskTower=Panel $taskX $taskY (TowerWidth 3) 250
+    $taskFusion=Panel $taskX $taskY (TowerWidth 3) 250
+    $taskArc=Panel $taskX $taskY (TowerWidth 3) 250
     $taskRecipe=Panel $taskX $taskY 464 (78+[math]::Max(1,[math]::Ceiling($taskSpearRecipes/2.0))*116)
     # Bounds are evidence for the current profile, not universal empty-space recommendations.
     foreach($spec in @(
         @{kind='build';point=$taskBuild;width=$taskBuildWidth;height=196},
-        @{kind='spearLv1';point=$taskTower;width=(TowerWidth 3);height=222},
-        @{kind='spearLv2';point=$taskFusion;width=(TowerWidth 3);height=222},
-        @{kind='ruptureLv1';point=(Panel $taskX $taskY (TowerWidth 3) 222);width=(TowerWidth 3);height=222}
+        @{kind='spearLv1';point=$taskTower;width=(TowerWidth 3);height=250},
+        @{kind='spearLv2';point=$taskFusion;width=(TowerWidth 3);height=250},
+        @{kind='ruptureLv1';point=(Panel $taskX $taskY (TowerWidth 3) 250);width=(TowerWidth 3);height=250}
     )){
         $taskPanels.Add([pscustomobject]@{slot=$taskI;kind=$spec.kind;x=$spec.point[0];y=$spec.point[1];width=$spec.width*$taskScale;height=$spec.height*$taskScale})
     }
-    [pscustomobject]@{slot=$taskI;x=$taskP.X;y=$taskP.Y;padX=[math]::Round($taskX);padY=[math]::Round($taskY);buildX=[math]::Round($taskBuild[0]+76*$taskScale);buildY=[math]::Round($taskBuild[1]+112*$taskScale);bindX=[math]::Round($taskBuild[0]+208*$taskScale);rupX=[math]::Round($taskBuild[0]+340*$taskScale);upgradeX=[math]::Round($taskTower[0]+84*$taskScale);upgradeY=[math]::Round($taskTower[1]+148*$taskScale);fusionX=[math]::Round($taskFusion[0]+232*$taskScale);fusionY=[math]::Round($taskFusion[1]+148*$taskScale);arcUpgradeX=[math]::Round($taskArc[0]+84*$taskScale);arcUpgradeY=[math]::Round($taskArc[1]+148*$taskScale);recipe0X=[math]::Round($taskRecipe[0]+120*$taskScale);recipe1X=[math]::Round($taskRecipe[0]+344*$taskScale);recipeRow0Y=[math]::Round($taskRecipe[1]+120*$taskScale);recipeRow1Y=[math]::Round($taskRecipe[1]+236*$taskScale)}
+    [pscustomobject]@{slot=$taskI;x=$taskP.X;y=$taskP.Y;padX=[math]::Round($taskX);padY=[math]::Round($taskY);buildX=[math]::Round($taskBuild[0]+76*$taskScale);buildY=[math]::Round($taskBuild[1]+112*$taskScale);bindX=[math]::Round($taskBuild[0]+208*$taskScale);rupX=[math]::Round($taskBuild[0]+340*$taskScale);upgradeX=[math]::Round($taskTower[0]+121*$taskScale);upgradeY=[math]::Round($taskTower[1]+135*$taskScale);fusionX=[math]::Round($taskFusion[0]+343*$taskScale);fusionY=[math]::Round($taskFusion[1]+135*$taskScale);arcUpgradeX=[math]::Round($taskArc[0]+121*$taskScale);arcUpgradeY=[math]::Round($taskArc[1]+135*$taskScale);recipe0X=[math]::Round($taskRecipe[0]+120*$taskScale);recipe1X=[math]::Round($taskRecipe[0]+344*$taskScale);recipeRow0Y=[math]::Round($taskRecipe[1]+120*$taskScale);recipeRow1Y=[math]::Round($taskRecipe[1]+236*$taskScale)}
 })
 $taskRows|Export-Csv -NoTypeInformation ("TestResults/"+$Tag+'-map-actions.csv')
 $taskControls=@(foreach($taskAction in @([Gatefall.Core.MobileAction]::Start,[Gatefall.Core.MobileAction]::Pause,[Gatefall.Core.MobileAction]::Resume,[Gatefall.Core.MobileAction]::Speed)){

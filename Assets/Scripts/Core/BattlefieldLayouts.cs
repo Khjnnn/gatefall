@@ -17,7 +17,7 @@ namespace Gatefall.Core
         public const float HalfWidth = 24, HalfHeight = 12, RoadHalfWidth = 1.05f;
         private static readonly Dictionary<int, BattlefieldLayout> cache = new Dictionary<int, BattlefieldLayout>();
         // Keep the original sockets stable; added sites use the space beside the same roads.
-        public static int OriginalSocketCount(int stage) { return stage == 0 ? 7 : stage == 3 ? 12 : 10; }
+        public static int OriginalSocketCount(int stage) { return stage>=14 ? 0 : stage == 0 ? 7 : stage == 3 ? 12 : 10; }
         private static V2[] P(params float[] xy)
         {
             var points = new V2[xy.Length / 2];
@@ -84,7 +84,7 @@ namespace Gatefall.Core
             if (stage == null) return null;
             BattlefieldLayout layout;
             if (cache.TryGetValue(stage.Index, out layout)) return layout;
-            var d = definitions[stage.Index];
+            var d = stage.Layout ?? definitions[stage.Index];
             layout = new BattlefieldLayout { Id = d.Id, Theme = d.Theme, Roads = d.Roads,
                 Sockets = PlaceSockets(d.Roads, stage.Lanes, stage.SocketCount, stage.Index) };
             cache.Add(stage.Index, layout);
@@ -107,6 +107,7 @@ namespace Gatefall.Core
         { float n = 0; for (int i = 1; i < road.Length; i++) n += V2.Distance(road[i - 1], road[i]); return n; }
         public static V2 Along(V2[] road, float distance, out int nextWaypoint)
         {
+            if(road==null || road.Length<2)throw new ArgumentException("An active road needs at least two points");
             for (int i = 1; i < road.Length; i++) {
                 float segment = V2.Distance(road[i - 1], road[i]);
                 if (distance <= segment) { nextWaypoint = i; return road[i - 1] + (road[i] - road[i - 1]) * (segment > 0 ? distance / segment : 0); }
@@ -118,11 +119,12 @@ namespace Gatefall.Core
 
         private static V2[] PlaceSockets(V2[][] roads, int[] lanes, int count, int stage)
         {
-            float maxReach = stage < 3 ? 4f : 3.25f;
+            float maxReach = stage>=14 ? 3.35f : stage < 3 ? 4f : 3.25f;
             var originalCandidates = new List<V2>();
             var extraCandidates = new List<V2>();
             for (int ix = 0; ix <= 64; ix++) for (int iy = 0; iy <= 22; iy++) {
                 V2 p = new V2(-20.8f + ix * .65f, -7f + iy * .65f);
+                if(stage>=14 && p.X< -10 && p.Y>5.0f)continue;
                 if (p.Length < 4.1f || p.X < -16 && p.Y < -5.1f || p.X > 17 && p.Y < -5.8f) continue;
                 float near = float.MaxValue;
                 foreach (int lane in lanes) near = Math.Min(near, RoadDistance(p, roads[lane]));
@@ -140,13 +142,13 @@ namespace Gatefall.Core
                 int chosen = -1; float best = float.MaxValue;
                 for (int i = 0; i < candidates.Count; i++) {
                     V2 p = candidates[i]; bool separated = true;
-                    foreach (V2 old in result) if (V2.Distance(p, old) < (original ? 3.45f : 2.6f)) { separated = false; break; }
+                    foreach (V2 old in result) if (V2.Distance(p, old) < (stage>=14 ? 2.56f : original ? 3.45f : 2.6f)) { separated = false; break; }
                     if (!separated) continue;
                     float d = RoadDistance(p, roads[lane]);
                     float score = V2.Distance(p, desired) + (d > maxReach ? 30 : 0) + (((n + stage) % 2 == 0 ? p.Y : -p.Y) * .015f);
                     if (score < best) { best = score; chosen = i; }
                 }
-                if (chosen < 0) throw new InvalidOperationException("Insufficient clear tower sites in stage " + (stage + 1));
+                if (chosen < 0) throw new InvalidOperationException("Insufficient clear tower sites in stage " + (stage + 1)+" placed="+result.Count+" requested="+count+" candidates="+candidates.Count);
                 result.Add(candidates[chosen]);
             }
             return result.ToArray();

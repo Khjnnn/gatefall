@@ -9,6 +9,15 @@ namespace Gatefall.Core
     public sealed class CampaignStage
     {
         public int Index, SocketCount, FirstReward;
+        public int Chapter=1, Number;
+        public string StableId;
+        public string PredecessorId;
+        public bool BossRequired;
+        public float HealthScale;
+        public BattlefieldLayout Layout;
+        public CampaignWave[] Waves;
+        public string Id => StableId ?? "C01-S"+(Index+1).ToString("000");
+        public int LocalNumber => Number>0 ? Number : Index+1;
         public string Name, Briefing, Story, ClearStory, Lesson;
         public int[] Lanes, Counts;
         // Operation data (1 / 0 = unchanged): towers allowed at once, swarm follower health and a health
@@ -20,7 +29,7 @@ namespace Gatefall.Core
         public int BindingLevel2Targets, BindingLevel3Targets;
         public int RecommendedGrowth;
         public int[] RecommendedResearch = new int[4];
-        public bool Boss { get { return Index == 5; } }
+        public bool Boss { get { return BossRequired; } }
         public bool HasAdjacency { get { return Index >= 1; } }
         public bool HasCatalysts { get { return Index >= 2; } }
         public bool HasAdvancedTowers { get { return Index >= 10; } }
@@ -46,6 +55,7 @@ namespace Gatefall.Core
         }
         public bool Allows(TowerKind kind)
         {
+            if(kind==TowerKind.Scatter || kind==TowerKind.Barrage)return Index>=6;
             return kind == TowerKind.Autocannon || (kind == TowerKind.Binding && Index >= 1) ||
                 (kind == TowerKind.Rupture && Index >= 3) || (kind == TowerKind.Barrier && Index >= 4) ||
                 (kind == TowerKind.Arc && Index >= 2) ||
@@ -63,6 +73,7 @@ namespace Gatefall.Core
         public int[] Research = new int[4];
         public int Loadout = 135;
         public bool MarkerUnlocked, ObserverUnlocked;
+        public bool ScatterUnlocked, BarrageUnlocked, BarrageSealUnlocked;
         public bool Crisis;
         public bool MobileWaveCalls { get { return Stage!=null && Stage.Index>=3 && !Crisis; } }
         public bool Lab { get { return Stage == null; } }
@@ -76,7 +87,7 @@ namespace Gatefall.Core
             return Stage.ClearStory.Split('\n')[0];
         }
         public CampaignBattle Copy()
-        { return new CampaignBattle { Stage = Stage, Hunter = Hunter, EarnedGrowth = EarnedGrowth, Research = (int[])Research.Clone(), Crisis = Crisis, Loadout=Loadout, MarkerUnlocked=MarkerUnlocked, ObserverUnlocked=ObserverUnlocked }; }
+        { return new CampaignBattle { Stage = Stage, Hunter = Hunter, EarnedGrowth = EarnedGrowth, Research = (int[])Research.Clone(), Crisis = Crisis, Loadout=Loadout, MarkerUnlocked=MarkerUnlocked, ObserverUnlocked=ObserverUnlocked, ScatterUnlocked=ScatterUnlocked,BarrageUnlocked=BarrageUnlocked,BarrageSealUnlocked=BarrageSealUnlocked }; }
     }
     public static class CampaignCatalog
     {
@@ -112,7 +123,7 @@ namespace Gatefall.Core
         }
         internal const string ObserverRoutes = "북쪽 지름길과 서·동 우회로를 막으세요.";
         public const string Prologue = "낙하 7주년. 잿빛 탑의 범람 속에서 한 남자가 걸어 나왔다.\n7년 전 실종자, 강윤. 측정기는 그의 등급을 읽지 못했다.\n백도하: 신원 확인은 나중이다. 우선 뒤쪽 사람들부터 지켜.";
-        public static readonly CampaignStage[] Stages = {
+        public static readonly CampaignStage[] LegacyStages = {
             S(0,"종현 사거리",14,new[]{0},new[]{20,35,50,65,75,85},
               "서쪽 한 방향 방어.\n후반 빠른 마수에 대비해 창을 보강하세요.",
               "유채린: 파란 표식에 창 결계주를 세워요. 마석은 제가 공급할게요.",
@@ -150,8 +161,15 @@ namespace Gatefall.Core
             PostSeal(S(10,"표식 훈련로",24,new[]{0,2},new[]{64,96,128,160,176,192},"서쪽 우회로와 동남쪽 진입로를 지키세요.\nLv3 강화 · 표식과 봉인으로 추적 조합","유채린: 표식된 적은 다른 결계주가 더 큰 피해를 줘요.","세희: 표식을 따라 쏘니 정예가 빨리 쓰러져.","4웨이브에는 동남쪽을 먼저 보강하세요. 표식과 봉인으로 추적을 만든 뒤 길목의 결계주를 Lv3까지 강화하세요."),1f),
             PostSeal(S(11,"서쪽 교차로",24,new[]{0,1},new[]{80,96,128,176,192,208},"서쪽과 북쪽을 번갈아 보강하세요.\n후반 공성이 일반 마수와 함께 몰려옵니다.","강윤: 앞선 적에게 화력을 모아야겠어요.","유채린: 표식과 창을 더 강하게 연결할 수 있겠어요.","붕괴는 입구 쪽에 두세요. 표식과 창은 같은 길을 노리세요."),1f),
             PostSeal(S(12,"북쪽 연결로",24,new[]{0,1,2},new[]{80,112,144,176,192,224},"분산 방어와 집중 공격을 함께 준비하세요.","백도하: 표적 하나에 집중하더라도 다른 길은 비우지 마라.","세희: 다음 균열은 관측창 설계의 마지막 시험이야.","집중 화력과 다른 전선의 방어를 함께 고려하세요."),2f),
-            PostSeal(S(13,"관측창 설계 시험",24,new[]{0,1,2},new[]{80,112,144,176,208,224},ObserverRoutes+"\n클리어 후 관측창 조합이 열립니다.","유채린: 이 자료가 있으면 표식과 창을 합칠 수 있어요.","관측창 조합 해금! 표식 Lv2와 창 Lv2를 합치세요.","짧은 북쪽을 먼저 지키고 서·동을 보강하세요. 표식과 창은 같은 길을 노리세요."),1f)
+            PostSeal(S(13,"관측창 설계 시험",24,new[]{0,1,2},new[]{80,112,144,176,208,224},ObserverRoutes+"\n클리어 후 관측창 조합이 열립니다.","유채린: 이 자료가 있으면 표식과 창을 합칠 수 있어요.","관측창 조합 해금! 표식 Lv2와 창 Lv2를 합치세요.\n2챕터 다솜동이 열렸습니다.","짧은 북쪽을 먼저 지키고 서·동을 보강하세요. 표식과 창은 같은 길을 노리세요."),1f)
         };
+        public static readonly CampaignStage[] Stages=AllStages();
+        static CampaignStage[] AllStages()
+        {var list=new List<CampaignStage>(LegacyStages);list.AddRange(ChapterTwoCampaign.Create());return list.ToArray();}
+        public static int FindStage(string id)
+        {for(int i=0;i<Stages.Length;i++)if(Stages[i].Id==id)return i;return -1;}
+        public static int ChapterStart(int chapter) => chapter==2 ? LegacyStages.Length : 0;
+        public static int ChapterCount(int chapter) => chapter==2 ? Stages.Length-LegacyStages.Length : LegacyStages.Length;
         // Twelve towers on 1-7~1-9, fourteen from 1-10. Keep room for multiple fronts and fusion refills without
         // requiring every socket to be filled. Later followers cross additional spear damage breakpoints.
         // Calibrated with the progression review and both degenerate/competent plan gates; see the growth/role report.
@@ -165,7 +183,7 @@ namespace Gatefall.Core
             stage.EliteArmor = 6; stage.HybridDamage = 1.25f;
             stage.BindingLevel2Targets=6;stage.BindingLevel3Targets=8;return stage; }
         static CampaignStage S(int i,string name,int sockets,int[] lanes,int[] counts,string briefing,string story,string clear,string lesson)
-        { return new CampaignStage { Index=i,Name=name,SocketCount=sockets,Lanes=lanes,Counts=counts,FirstReward=10+2*i,Briefing=briefing,Story=story,ClearStory=clear,Lesson=lesson,
+        { return new CampaignStage { Index=i,PredecessorId=i==0?null:"C01-S"+i.ToString("000"),BossRequired=i==5,Name=name,SocketCount=sockets,Lanes=lanes,Counts=counts,FirstReward=10+2*i,Briefing=briefing,Story=story,ClearStory=clear,Lesson=lesson,
             RecommendedGrowth=i==0 ? 0 : i<3 ? 1 : i<6 ? 2 : i<10 ? 3 : i<12 ? 4 : 5,
             RecommendedResearch=new[]{i==0 ? 0 : i<5 ? 1 : i<10 ? 2 : 3,i<1 ? 0 : i<5 ? 1 : 2,i<3 ? 0 : i<5 ? 1 : 2,i<4 ? 0 : i<6 ? 1 : 2} }; }
         public static int Stars(bool won, float minimumHealth, float maximumHealth)
@@ -174,21 +192,31 @@ namespace Gatefall.Core
             if(minimumHealth+0.0001f>=maximumHealth*.9f)return 3;
             return minimumHealth+0.0001f>=maximumHealth*.7f ? 2 : 1;
         }
-        public static string StageId(int stage) { return "1-"+(stage+1); }
+        public static string StageId(int stage) { return Stages[stage].Chapter+"-"+Stages[stage].LocalNumber; }
     }
     public sealed class CampaignProfile
     {
         public int MagicCores, SelectedHunter, StoryMask, TutorialMask;
-        public int[] BestStars = new int[14], CrisisStars = new int[14], Research = new int[4], Growth = new int[3];
-        public float[] BestErosion = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1 };
-        public bool[] FirstCleared = new bool[14];
+        // Indexed views are runtime conveniences; persistence uses stable stage IDs, never array order.
+        public int[] BestStars = new int[CampaignCatalog.Stages.Length], CrisisStars = new int[CampaignCatalog.Stages.Length], Research = new int[4], Growth = new int[3];
+        public float[] BestErosion = InitialErosion();
+        public bool[] FirstCleared = new bool[CampaignCatalog.Stages.Length];
+        public HashSet<string> StorySeenIds=new HashSet<string>(), TutorialSeenIds=new HashSet<string>();
+        public Dictionary<string,StageProgress> UnmappedProgress=new Dictionary<string,StageProgress>();
+        static float[] InitialErosion(){var a=new float[CampaignCatalog.Stages.Length];for(int i=0;i<a.Length;i++)a[i]=1;return a;}
         public int Loadout = 135;
         public string PendingRun = "", LastRewardRun = "";
         public int PendingStage = -1, LastReward;
         public bool PendingCrisis, Muted;
-        public bool IsStageOpen(int i) { return i>=0 && i<CampaignCatalog.Stages.Length && (i==0 || BestStars[i-1]>0); }
+        public bool IsStageOpen(int i) {if(i<0 || i>=CampaignCatalog.Stages.Length)return false;string required=CampaignCatalog.Stages[i].PredecessorId;if(required==null)return true;int previous=CampaignCatalog.FindStage(required);return previous>=0 && BestStars[previous]>0;}
         // A failed first attempt should not permanently hide its learning cues.
-        public bool ShouldShowLesson(int i) { return i>=0 && i<FirstCleared.Length && (!FirstCleared[i] || (TutorialMask & (1 << i)) == 0); }
+        public bool ShouldShowLesson(int i) { return i>=0 && i<FirstCleared.Length && (!FirstCleared[i] || (i<14 ? (TutorialMask & (1 << i))==0 : !TutorialSeenIds.Contains(CampaignCatalog.Stages[i].Id))); }
+        public bool HasSeenStory(int i) => i<14 ? (StoryMask & (1<<i))!=0 : StorySeenIds.Contains(CampaignCatalog.Stages[i].Id);
+        public bool IsTowerUnlocked(TowerKind kind)
+        {return kind==TowerKind.Scatter ? FirstCleared[15] : kind==TowerKind.Barrage ? FirstCleared[17] : kind==TowerKind.Marker ? FirstCleared[9] : true;}
+        public bool AllowsRecipe(FusionRecipe r)
+        {return (r.Result!=TowerKind.Observer || FirstCleared[13]) && (r.Result!=TowerKind.Beacon || FirstCleared[9]) &&
+            (r.Result!=TowerKind.Barrage || FirstCleared[17]) && (r.First!=TowerKind.Barrage && r.Second!=TowerKind.Barrage || FirstCleared[18]);}
         public bool FirstSealComplete { get { return BestStars[5]>0; } }
         public int VictoryReward(int stage, bool crisis)
         { return crisis || FirstCleared[stage] ? 2 : CampaignCatalog.Stages[stage].FirstReward; }
@@ -203,7 +231,7 @@ namespace Gatefall.Core
         {
             get {
                 int count = 0;
-                for (int i = 0; i < 9; i++) if ((Loadout & (1 << i)) != 0) count++;
+                foreach(var d in TowerCatalog.All)if(d.Tier==1 && (Loadout & (1 << (int)d.Kind))!=0)count++;
                 return count;
             }
         }
@@ -223,8 +251,7 @@ namespace Gatefall.Core
             var results=new List<TowerKind>();
             // Repeated passes allow an existing tier-2 result to be used in the final fusion.
             for(int pass=0;pass<3;pass++)foreach(FusionRecipe r in TowerCatalog.Recipes) {
-                if(r.Result==TowerKind.Observer && !FirstCleared[13])continue;
-                if(r.Result==TowerKind.Beacon && !FirstCleared[9])continue;
+                if(!AllowsRecipe(r))continue;
                 int needed=(1<<(int)r.First)|(1<<(int)r.Second);
                 if((reachable&needed)!=needed)continue;
                 int resultBit=1<<(int)r.Result;
@@ -237,81 +264,28 @@ namespace Gatefall.Core
             CampaignProfile p=(CampaignProfile)MemberwiseClone();
             p.BestStars=(int[])BestStars.Clone(); p.CrisisStars=(int[])CrisisStars.Clone();
             p.Research=(int[])Research.Clone(); p.Growth=(int[])Growth.Clone();
-            p.BestErosion=(float[])BestErosion.Clone(); p.FirstCleared=(bool[])FirstCleared.Clone(); return p;
+            p.BestErosion=(float[])BestErosion.Clone(); p.FirstCleared=(bool[])FirstCleared.Clone();
+            p.StorySeenIds=new HashSet<string>(StorySeenIds);p.TutorialSeenIds=new HashSet<string>(TutorialSeenIds);
+            p.UnmappedProgress=new Dictionary<string,StageProgress>();foreach(var x in UnmappedProgress)p.UnmappedProgress.Add(x.Key,x.Value.Copy());return p;
         }
         public bool Valid()
         {
             if(MagicCores<0 || MagicCores>100000000 || SelectedHunter<0 || SelectedHunter>2 || PendingStage< -1 || PendingStage>=CampaignCatalog.Stages.Length)return false;
-            if(BestStars.Length!=14 || CrisisStars.Length!=14 || Research.Length!=4 || Growth.Length!=3 || BestErosion.Length!=14 || FirstCleared.Length!=14)return false;
-            int allowed=(1<<0)|(1<<1)|(1<<2)|(1<<7)|(1<<8), n=LoadoutCount;
-            if((Loadout&~allowed)!=0 || n<MinimumLoadoutCount || n>MaximumLoadoutCount || (Loadout&(1<<8))!=0 && !FirstCleared[9])return false;
-            for(int i=0;i<14;i++)if(BestStars[i]<0 || BestStars[i]>3 || CrisisStars[i]<0 || CrisisStars[i]>3 ||
+            if(BestStars==null || CrisisStars==null || Research==null || Growth==null || BestErosion==null || FirstCleared==null || StorySeenIds==null || TutorialSeenIds==null || UnmappedProgress==null)return false;
+            if(BestStars.Length!=CampaignCatalog.Stages.Length || CrisisStars.Length!=BestStars.Length || Research.Length!=4 || Growth.Length!=3 || BestErosion.Length!=BestStars.Length || FirstCleared.Length!=BestStars.Length)return false;
+            int allowed=0;foreach(var d in TowerCatalog.All)if(d.Tier==1)allowed|=1<<(int)d.Kind;
+            int n=LoadoutCount;
+            if((Loadout&~allowed)!=0 || n<MinimumLoadoutCount || n>MaximumLoadoutCount)return false;
+            for(int i=0;i<BestStars.Length;i++)if(BestStars[i]<0 || BestStars[i]>3 || CrisisStars[i]<0 || CrisisStars[i]>3 ||
                 float.IsNaN(BestErosion[i]) || BestErosion[i]<0 || BestErosion[i]>1 ||
-                FirstCleared[i]!=(BestStars[i]>0) || i>0 && BestStars[i]>0 && BestStars[i-1]==0)return false;
+                FirstCleared[i]!=(BestStars[i]>0))return false;
             for(int i=0;i<4;i++)if(Research[i]<0 || Research[i]>3)return false;
             for(int i=0;i<3;i++)if(Growth[i]<0 || Growth[i]+CampaignCatalog.HunterStart[i]>6)return false;
-            return IsHunterOpen(SelectedHunter) && PendingRun.Length<=64 && LastRewardRun.Length<=64;
-        }
-    }
-    // Small versioned local format with a checksum, atomic replace and a previous-good backup.
-    // No account/network dependency; checksum detects corruption, not deliberate save editing.
-    public sealed class CampaignStore
-    {
-        readonly string path;
-        public string Warning { get; private set; }
-        public CampaignStore(string path) { this.path=path; }
-        public static byte[] Encode(CampaignProfile p)
-        {
-            if(!p.Valid())throw new InvalidDataException("Invalid campaign profile");
-            byte[] payload;
-            using(var mem=new MemoryStream()) {
-                using(var w=new BinaryWriter(mem,Encoding.UTF8,true)) {
-                    w.Write("GATEFALL-RAON"); w.Write(2);
-                    w.Write(p.MagicCores); w.Write(p.SelectedHunter); w.Write(p.StoryMask); w.Write(p.TutorialMask); w.Write(p.Muted);
-                    for(int i=0;i<6;i++) { w.Write(p.BestStars[i]); w.Write(p.CrisisStars[i]); w.Write(p.BestErosion[i]); w.Write(p.FirstCleared[i]); }
-                    foreach(int r in p.Research)w.Write(r); foreach(int g in p.Growth)w.Write(g);
-                    w.Write(p.PendingRun); w.Write(p.PendingStage); w.Write(p.PendingCrisis); w.Write(p.LastRewardRun); w.Write(p.LastReward);
-                    for(int i=6;i<14;i++) { w.Write(p.BestStars[i]); w.Write(p.CrisisStars[i]); w.Write(p.BestErosion[i]); w.Write(p.FirstCleared[i]); }
-                    w.Write(p.Loadout);
-                } payload=mem.ToArray();
-            }
-            byte[] hash; using(var sha=SHA256.Create())hash=sha.ComputeHash(payload);
-            byte[] all=new byte[32+payload.Length]; Buffer.BlockCopy(hash,0,all,0,32); Buffer.BlockCopy(payload,0,all,32,payload.Length); return all;
-        }
-        public static CampaignProfile Decode(byte[] data)
-        {
-            if(data==null || data.Length<64 || data.Length>16384)throw new InvalidDataException("Invalid profile length");
-            byte[] hash; using(var sha=SHA256.Create())hash=sha.ComputeHash(data,32,data.Length-32);
-            for(int i=0;i<32;i++)if(hash[i]!=data[i])throw new InvalidDataException("Profile checksum mismatch");
-            using(var mem=new MemoryStream(data,32,data.Length-32,false))using(var r=new BinaryReader(mem,Encoding.UTF8)) {
-                if(r.ReadString()!="GATEFALL-RAON")throw new InvalidDataException("Unknown profile format");
-                int version=r.ReadInt32();if(version!=1 && version!=2)throw new InvalidDataException("Unknown profile version");
-                var p=new CampaignProfile { MagicCores=r.ReadInt32(),SelectedHunter=r.ReadInt32(),StoryMask=r.ReadInt32(),TutorialMask=r.ReadInt32(),Muted=r.ReadBoolean() };
-                for(int i=0;i<6;i++) { p.BestStars[i]=r.ReadInt32();p.CrisisStars[i]=r.ReadInt32();p.BestErosion[i]=r.ReadSingle();p.FirstCleared[i]=r.ReadBoolean(); }
-                for(int i=0;i<4;i++)p.Research[i]=r.ReadInt32(); for(int i=0;i<3;i++)p.Growth[i]=r.ReadInt32();
-                p.PendingRun=r.ReadString();p.PendingStage=r.ReadInt32();p.PendingCrisis=r.ReadBoolean();p.LastRewardRun=r.ReadString();p.LastReward=r.ReadInt32();
-                if(version==2) { for(int i=6;i<14;i++) {p.BestStars[i]=r.ReadInt32();p.CrisisStars[i]=r.ReadInt32();p.BestErosion[i]=r.ReadSingle();p.FirstCleared[i]=r.ReadBoolean();}p.Loadout=r.ReadInt32(); }
-                if(mem.Position!=mem.Length || !p.Valid())throw new InvalidDataException("Invalid profile values"); return p;
-            }
-        }
-        public CampaignProfile Load()
-        {
-            Warning=""; if(!File.Exists(path) && !File.Exists(path+".bak"))return new CampaignProfile();
-            try { return Decode(File.ReadAllBytes(path)); }
-            catch(Exception) {
-                try { var p=Decode(File.ReadAllBytes(path+".bak")); Warning="저장 파일을 백업에서 복구했습니다."; return p; }
-                catch(Exception e) { throw new InvalidDataException("프로필과 백업을 읽을 수 없습니다. 원본 파일을 보존했습니다.",e); }
-            }
-        }
-        public void Save(CampaignProfile profile)
-        {
-            byte[] bytes=Encode(profile); Directory.CreateDirectory(Path.GetDirectoryName(path));
-            string tmp=path+".tmp"; File.WriteAllBytes(tmp,bytes); Decode(File.ReadAllBytes(tmp));
-            if(File.Exists(path)) {
-                // Preserve a valid backup even when the primary had been recovered from corruption.
-                bool valid=true; try { Decode(File.ReadAllBytes(path)); } catch { valid=false; }
-                File.Replace(tmp,path,valid ? path+".bak" : null);
-            } else File.Move(tmp,path);
+            // Storage integrity is separate from current unlock rules. Rule updates must not brick an old account.
+            foreach(var x in UnmappedProgress)if(!StageProgress.ValidId(x.Key) || CampaignCatalog.FindStage(x.Key)>=0 || x.Value==null || !x.Value.Valid())return false;
+            foreach(var id in StorySeenIds)if(!StageProgress.ValidId(id))return false;
+            foreach(var id in TutorialSeenIds)if(!StageProgress.ValidId(id))return false;
+            return PendingRun!=null && LastRewardRun!=null && PendingRun.Length<=64 && LastRewardRun.Length<=64 && StorySeenIds.Count<=4096 && TutorialSeenIds.Count<=4096 && UnmappedProgress.Count+CampaignCatalog.Stages.Length<=4096;
         }
     }
     public sealed class CampaignService
@@ -399,13 +373,13 @@ namespace Gatefall.Core
         public bool Respec()
         { var p=Profile.Copy();p.MagicCores+=ResearchInvestment();Array.Clear(p.Research,0,4);return Commit(p); }
         public bool MarkStory(int index)
-        { var p=Profile.Copy();p.StoryMask|=1<<index;return Commit(p); }
+        { if(index<0 || index>=CampaignCatalog.Stages.Length)return false;var p=Profile.Copy();if(index<14)p.StoryMask|=1<<index;p.StorySeenIds.Add(CampaignCatalog.Stages[index].Id);return Commit(p); }
         public bool MarkTutorial(int index)
-        { var p=Profile.Copy();p.TutorialMask|=1<<index;return Commit(p); }
+        { if(index<0 || index>=CampaignCatalog.Stages.Length)return false;var p=Profile.Copy();if(index<14)p.TutorialMask|=1<<index;p.TutorialSeenIds.Add(CampaignCatalog.Stages[index].Id);return Commit(p); }
         public bool SetMuted(bool muted) {var p=Profile.Copy();p.Muted=muted;return Commit(p);}
-        public bool SetLoadout(int mask) { var p=Profile.Copy();p.Loadout=mask;if(!p.Valid()) {Error="결계주를 1~4개 선택하세요.";return false;}return Commit(p); }
+        public bool SetLoadout(int mask) { var p=Profile.Copy();p.Loadout=mask;if(!p.Valid()) {Error="결계주를 1~4개 선택하세요.";return false;}foreach(var d in TowerCatalog.All)if((mask&(1<<(int)d.Kind))!=0 && !p.IsTowerUnlocked(d.Kind)){Error="작전 클리어로 먼저 해금하세요.";return false;}return Commit(p); }
         public CampaignBattle Battle(int stage,bool crisis)
-        { return new CampaignBattle {Stage=CampaignCatalog.Stages[stage],Crisis=crisis,Hunter=Profile.SelectedHunter,EarnedGrowth=Profile.Growth[Profile.SelectedHunter],Research=(int[])Profile.Research.Clone(), Loadout=Profile.Loadout, MarkerUnlocked=Profile.FirstCleared[9], ObserverUnlocked=Profile.FirstCleared[13]}; }
+        { return new CampaignBattle {Stage=CampaignCatalog.Stages[stage],Crisis=crisis,Hunter=Profile.SelectedHunter,EarnedGrowth=Profile.Growth[Profile.SelectedHunter],Research=(int[])Profile.Research.Clone(), Loadout=Profile.Loadout, MarkerUnlocked=Profile.FirstCleared[9], ObserverUnlocked=Profile.FirstCleared[13],ScatterUnlocked=Profile.FirstCleared[15],BarrageUnlocked=Profile.FirstCleared[17],BarrageSealUnlocked=Profile.FirstCleared[18]}; }
     }
 }
 

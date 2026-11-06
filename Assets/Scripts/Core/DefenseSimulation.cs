@@ -177,10 +177,11 @@ namespace Gatefall.Core
         public double CallAdvanceSeconds { get {WaveBriefing next=GetWaveBriefing(NextCallWave);return next==null?0:Math.Max(0,Math.Min(MaxWaveCallAdvance,next.FirstSpawn-Elapsed-3));} }
         public float WaveProgressFraction(int wave)
         {
-            if(wave<0 || wave>=6)return 0;
+            if(wave<0 || wave>=WaveCount)return 0;
             if(WaveClearVictory && AllWavesSpawned)return 1;
-            double start=wave==0?0:supplyDue[wave-1];
-            double end=wave<5?supplyDue[wave]:Math.Max(start+1,Balance.Duration-Telemetry.WaveAdvanceSeconds);
+            double[] boundaries=waveDue ?? supplyDue;
+            double start=wave==0?0:boundaries[wave-1];
+            double end=wave<boundaries.Length?boundaries[wave]:Math.Max(start+1,Balance.Duration-Telemetry.WaveAdvanceSeconds);
             return (float)Math.Max(0,Math.Min(1,(Elapsed-start)/Math.Max(.00001,end-start)));
         }
         public string CanCallNextWave()
@@ -203,7 +204,8 @@ namespace Gatefall.Core
             // Never compress the current wave's remaining spawns or skip actor timers.
             foreach(SpawnGroup group in Schedule)if(group.Wave>=next)group.Start-=advance;
             for(int i=next-1;i<supplyDue.Length;i++)supplyDue[i]-=advance;
-            supplyDue[next-1]=Elapsed;
+            if(next-1<supplyDue.Length)supplyDue[next-1]=Elapsed;
+            if(waveDue!=null){for(int i=next-1;i<waveDue.Length;i++)waveDue[i]-=advance;waveDue[next-1]=Elapsed;}
             if(command!=null)commands.Add(command);
             Telemetry.WaveCalls++;Telemetry.WaveAdvanceSeconds+=advance;
             Telemetry.WaveCallLog.Add(Elapsed.ToString("F2")+" wave="+(next+1)+" advance="+advance.ToString("F2"));
@@ -233,6 +235,7 @@ namespace Gatefall.Core
         private readonly HashSet<string> commands = new HashSet<string>();
         private int nextId, supplyIndex; private float fireCooldown;
         private readonly double[] supplyDue = {30,60,90,120,150};
+        private double[] waveDue;
         public DefenseSimulation(GameBalance balance, int seed, CampaignBattle rules = null)
         {
             if (balance == null) throw new ArgumentNullException("balance");
@@ -330,6 +333,7 @@ namespace Gatefall.Core
             string reason=CanAct(); if(reason!="")return reason;
             if(recipeId<0 || recipeId>=TowerCatalog.Recipes.Length)return "존재하지 않는 조합식입니다.";
             if(!Allows(TowerCatalog.Recipes[recipeId].Result))return "이 융합식은 작전 클리어 후 해금됩니다.";
+            if(recipeId==10 && Rules!=null && !Rules.Lab && !Rules.BarrageSealUnlocked)return "2-5 클리어 후 상위 경로가 열립니다.";
             Tower a=TowerById(first),b=TowerById(second); if(a==null || b==null)return "재료 타워 두 개를 선택하세요.";
             if(a.Id==b.Id)return "서로 다른 타워가 필요합니다.";
             FusionRecipe r=TowerCatalog.Recipes[recipeId]; if(!r.Matches(a,b))return "재료 종류와 Lv2 이상 조건을 확인하세요.";
@@ -398,7 +402,8 @@ namespace Gatefall.Core
         }
         private bool GrantDueSupplies(bool prepaid=false)
         {
-            int stage=0;while(stage<supplyDue.Length && Elapsed+.00001>=supplyDue[stage])stage++;
+            double[] boundaries=waveDue ?? supplyDue;
+            int stage=0;while(stage<boundaries.Length && Elapsed+.00001>=boundaries[stage])stage++;
             if(stage!=Wave) {Wave=stage;Emit(EventKind.Wave,GatePositions[ActiveGate],new V2(),Wave+1);}
             bool offer=false;
             while(supplyIndex<5 && Elapsed+.00001>=supplyDue[supplyIndex] && (supplyIndex+1)*30<Balance.Duration) {
@@ -458,6 +463,15 @@ namespace Gatefall.Core
                 }
                 if(tower.Kind==TowerKind.Observer)targets.Sort((a,b)=> { int d=(b.MarkRemaining>0).CompareTo(a.MarkRemaining>0); return d!=0 ? d : Lead(a,b); });
                 tower.Aim=(targets[0].Position-tower.Position).Normalized;
+                if(s.ConeCos>0){
+                    // One simultaneous volley, capped per distinct living target. No secondary radius explosion.
+                    int hit=0;foreach(var target in targets){
+                        V2 dir=(target.Position-tower.Position).Normalized;
+                        if(dir.X*tower.Aim.X+dir.Y*tower.Aim.Y+.00001f<s.ConeCos)continue;
+                        Shoot(tower.Position,target,tower,s);if(++hit>=s.MaxTargets)break;
+                    }
+                    tower.Cooldown=s.Interval;continue;
+                }
                 int n=tower.Kind==TowerKind.Binding || tower.Kind==TowerKind.Beacon ? Math.Min(s.MaxTargets,targets.Count) : 1;
                 for(int i=0;i<n;i++)Shoot(tower.Position,targets[i],tower,s); tower.Cooldown=s.Interval;
             }
@@ -475,7 +489,7 @@ namespace Gatefall.Core
             float hp=g.Kind==EnemyKind.Siege ? 400 : g.Kind==EnemyKind.Brute ? 220 : g.Kind==EnemyKind.Runner ? 32 : 60;
             float speed=g.Kind==EnemyKind.Siege ? .8f : g.Kind==EnemyKind.Brute ? .85f : g.Kind==EnemyKind.Runner ? 2 : 1.15f;
             if(Rules!=null && Rules.Stage!=null) {
-                hp*=.9f+.05f*Rules.Stage.Index; if(Rules.Crisis)hp*=1.25f;
+                hp*=Rules.Stage.HealthScale>0 ? Rules.Stage.HealthScale : .9f+.05f*Rules.Stage.Index; if(Rules.Crisis)hp*=1.25f;
                 if(g.Kind==EnemyKind.Grunt) {hp*=.12f;speed*=1.35f;}
                 else if(g.Kind==EnemyKind.Runner) {hp*=.75f;speed*=1.2f;}
                 else if(g.Kind==EnemyKind.Brute)speed*=1.15f;
@@ -541,6 +555,7 @@ namespace Gatefall.Core
                 for(int i=0;i<s.Chain.Length && e!=null;i++) { hit.Add(e.Id); V2 last=e.Position; Damage(e,s.Chain[i],p,from); from=last;
                     List<Enemy> options=Targets(last,s.ChainRange); e=options.Find(x=>!hit.Contains(x.Id)); } return;
             }
+            if(s.ConeCos>0){Damage(primary,s.Damage,p,p.Position);return;}
             if(s.Radius>0) {
                 Emit(EventKind.Blast,position,new V2(),s.Radius,(int)p.Kind);
                 List<Enemy> targets=Targets(position,s.Radius); int count=0;
@@ -552,7 +567,7 @@ namespace Gatefall.Core
         // Keep reservation and actual impact identical; the marker follow-up is applied afterwards and also pierces.
         static float ArmorAdjustedDamage(Enemy enemy,float raw,TowerKind kind,bool fromTower)
         {
-            if(enemy.Armor<=0 || fromTower && kind!=TowerKind.Autocannon)return raw;
+            if(enemy.Armor<=0 || fromTower && kind!=TowerKind.Autocannon && kind!=TowerKind.Scatter)return raw;
             return Math.Max(raw*.2f,raw-enemy.Armor);
         }
         private void Damage(Enemy e,float damage,Projectile p,V2 from)

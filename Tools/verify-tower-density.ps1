@@ -7,7 +7,7 @@ $taskOld=Get-Content (Join-Path $taskProject 'Tests/Fixtures/map-sites-v0160.jso
 $taskPlan=Get-Content (Join-Path $taskProject 'Docs/Design/route-iteration-plan.json') -Raw|ConvertFrom-Json
 $taskExpectedSites=@(14,18,14,24,24,24,24,22,24,24,24,24,24,24)
 $taskRows=@();$taskPreserved=0;$taskExpectedPreserved=0;$taskTotal=0
-foreach($taskStage in [Gatefall.Core.CampaignCatalog]::Stages){
+foreach($taskStage in [Gatefall.Core.CampaignCatalog]::LegacyStages){
     $taskIndex=$taskStage.Index
     $taskLayout=[Gatefall.Core.BattlefieldLayouts]::Get($taskStage)
     $taskChanged=$taskLayout.Id -ne $taskOld[$taskIndex].layoutId

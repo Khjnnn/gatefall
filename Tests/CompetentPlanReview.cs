@@ -14,6 +14,8 @@ namespace Gatefall.Tests
         public sealed class Plan
         {
             public float Rupture, Binding, Spread, Cap;
+            public float Scatter;
+            public bool Capstone;
             public int Upgrade; // 0 never, 1 once the tower cap or the board is full, 2 alternate with construction
             public bool Fuse;
             public bool SpearOnly { get { return Rupture == 0 && Binding == 0; } }
@@ -50,7 +52,7 @@ namespace Gatefall.Tests
             foreach (CampaignStage stage in CampaignCatalog.Stages) BattlefieldLayouts.Get(stage); // the layout cache is not thread-safe
             List<Plan> grid = Grid();
             var rows = new List<Row>();
-            for (int stage = Math.Max(0, fromStage - 1); stage < CampaignCatalog.Stages.Length; stage++) {
+            for (int stage = Math.Max(0, fromStage - 1); stage < CampaignCatalog.LegacyStages.Length; stage++) {
                 var scores = new Score[grid.Count];
                 int index = stage;
                 Parallel.For(0, grid.Count, i => {
@@ -126,7 +128,7 @@ namespace Gatefall.Tests
             foreach (SpawnGroup group in g.Schedule) { float w = group.Count * ScheduleWeight(group); weight[group.Lane] += w; total += w; }
             for (int lane = 0; lane < lanes; lane++) weight[lane] /= Math.Max(1e-6f, total);
             // Road length inside each kind's range, per site and lane.
-            TowerKind[] kinds = { TowerKind.Autocannon, TowerKind.Binding, TowerKind.Rupture };
+            TowerKind[] kinds = { TowerKind.Autocannon, TowerKind.Binding, TowerKind.Rupture, TowerKind.Scatter };
             var coverage = new Dictionary<TowerKind, float[,]>(); var laneLength = new float[lanes];
             foreach (TowerKind kind in kinds) {
                 float range = g.Stats(kind, 1).Range, r2 = range * range; var c = new float[sites, lanes];
@@ -140,7 +142,7 @@ namespace Gatefall.Tests
                 coverage[kind] = c;
             }
             var assigned = new float[lanes];
-            var built = new Dictionary<TowerKind, int> { { TowerKind.Autocannon, 0 }, { TowerKind.Binding, 0 }, { TowerKind.Rupture, 0 } };
+            var built = new Dictionary<TowerKind, int> { { TowerKind.Autocannon, 0 }, { TowerKind.Binding, 0 }, { TowerKind.Rupture, 0 },{TowerKind.Scatter,0} };
             int cap = (int)Math.Ceiling(plan.Cap * sites), constructions = 0, upgrades = 0; string why;
             if (g.TowerLimit > 0) cap = Math.Min(cap, g.TowerLimit); // the operation's tower limit also ends construction
 
@@ -155,8 +157,8 @@ namespace Gatefall.Tests
                 int n = 1; foreach (int count in built.Values) n += count;
                 TowerKind best = TowerKind.Autocannon; float deficit = float.MinValue;
                 // Ties go to the area and control roles first.
-                foreach (TowerKind kind in new[] { TowerKind.Rupture, TowerKind.Binding, TowerKind.Autocannon }) {
-                    float share = kind == TowerKind.Rupture ? plan.Rupture : kind == TowerKind.Binding ? plan.Binding : 1 - plan.Rupture - plan.Binding;
+                foreach (TowerKind kind in new[] { TowerKind.Rupture, TowerKind.Binding, TowerKind.Scatter,TowerKind.Autocannon }) {
+                    float share = kind == TowerKind.Rupture ? plan.Rupture : kind == TowerKind.Binding ? plan.Binding : kind==TowerKind.Scatter ? plan.Scatter : 1 - plan.Rupture - plan.Binding-plan.Scatter;
                     if (share <= 0 || !g.Allows(kind)) continue;
                     float d = share * n - built[kind]; if (d > deficit) { deficit = d; best = kind; }
                 }
@@ -173,6 +175,12 @@ namespace Gatefall.Tests
                 built[kind]++; constructions++; spent += price; return true;
             };
             Func<bool> upgrade = () => {
+                if(plan.Capstone && g.Telemetry.Fusions<2){
+                    foreach(var kind in new[]{TowerKind.Barrage,TowerKind.Scatter,TowerKind.Rupture,TowerKind.Binding})foreach(var t in g.Towers){
+                        if(t.Kind!=kind || t.Level!=1 || g.CanUpgrade(t.Id)!="")continue;int priorityPrice=TowerCatalog.Get(kind).UpgradePrice(1);if(priorityPrice>spendingLimit-spent)continue;
+                        if(g.TryUpgrade(t.Id,null,out why)){upgrades++;spent+=priorityPrice;return true;}
+                    }
+                }
                 Tower best = null; float bestValue = -1;
                 foreach (Tower t in g.Towers) {
                     if (t.Kind == TowerKind.Barrier || g.CanUpgrade(t.Id) != "" ||
@@ -186,7 +194,7 @@ namespace Gatefall.Tests
             };
             Func<bool> fuse = () => {
                 if (g.Cores < 1) return false;
-                foreach (int recipe in new[] { 1, 0, 2, 3, 4, 5 }) {
+                foreach (int recipe in plan.Capstone ? new[]{10,9} : new[] { 1, 0, 2, 3, 4, 5 }) {
                     FusionRecipe r = TowerCatalog.Recipes[recipe];
                     if (g.Credits < r.Credits || r.Credits > spendingLimit - spent) continue;
                     Tower first = null, second = null; float closest = float.MaxValue;

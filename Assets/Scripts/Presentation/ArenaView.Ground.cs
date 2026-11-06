@@ -10,7 +10,9 @@ namespace Gatefall
         {
             int stage = game.Rules != null && game.Rules.Stage != null ? game.Rules.Stage.Index : 0;
             int theme = game.Rules != null && game.Rules.Stage != null ? BattlefieldLayouts.Get(game.Rules.Stage).Theme : 0;
+            bool market=game.Rules!=null && game.Rules.Stage!=null && game.Rules.Stage.Chapter==2;
             Color[] groundTints = { GatefallArt.Hex("E6DFCE"), GatefallArt.Hex("C9D3D6"), GatefallArt.Hex("E7D8BE"), GatefallArt.Hex("C9CFCA") };
+            if(market)groundTints=new[]{GatefallArt.Hex("E4D1AE"),GatefallArt.Hex("DBC9AD"),GatefallArt.Hex("BAC7CD"),GatefallArt.Hex("CABBA5")};
             Texture2D paving = stage == 10 ? art.Texture("district-training-ground") ?? art.Texture("district-ground") : art.Texture("district-ground");
             if (paving != null) paving.wrapMode = TextureWrapMode.Repeat;
             Mesh plate = new Mesh { name = "Tiled district ground" };
@@ -73,7 +75,7 @@ namespace Gatefall
                 }
                 if (!clear) continue;
                 int index = ((x * 7 + y * 3 + stage * 5) % 4 + 4) % 4;
-                Sprite sprite = art.Scenery(index); if (sprite == null) continue;
+                Sprite sprite = art.Scenery(index,market); if (sprite == null) continue;
                 Make("District block " + index, sprite, Point(p), new Vector3(width / sprite.bounds.size.x, height / sprite.bounds.size.y, 1), tints[theme], -30000 + Order(p.Y));
             }
         }
@@ -102,7 +104,7 @@ namespace Gatefall
                 if(!clear)continue;
                 // Existing original atlas: homes, warehouse, garden, underpass.
                 int index=stage==10?2:stage==11?1:theme==1?3:theme==2?1:stage%4;
-                Sprite sprite=art.Scenery(index);if(sprite==null)return new Rect();
+                Sprite sprite=art.Scenery(index,game.Rules!=null && game.Rules.Stage!=null && game.Rules.Stage.Chapter==2);if(sprite==null)return new Rect();
                 // Atlas scenery already has a painted footprint; avoid a flat opaque pedestal.
                 Make("District landmark "+stage,sprite,Point(center),new Vector3(width/sprite.bounds.size.x,height/sprite.bounds.size.y,1),Color.white,-30000+Order(center.Y));
                 Debug.Log("GATEFALL LANDMARK stage="+(stage+1)+" x="+center.X+" y="+center.Y+" width="+width+" atlas="+index);

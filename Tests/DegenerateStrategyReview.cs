@@ -43,7 +43,7 @@ namespace Gatefall.Tests
         {
             var rows = new List<Row>();
             foreach (Policy policy in Policies)
-                for (int stage = 0; stage < CampaignCatalog.Stages.Length; stage++)
+                for (int stage = 0; stage < CampaignCatalog.LegacyStages.Length; stage++)
                     foreach (int seed in Seeds) rows.Add(Play(policy, stage, seed));
             return rows.ToArray();
         }

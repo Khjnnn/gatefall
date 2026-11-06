@@ -200,12 +200,13 @@ namespace Gatefall
             if(game.WaveClearVictory && !game.IsPreparing)Text(new Rect(waveX-waveWidth/2, 34, waveWidth, 14), "경과 " + Clock((float)game.Elapsed), 11, Paper, TextAnchor.MiddleCenter, 1, true);
             if (game.IsPreparing) Text(new Rect(W / 2 - 150, 44, 300, 22), "배치 준비 · 시간 정지", 14, Amber, TextAnchor.MiddleCenter, 1, true);
             else {
-                float gap = wave.Width<181?4:5, seg = (wave.Width-5*gap)/6, x0 = wave.X;
-                for (int i = 0; i < 6; i++) {
+                int segments=game.WaveCount;
+                float gap = wave.Width<181?4:5, seg = (wave.Width-(segments-1)*gap)/segments, x0 = wave.X;
+                for (int i = 0; i < segments; i++) {
                     Rect r = new Rect(x0 + i * (seg + gap), 48, seg, 8);
                     Fill(r, GatefallArt.Alpha(Ink, .75f));
                     float f = game.WaveProgressFraction(i);
-                    bool bossWave = game.Rules != null && game.Rules.Stage != null && game.Rules.Stage.Boss && i == 5;
+                    bool bossWave = game.Rules != null && game.Rules.Stage != null && game.Rules.Stage.Boss && i == segments-1;
                     if (f > 0) Fill(new Rect(r.x, r.y, r.width * f, r.height), bossWave ? Threat : Paper);
                     else if (bossWave) Fill(new Rect(r.x + seg / 2 - 2, r.y, 4, r.height), Threat);
                 }
@@ -307,7 +308,7 @@ namespace Gatefall
         {
             switch (k) {
                 case TowerKind.Autocannon: return "단일"; case TowerKind.Binding: return "감속"; case TowerKind.Rupture: return "범위";
-                case TowerKind.Barrier: return "저지"; case TowerKind.Arc: return "연쇄"; case TowerKind.Shatter: return "집중";
+                case TowerKind.Scatter: return "산탄"; case TowerKind.Barrage: return "탄막"; case TowerKind.Barrier: return "저지"; case TowerKind.Arc: return "연쇄"; case TowerKind.Shatter: return "집중";
                 case TowerKind.Gravity: return "흡인"; case TowerKind.Marker: return "표식"; case TowerKind.Observer: return "집중"; case TowerKind.Beacon: return "표식·감속"; default: return "종결";
             }
         }
@@ -330,23 +331,24 @@ namespace Gatefall
             Tower tower = game.TowerAt(socket);
             if (tower == null) {
                 List<TowerKind> kinds = new List<TowerKind>();
-                foreach (TowerKind k in new[] { TowerKind.Autocannon, TowerKind.Binding, TowerKind.Rupture, TowerKind.Barrier, TowerKind.Marker }) if (game.Allows(k)) kinds.Add(k);
+                foreach (TowerKind k in new[] { TowerKind.Autocannon, TowerKind.Binding, TowerKind.Rupture, TowerKind.Barrier, TowerKind.Marker,TowerKind.Scatter }) if (game.Allows(k)) kinds.Add(k);
                 float w = 28 + kinds.Count * 124 + (kinds.Count - 1) * 8;
                 Rect r = PlacePanel(socket, Mathf.Max(w, 160), 196);
                 Skin(r, "ui-panel");
                 bool atLimit = game.TowerLimit > 0 && game.Towers.Count >= game.TowerLimit;
-                Text(new Rect(r.x + 18, r.y + 10, 200, 24), atLimit ? "결계주 상한 " + game.TowerLimit + "기" : "결계주 건설", 15, atLimit ? Threat : Muted, TextAnchor.MiddleLeft, 1);
+                Text(new Rect(r.x + 18, r.y + 10, 200, 24), atLimit ? "결계주 상한 " + game.TowerLimit + "기" : "결계주 건설", GatefallUiStyle.FontSizeAction, atLimit ? Paper : Muted, TextAnchor.MiddleLeft, 1);
                 for (int i = 0; i < kinds.Count; i++) {
                     TowerKind k = kinds[i]; TowerDefinition d = TowerCatalog.Get(k);
                     string reason = game.CanBuild(socket, k);
                     Rect t = new Rect(r.x + 14 + i * 132, r.y + 40, 124, 144);
-                    Button(200 + (int)k, Box(t), "", reason == "", Look.Secondary, null, 18, GatefallArt.RoleColor(k));
-                    Tex(new Rect(t.x + 22, t.y + 2, 80, 100), art.TowerIcon(k, 1), reason == "" || reason.StartsWith("마석") ? Color.white : new Color(1, 1, 1, .4f));
-                    Skin(new Rect(t.x + 6, t.y + 6, 44, 22), "ui-chip");
-                    Text(new Rect(t.x + 6, t.y + 6, 44, 22), ShortRole(k), 12, GatefallArt.RoleColor(k), TextAnchor.MiddleCenter, 2);
-                    Text(new Rect(t.x, t.y + 96, t.width, 22), d.Name.Replace(" 결계주", ""), 16, Paper, TextAnchor.MiddleCenter, 2);
-                    Icon(new Rect(t.x + 30, t.y + 119, 20, 20), "icon-stone", Color.white);
-                    Text(new Rect(t.x + 52, t.y + 117, 50, 24), d.BuildCost.ToString(), 17, game.Credits >= d.BuildCost ? Amber : Threat, TextAnchor.MiddleLeft, 2);
+                    Button(k==TowerKind.Scatter ? 260 : 200 + (int)k, Box(t), "", reason == "", Look.Secondary, null, 18, GatefallArt.RoleColor(k));
+                    Tex(new Rect(t.x + 24, t.y + 28, 76, 74), art.TowerIcon(k, 1), reason == "" || reason.StartsWith("마석") ? Color.white : new Color(1, 1, 1, .4f));
+                    RoleBadge(new Rect(t.x + 6, t.y + 6, 48, 22),ShortRole(k),GatefallArt.RoleColor(k));
+                    StateBadge(new Rect(t.x + 78, t.y + 6, 40, 22),reason==""?"":atLimit?"상한":reason.StartsWith("마석")?"부족":"불가");
+                    Fill(new Rect(t.x+12,t.y+105,t.width-24,1),GatefallUiStyle.ColorCardRim);
+                    Text(new Rect(t.x+12,t.y+111,48,24), d.Name.Replace(" 결계주", ""), GatefallUiStyle.FontSizeAction, Paper, TextAnchor.MiddleLeft, 1);
+                    Icon(new Rect(t.x+70,t.y+115,14,16), "icon-stone", Color.white);
+                    Text(new Rect(t.x+88,t.y+111,30,24), d.BuildCost.ToString(), GatefallUiStyle.FontSizeAction, game.Credits >= d.BuildCost ? Amber : Paper, TextAnchor.MiddleLeft, 1);
                 }
             } else TowerPanel(tower);
         }
@@ -357,15 +359,16 @@ namespace Gatefall
             List<GatefallGame.FusionOption> options = controller.FusionOptions(tower);
             bool canLevel = tower.Level < game.TowerLevelCap(tower.Kind);
             if (controller.TowerRecipesExpanded) { TowerRecipePanel(tower, options); return; }
-            Rect r = PlacePanel(tower.Socket, 464, 222);
+            Rect r = PlacePanel(tower.Socket, 464, 250);
             Skin(r, "ui-panel");
             Tex(new Rect(r.x + 12, r.y + 8, 56, 70), art.TowerIcon(tower.Kind, tower.Level), GatefallArt.TowerTint(tower.Kind, tower.Level));
             TowerStats now = game.Stats(tower);
             TowerStats next = canLevel ? game.Stats(tower, tower.Level + 1) : null;
             bool hasSlow = now.Slow > 0 || tower.Kind == TowerKind.Barrier;
-            Text(new Rect(r.x + 76, r.y + 10, hasSlow ? 170 : 330, 28), d.Name + "  Lv" + tower.Level, 19, Paper, TextAnchor.MiddleLeft, 2);
-            if (hasSlow) Text(new Rect(r.x + 250, r.y + 10, 158, 28), SlowResistanceHint, 12, Amber, TextAnchor.MiddleLeft, 1);
-            Button(100, new Box2(r.x + r.width - 44, r.y + 8, 32, 30), "×", true, Look.Secondary, null, 18);
+            Text(new Rect(r.x + 76, r.y + 10, hasSlow ? 170 : 330, 28), d.Name + "  Lv" + tower.Level, GatefallUiStyle.FontSizeSection, Paper, TextAnchor.MiddleLeft, 2);
+            if (hasSlow) Text(new Rect(r.x + 250, r.y + 10, 158, 28), SlowResistanceHint, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
+            Button(100, new Box2(r.x + r.width - 44, r.y + 8, 32, 30), "", true, Look.Ghost);
+            Glyph(new Rect(r.x+r.width-40,r.y+11,26,26),"ui-glyph-close",Muted);
             string line = StatLine(tower.Kind, now, next) + " · 사거리 " + now.Range.ToString("0.#");
             if (tower.Kind == TowerKind.Beacon && next != null && next.Range != now.Range) line += "→" + next.Range.ToString("0.#");
             Text(new Rect(r.x + 76, r.y + 40, r.width - 90, 22), line, 14, Muted, TextAnchor.MiddleLeft, 0);
@@ -374,29 +377,32 @@ namespace Gatefall
             if (tower.Kind == TowerKind.Barrier && tower.Cooldown <= 0) field += " · 파괴 시 감속 " + DefenseSimulation.WardBurstSlowPercent + "%";
             if (tower.Kind == TowerKind.Marker || tower.Kind == TowerKind.Observer || tower.Kind == TowerKind.Beacon) field += " · 표식 연계";
             if (game.HasResonance(tower)) field += " · 공명 +5%";
-            Text(new Rect(r.x + 76, r.y + 62, r.width - 90, 18), field, 13, Muted, TextAnchor.MiddleLeft, 1);
-            float x = r.x + 14, y = r.y + 86;
-            Rect up = new Rect(x, y, 140, 124);
+            Text(new Rect(r.x + 76, r.y + 62, r.width - 90, 18), field, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 1);
+            Fill(new Rect(r.x+14,r.y+84,r.width-28,1),GatefallUiStyle.ColorCardRim);
+            float x = r.x + 14, y = r.y + 94;
+            Rect up = new Rect(x, y, 214, 82);
             string reason = canLevel ? game.CanUpgrade(tower.Id) : "강화 완료";
             Button(210, Box(up), "", canLevel && reason == "", Look.Upgrade);
-            Icon(new Rect(up.x + 46, up.y + 8, 48, 48), "icon-upgrade", canLevel ? Color.white : new Color(1, 1, 1, .35f));
-            Text(new Rect(up.x, up.y + 58, up.width, 24), canLevel ? "Lv" + (tower.Level + 1) + " 강화" : "강화 완료", 17, Paper, TextAnchor.MiddleCenter, 2);
-            if (canLevel) Cost(new Rect(up.x, up.y + 88, up.width, 26), d.UpgradePrice(tower.Level), 0);
-            else Text(new Rect(up.x, up.y + 88, up.width, 26), "Lv" + tower.Level, 16, Muted, TextAnchor.MiddleCenter, 1);
-            Rect fusion = new Rect(x + 148, y, 140, 124);
+            Glyph(new Rect(up.x+12,up.y+12,GatefallUiStyle.GlyphSize,GatefallUiStyle.GlyphSize),canLevel?"ui-glyph-upgrade":"ui-glyph-check",canLevel?Amber:Muted);
+            StateBadge(new Rect(up.x+166,up.y+14,40,22),!canLevel?"완료":reason==""?"":reason.StartsWith("마석")?"부족":"잠금");
+            Text(new Rect(up.x+46,up.y+12,118,26),canLevel?"Lv"+(tower.Level+1)+" 강화":"강화 완료",GatefallUiStyle.FontSizeAction,Paper,TextAnchor.MiddleLeft,1);
+            if(canLevel) Cost(new Rect(up.x+10,up.y+46,78,26),d.UpgradePrice(tower.Level),0);
+            else Text(new Rect(up.x+16,up.y+46,150,26),"최대 Lv"+tower.Level,GatefallUiStyle.FontSizeLabel,Muted,TextAnchor.MiddleLeft,0);
+            Rect fusion = new Rect(x + 222, y, 214, 82);
             int ready = options.FindAll(o => o.Reason == "").Count;
             string fusionStatus = ready > 0 ? "가능 " + ready + "개" : "재료 확인";
             if (options.Count == 0)
                 fusionStatus = System.Array.Exists(TowerCatalog.Recipes, r => r.First == tower.Kind || r.Second == tower.Kind) ? "해금·편성 필요" : "후속 조합 없음";
             Button(212, Box(fusion), "", options.Count > 0, Look.Fusion);
-            Tex(new Rect(fusion.x + 46, fusion.y + 8, 48, 48), art.TowerIcon(tower.Kind, 2), options.Count > 0 ? Color.white : new Color(1, 1, 1, .35f));
-            Text(new Rect(fusion.x, fusion.y + 58, fusion.width, 24), "조합", 17, Ally, TextAnchor.MiddleCenter, 2);
-            Text(new Rect(fusion.x, fusion.y + 88, fusion.width, 26), fusionStatus, 14, ready > 0 ? Amber : Muted, TextAnchor.MiddleCenter, 1);
-            Rect sell = new Rect(x + 296, y, 140, 124);
-            Button(211, Box(sell), "", game.CanSell(tower.Id) == "", controller.SellArmed ? Look.Danger : Look.Secondary);
-            Icon(new Rect(sell.x + 46, sell.y + 8, 48, 48), "icon-sell", Color.white);
-            Text(new Rect(sell.x, sell.y + 58, sell.width, 24), controller.SellArmed ? "한 번 더 누르면 판매" : "판매", controller.SellArmed ? 13 : 17, Paper, TextAnchor.MiddleCenter, 2);
-            Text(new Rect(sell.x, sell.y + 88, sell.width, 26), "+" + game.SaleRefund(tower) + (tower.InvestedCores > 0 ? "  촉매+" + tower.InvestedCores : ""), 16, Amber, TextAnchor.MiddleCenter, 2);
+            Glyph(new Rect(fusion.x+12,fusion.y+12,GatefallUiStyle.GlyphSize,GatefallUiStyle.GlyphSize),"ui-glyph-fusion",options.Count>0?FusionColor:Muted);
+            StateBadge(new Rect(fusion.x+166,fusion.y+14,40,22),ready>0?"가능":options.Count>0?"재료":"잠금");
+            Text(new Rect(fusion.x+46,fusion.y+12,112,26),"조합",GatefallUiStyle.FontSizeAction,Paper,TextAnchor.MiddleLeft,1);
+            Text(new Rect(fusion.x+16,fusion.y+46,182,26),fusionStatus,GatefallUiStyle.FontSizeLabel,ready>0?Paper:Muted,TextAnchor.MiddleLeft,0);
+            Rect sell = new Rect(x,r.y+188,436,48);
+            Button(211,Box(sell),"",game.CanSell(tower.Id)=="",controller.SellArmed?Look.Danger:Look.Ghost);
+            Glyph(new Rect(sell.x+12,sell.y+11,26,26),"ui-glyph-sell",controller.SellArmed?Paper:Muted);
+            Text(new Rect(sell.x+46,sell.y,234,sell.height),controller.SellArmed?"한 번 더 누르면 판매":"판매",controller.SellArmed?GatefallUiStyle.FontSizeLabel:GatefallUiStyle.FontSizeBody,controller.SellArmed?Paper:Muted,TextAnchor.MiddleLeft,0);
+            Text(new Rect(sell.x+282,sell.y,138,sell.height),"+"+game.SaleRefund(tower)+(tower.InvestedCores>0?"  촉매+"+tower.InvestedCores:""),GatefallUiStyle.FontSizeBody,controller.SellArmed?Paper:Muted,TextAnchor.MiddleRight,1);
         }
 
         private string WardStatus(Tower tower, int capacity)
@@ -416,7 +422,7 @@ namespace Gatefall
             Rect r = PlacePanel(tower.Socket, 464, 78 + rows * 116);
             Skin(r, "ui-panel");
             Text(new Rect(r.x + 16, r.y + 8, 330, 26), "조합 · " + TowerCatalog.Get(tower.Kind).Name.Replace(" 결계주", ""), 18, Paper, TextAnchor.MiddleLeft, 2);
-            Text(new Rect(r.x + 16, r.y + 37, 330, 24), "선택한 자리에 Lv1 생성 · 재료 Lv2 이상", 13, Muted, TextAnchor.MiddleLeft, 1);
+            Text(new Rect(r.x + 16, r.y + 37, 330, 24), "선택한 자리에 Lv1 생성 · 재료 Lv2 이상", GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 1);
             Button(213, new Box2(r.x + r.width - 92, r.y + 8, 78, 40), "뒤로", true, Look.Secondary, null, 15);
             for (int i = 0; i < options.Count; i++) {
                 GatefallGame.FusionOption o = options[i]; FusionRecipe recipe = TowerCatalog.Recipes[o.Recipe];
@@ -425,14 +431,14 @@ namespace Gatefall
                 Color tint = GatefallArt.TowerTint(recipe.Result, 1);
                 if (o.Reason != "") tint.a = .5f;
                 Tex(new Rect(t.x + 6, t.y + 4, 44, 55), art.TowerIcon(recipe.Result, 1), tint);
-                Text(new Rect(t.x + 54, t.y + 10, 150, 25), TowerCatalog.Get(recipe.Result).Name.Replace(" 결계주", ""), 17, GatefallArt.RoleColor(recipe.Result), TextAnchor.MiddleLeft, 2);
+                Text(new Rect(t.x + 54, t.y + 10, 150, 25), TowerCatalog.Get(recipe.Result).Name.Replace(" 결계주", ""), GatefallUiStyle.FontSizeAction, Paper, TextAnchor.MiddleLeft, 2);
                 if (o.Reason == "") {
                     string description = recipe.Result == TowerKind.Beacon
                         ? game.Stats(recipe.Result, 1).MaxTargets + "명 표식·감속"
                         : recipe.Result==TowerKind.Seal ? "범위·감속 · 재료2개" : "재료 2개 소비";
-                    Text(new Rect(t.x + 54, t.y + 36, 150, 20), description, 12, Muted, TextAnchor.MiddleLeft, 1);
+                    Text(new Rect(t.x + 54, t.y + 36, 150, 20), description, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 1);
                     Cost(new Rect(t.x + 32, t.y + 70, 148, 26), recipe.Credits, 1);
-                } else Text(new Rect(t.x + 54, t.y + 36, 150, 58), o.Reason, 13, Muted, TextAnchor.MiddleLeft, 0);
+                } else Text(new Rect(t.x + 54, t.y + 36, 150, 58), o.Reason, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
             }
         }
 
@@ -445,6 +451,7 @@ namespace Gatefall
 
         private static string StatLine(TowerKind kind, TowerStats s, TowerStats next)
         {
+            if (s.ConeCos>0) return "피해 "+s.Damage.ToString("0")+(next==null?"":"→"+next.Damage.ToString("0"))+" · 부채꼴 최대 "+s.MaxTargets+"명";
             if (kind == TowerKind.Marker) return "표식 3초 · 추가 피해 " + s.MarkBonus.ToString("0") + (next == null ? "" : "→" + next.MarkBonus.ToString("0"));
             if(kind==TowerKind.Observer)return "피해 " + s.Damage.ToString("0") + (next==null ? "" : "→" + next.Damage.ToString("0"));
             if (kind == TowerKind.Barrier) return "저지 2명 · 재충전 " + s.Interval.ToString("0.#") + (next != null ? "→" + next.Interval.ToString("0.#") : "") + "초";
@@ -470,10 +477,10 @@ namespace Gatefall
         {
             float total = 52 + (catalysts > 0 ? 44 : 0), x = r.x + (r.width - total) / 2;
             Icon(new Rect(x, r.y + 2, 22, 22), "icon-stone", Color.white);
-            Text(new Rect(x + 24, r.y, 30, r.height), credits.ToString(), 17, game.Credits >= credits ? Amber : Threat, TextAnchor.MiddleLeft, 2);
+            Text(new Rect(x + 24, r.y, 30, r.height), credits.ToString(), GatefallUiStyle.FontSizeAction, game.Credits >= credits ? Amber : Paper, TextAnchor.MiddleLeft, 2);
             if (catalysts > 0) {
                 Icon(new Rect(x + 58, r.y + 2, 22, 22), "icon-catalyst", Color.white);
-                Text(new Rect(x + 82, r.y, 20, r.height), catalysts.ToString(), 17, game.Cores >= catalysts ? Ally : Threat, TextAnchor.MiddleLeft, 2);
+                Text(new Rect(x + 82, r.y, 20, r.height), catalysts.ToString(), GatefallUiStyle.FontSizeAction, game.Cores >= catalysts ? Paper : Muted, TextAnchor.MiddleLeft, 2);
             }
         }
 
@@ -496,7 +503,7 @@ namespace Gatefall
             const string vacancy = "상대 재료 자리가 빕니다";
             string field = game.IsPreparing ? vacancy + " · 다른 길은 취소 후 재선택"
                 : "범위 내 적 " + (anchor == null ? 0 : EnemiesInRange(anchor.Position, range)) + " · " + vacancy + " · 취소 후 재선택 가능";
-            Text(new Rect(r.x + 62, r.y + 60, 420, 22), field, 13, Muted, TextAnchor.MiddleLeft, 0);
+            Text(new Rect(r.x + 62, r.y + 60, 420, 22), field, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
             Button(100, new Box2(r.x + r.width - 112, r.y + 8, 100, 48), "취소", true, Look.Secondary, null, 16);
             // On a fallback layout, keep any partner behind the panel selectable.
             if (clear) controller.TouchInput.Regions.Add(new TouchRegion(0, activeTowerPanel));
@@ -619,9 +626,8 @@ namespace Gatefall
         {
             Rect r = new Rect(b.X, b.Y, b.Width, b.Height);
             Color? card=accent ?? (look==Look.Upgrade?(Color?)Amber:look==Look.Fusion?FusionColor:null);
-            string skin = !enabled ? "ui-button-disabled" : card.HasValue ? "ui-role-card" : look == Look.Primary ? "ui-button-primary" : look == Look.Danger ? "ui-button-danger" : look == Look.Ghost ? null : "ui-button";
-            if (skin != null) Skin(r, skin,enabled && card.HasValue?card.Value:Color.white);
-            if(enabled && card.HasValue)CardAccent(r,card.Value);
+            string skin = !enabled ? "ui-button-disabled" : card.HasValue ? RoleSkin(card.Value) : look == Look.Primary ? "ui-button-primary" : look == Look.Danger ? "ui-button-danger" : look == Look.Ghost ? null : "ui-button";
+            if (skin != null) Skin(r, skin);
             Color color = !enabled ? Muted : look == Look.Primary ? Ink : Paper;
             if (!string.IsNullOrEmpty(text)) {
                 if (icon != null) {
@@ -637,7 +643,7 @@ namespace Gatefall
         private Texture2D SkinTexture(string name)
         { return ThemeTexture(name) ?? (name == "ui-bar-back" ? art.Texture("ui-bar") : name == "ui-button-danger" ? art.Texture("ui-button") : art.Texture(name)); }
         private static int SkinBorder(string name)
-        { return name == "ui-chip" ? 14 : name.StartsWith("ui-bar") ? 9 : 26; }
+        { return name == "ui-chip" ? GatefallUiStyle.RadiusSmall+3 : name.StartsWith("ui-bar") ? 9 : name=="ui-panel" ? GatefallUiStyle.RadiusLarge+3 : GatefallUiStyle.RadiusMedium+3; }
         private static Color SkinTint(Item item)
         { return item.Color; }
         private static readonly Color TextShadow = new Color(.04f, .06f, .09f, .85f);
