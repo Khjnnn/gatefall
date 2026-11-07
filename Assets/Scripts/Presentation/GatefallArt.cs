@@ -9,6 +9,8 @@ namespace Gatefall
     // Pivots sit on each object's ground footprint so y-sorting and positions agree with the simulation.
     public sealed class GatefallArt
     {
+        [System.Serializable] public sealed class WardAsset { public string key,sha256;public int sourceWidth,sourceHeight;public int[] alphaBounds;public float heightWorld,pivotX,pivotY; }
+        [System.Serializable] public sealed class WardManifest { public WardAsset[] assets; }
         private struct Spec { public float Ppu, X, Y; public Spec(float ppu, float x, float y) { Ppu = ppu; X = x; Y = y; } }
         private static readonly Dictionary<string, Spec> specs = new Dictionary<string, Spec> {
             { "pad", new Spec(84, .5f, .40f) }, { "core", new Spec(80, .5f, .175f) },
@@ -25,6 +27,8 @@ namespace Gatefall
         private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
         private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
         private readonly List<Texture2D> generatedTextures=new List<Texture2D>();
+        private readonly Dictionary<string,WardAsset> wardAssets=new Dictionary<string,WardAsset>();
+        private readonly HashSet<string> activeWardAssets=new HashSet<string>();
         public Font Regular { get; private set; }
         public Font Bold { get; private set; }
         public Font Heavy { get; private set; }
@@ -34,19 +38,25 @@ namespace Gatefall
             Regular = Resources.Load<Font>("Fonts/"+GatefallUiStyle.FontResourceRegular);
             Bold = Resources.Load<Font>("Fonts/"+GatefallUiStyle.FontResourceBold) ?? Regular;
             Heavy = Resources.Load<Font>("Fonts/"+GatefallUiStyle.FontResourceHeavy) ?? Bold;
+            TextAsset ward=Resources.Load<TextAsset>("Art/UrbanWard/manifest");
+            if(ward!=null)foreach(WardAsset entry in JsonUtility.FromJson<WardManifest>(ward.text).assets)
+                if(entry.heightWorld>0)wardAssets.Add(entry.key,entry);
         }
 
         public Texture2D Texture(string name)
         {
             Texture2D texture;
             if (!textures.TryGetValue(name, out texture)) {
-                texture = Resources.Load<Texture2D>("Art/V12/" + name) ?? Resources.Load<Texture2D>("Art/V6/" + name) ?? Resources.Load<Texture2D>("Art/V5/" + name) ?? Resources.Load<Texture2D>("Art/Chapter2/"+name);
+                texture=name=="home-city"?Resources.Load<Texture2D>("Art/HomeWard/home-city"):wardAssets.ContainsKey(name)?Resources.Load<Texture2D>("Art/UrbanWard/"+name):null;
+                if(texture!=null) { if(wardAssets.ContainsKey(name))activeWardAssets.Add(name); }
+                else texture = Resources.Load<Texture2D>("Art/V12/" + name) ?? Resources.Load<Texture2D>("Art/V6/" + name) ?? Resources.Load<Texture2D>("Art/V5/" + name) ?? Resources.Load<Texture2D>("Art/Chapter2/"+name);
                 if(texture==null && (name.StartsWith("tower-scatter-") || name.StartsWith("tower-barrage-")))texture=ChapterTowerTexture(name);
                 if (texture != null) { texture.wrapMode = TextureWrapMode.Clamp; texture.filterMode = FilterMode.Bilinear; }
                 textures[name] = texture;
             }
             return texture;
         }
+        public bool HasUrbanWard(string name) { Texture(name);return activeWardAssets.Contains(name); }
 
         // Normalize an authored atlas cell once, into the same256x320 footprint as the existing tower set.
         // Reused by the field and both HUD render paths. No per-frame readback or texture creation.
@@ -79,7 +89,9 @@ namespace Gatefall
             // Import resolution is independent of world size; then ArenaView sets the smaller body scale.
             float sourceWidth = name == "enemy-grunt" || name == "enemy-runner" ? 200 : name == "enemy-brute" ? 220 : name == "enemy-siege" ? 264 : name == "enemy-boss" ? 360 : texture.width;
             float ppu = spec.Ppu * texture.width / sourceWidth;
-            sprite = UnityEngine.Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(spec.X, spec.Y), ppu);
+            Vector2 pivot=new Vector2(spec.X,spec.Y);
+            if(activeWardAssets.Contains(name)) { WardAsset entry=wardAssets[name];ppu=texture.height/entry.heightWorld;pivot=new Vector2(entry.pivotX,entry.pivotY); }
+            sprite = UnityEngine.Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), pivot, ppu);
             sprites[name] = sprite;
             return sprite;
         }

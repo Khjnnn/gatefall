@@ -122,7 +122,7 @@ namespace Gatefall
         public void Restart() { if (IsCampaign) BeginPreparation(); else BeginLab(); }
         public void Pause()
         {
-            if (ScreenPage != CampaignScreen.Battle) { ReturnCity(); return; }
+            if (ScreenPage != CampaignScreen.Battle) { if(ScreenPage!=CampaignScreen.Home)CampaignAction(603); return; }
             if (Simulation.AwaitingCard) return;
             if (Menu == GameMenu.Pause) {
                 Menu = menuBeforePause;

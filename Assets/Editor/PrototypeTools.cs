@@ -321,6 +321,8 @@ namespace Gatefall.Editor
             ValidateCoreStatusFont();
             ValidateSoftHudSkins();
             CityBarrierUiAudit.Validate();
+            UrbanWardAssetAudit.Validate();
+            HomeUiAudit.Validate();
             AuditCityBriefingFont();
             ValidateFirstCombatReactionFrame();
             ValidateSplashStatFont(font);
@@ -372,17 +374,19 @@ namespace Gatefall.Editor
             foreach (TowerKind kind in new[] { TowerKind.Autocannon, TowerKind.Binding, TowerKind.Rupture, TowerKind.Barrier, TowerKind.Marker }) {
                 for (int level = 1; level <= 2; level++) {
                     string key = GatefallArt.TowerKeys[(int)kind];
-                    Texture2D expected = Resources.Load<Texture2D>("Art/V12/tower-" + key + "-" + level);
+                    bool urban=kind==TowerKind.Autocannon;
+                    Texture2D expected = Resources.Load<Texture2D>((urban?"Art/UrbanWard/tower-":"Art/V12/tower-") + key + "-" + level);
                     Sprite field = art.Tower(kind, level);
-                    if (expected == null || expected.width != 256 || expected.height != 320 || field == null ||
+                    if (expected == null || field == null ||
                         field.texture != expected || art.TowerIcon(kind, level) != expected ||
-                        !Mathf.Approximately(field.pixelsPerUnit, 86) || Mathf.Abs(field.pivot.y - .181f * 320) > .01f)
+                        (!urban && (expected.width != 256 || expected.height != 320 || !Mathf.Approximately(field.pixelsPerUnit, 86) || Mathf.Abs(field.pivot.y - .181f * 320) > .01f)))
                         throw new BuildFailedException("Base tower art mismatch: " + kind + " level " + level);
                 }
             }
             if (art.TowerIcon(TowerKind.Beacon, 1) != Resources.Load<Texture2D>("Art/V6/tower-marker-1"))
                 throw new BuildFailedException("Beacon must retain its distinct texture");
-            Debug.Log("GATEFALL TOWER ART: 5 families x 2 levels use the new field/menu textures; pivot, scale and Beacon checked.");
+            art.Dispose();
+            Debug.Log("GATEFALL TOWER ART: UrbanWard spear and4 V12 families use matching field/menu textures; legacy pivots and Beacon checked. Ward scale/pivots audited separately.");
         }
 
         private static void ValidateWaveHeaderFont()

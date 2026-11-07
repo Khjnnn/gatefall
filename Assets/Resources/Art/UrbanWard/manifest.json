@@ -1,0 +1,81 @@
+{
+  "style": "gatefall-urban-ward",
+  "version": "1.2.0",
+  "assets": [
+    {
+      "key": "icon-stone",
+      "sha256": "5a53915c06d8c0048dcc8cfacb5aa77e73d4a75b5fb50bf50b42b8cf918d664e",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "alphaBounds": [
+        174,
+        184,
+        1090,
+        1077
+      ],
+      "heightWorld": 0.96,
+      "pivotX": 0.5,
+      "pivotY": 0.5
+    },
+    {
+      "key": "icon-catalyst",
+      "sha256": "ba9fb92c56ff72d42bfdc4975e560761cd6ec0a3f50b8eb2483dd09b8e41f3fb",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "alphaBounds": [
+        272,
+        142,
+        968,
+        1120
+      ],
+      "heightWorld": 0.96,
+      "pivotX": 0.5,
+      "pivotY": 0.5
+    },
+    {
+      "key": "tower-spear-1",
+      "sha256": "770bfc2b2f7d875fec490320f33e095aef824f7aed3366ffd6f005e166d1a1f9",
+      "sourceWidth": 1122,
+      "sourceHeight": 1402,
+      "alphaBounds": [
+        212,
+        93,
+        905,
+        1304
+      ],
+      "heightWorld": 3.473162675474814,
+      "pivotX": 0.5,
+      "pivotY": 0.15627674750356635
+    },
+    {
+      "key": "tower-spear-2",
+      "sha256": "1849b7b4b33d8ea341a498052290f9fee0d60627c527518031b21fc95c91d888",
+      "sourceWidth": 1122,
+      "sourceHeight": 1402,
+      "alphaBounds": [
+        210,
+        92,
+        907,
+        1306
+      ],
+      "heightWorld": 3.4645799011532126,
+      "pivotX": 0.5,
+      "pivotY": 0.1550641940085592
+    },
+    {
+      "key": "ward-impact",
+      "sha256": "475fcaee88833198241b3a4e21fa60121c8011ff1b5fea69726ec9c8c4143152",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "alphaBounds": [
+        271,
+        286,
+        984,
+        950
+      ],
+      "heightWorld": 1.6,
+      "pivotX": 0.5,
+      "pivotY": 0.5
+    }
+  ]
+}

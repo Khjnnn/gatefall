@@ -1,0 +1,42 @@
+[
+  {
+    "sha256": "6655a1c75eb72fec39ffb854cbe39dbfc4fe40c4c911018b7a5254a62dd35df1",
+    "relative": "Assets/Scripts/Core/BattlefieldLayouts.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\BattlefieldLayouts.cs"
+  },
+  {
+    "sha256": "b0698ca3d84aba46b6e989e580f0f9de7c78f6ab8fb7874207702c312fc61a4d",
+    "relative": "Assets/Scripts/Core/Campaign.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\Campaign.cs"
+  },
+  {
+    "sha256": "562648a985f04767883eb92d259e00e5b376676739cb720f51ba12dda9082961",
+    "relative": "Assets/Scripts/Core/CampaignPersistence.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\CampaignPersistence.cs"
+  },
+  {
+    "sha256": "28910d3dcdfa7d479053f0ca4cb46984af5c8651b7e5351769330a31a61c0633",
+    "relative": "Assets/Scripts/Core/ChapterTwoCampaign.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\ChapterTwoCampaign.cs"
+  },
+  {
+    "sha256": "1b3e35e3d9b21ffd2d066e954b072bcaabbd61078974578cd32a9f1aa5f8eef4",
+    "relative": "Assets/Scripts/Core/DefenseSimulation.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\DefenseSimulation.cs"
+  },
+  {
+    "sha256": "195f2573892b6f372ddc5593786fc95e88474ebc6a434d1365024faf0ac6b475",
+    "relative": "Assets/Scripts/Core/MobileInput.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\MobileInput.cs"
+  },
+  {
+    "sha256": "e3fb7a2d3ead728cd04f11ee0b6df5b43bd1b25e202b1e2db3a7a5bc405fc634",
+    "relative": "Assets/Scripts/Core/RaonCombat.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\RaonCombat.cs"
+  },
+  {
+    "sha256": "71050e939ba45ca8285dcfa521802bf2e0be0cd7f59fc3ce3911b39f985fea4c",
+    "relative": "Assets/Scripts/Core/TowerCatalog.cs",
+    "path": "C:\\Users\\Pro\\Documents\\ChatGPT\\react\\gatefall-chapter2\\Assets\\Scripts\\Core\\TowerCatalog.cs"
+  }
+]

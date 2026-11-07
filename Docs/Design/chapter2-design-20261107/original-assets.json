@@ -1,0 +1,32 @@
+[
+  {
+    "sha256": "0869d19ff0f2e324098e02f516027fc1e8aa51c974bb20beb758cbcdf7220cc2",
+    "path": "Assets\\Resources\\Art\\HomeWard\\home-city.png",
+    "sourcePixelsUnchanged": true
+  },
+  {
+    "sha256": "ba9fb92c56ff72d42bfdc4975e560761cd6ec0a3f50b8eb2483dd09b8e41f3fb",
+    "path": "Assets\\Resources\\Art\\UrbanWard\\icon-catalyst.png",
+    "sourcePixelsUnchanged": true
+  },
+  {
+    "sha256": "5a53915c06d8c0048dcc8cfacb5aa77e73d4a75b5fb50bf50b42b8cf918d664e",
+    "path": "Assets\\Resources\\Art\\UrbanWard\\icon-stone.png",
+    "sourcePixelsUnchanged": true
+  },
+  {
+    "sha256": "770bfc2b2f7d875fec490320f33e095aef824f7aed3366ffd6f005e166d1a1f9",
+    "path": "Assets\\Resources\\Art\\UrbanWard\\tower-spear-1.png",
+    "sourcePixelsUnchanged": true
+  },
+  {
+    "sha256": "1849b7b4b33d8ea341a498052290f9fee0d60627c527518031b21fc95c91d888",
+    "path": "Assets\\Resources\\Art\\UrbanWard\\tower-spear-2.png",
+    "sourcePixelsUnchanged": true
+  },
+  {
+    "sha256": "475fcaee88833198241b3a4e21fa60121c8011ff1b5fea69726ec9c8c4143152",
+    "path": "Assets\\Resources\\Art\\UrbanWard\\ward-impact.png",
+    "sourcePixelsUnchanged": true
+  }
+]

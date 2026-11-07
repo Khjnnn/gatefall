@@ -1,6 +1,6 @@
-# Gatefall — 라온시 · v0.27.36
+# Gatefall — 라온시 · v0.30.3
 
-귀환자 강윤과 제7방위대가 검은 탑의 범람을 막는 모바일 디펜스입니다. 각성자를 직접 움직이며 자동 공격하고, 결계주를 건설·강화·조합해 도시 결계를 지킵니다. 현재 일반 캠페인은 **종현동1-1~1-14**입니다. 7개 월드/240스테이지는 [장기 기획](Docs/Design/GATEFALL_240_STAGE_CAMPAIGN_PLAN.md)이며 구현 완료 수가 아닙니다.
+귀환자 강윤과 제7방위대가 검은 탑의 범람을 막는 모바일 디펜스입니다. 각성자를 직접 움직이며 자동 공격하고, 결계주를 건설·강화·조합해 도시 결계를 지킵니다. 현재 일반 캠페인은 **종현동1-1~1-14와 다솜동2-1~2-6, 총20작전**입니다. v0.30.3은 최신 챕터2의 밸런스·가변 웨이브·v3 저장에 도시 결계 홈, 공통 버튼·카드·자원·창 아트·FX를 통합한 버전입니다. 7개 월드/240스테이지는 [장기 기획](Docs/Design/GATEFALL_240_STAGE_CAMPAIGN_PLAN.md)이며 구현 완료 수가 아닙니다.
 
 Android 우선입니다. iOS·실제 사람의 재미 평가·실기기 성능과 청감은 보류 상태이며 새 PC 배포물은 만들지 않습니다.
 
@@ -16,8 +16,8 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 ## 설치와 현재 전달본
 
-- [Gatefall-v0.27.36.apk](Builds/Android/Gatefall-v0.27.36.apk), 동일 내용의 [Gatefall.apk](Builds/Android/Gatefall.apk).
-- code116 /97,737,773바이트 /SHA256 `af51cb2c52af43a449aa9e0d29e30459cbae686d0a4befdb02b13ff38fe6f9f9`.
+- [Gatefall-v0.30.3.apk](Builds/Android/Gatefall-v0.30.3.apk), 동일 내용의 [Gatefall.apk](Builds/Android/Gatefall.apk).
+- code143 /108,673,607바이트 /SHA256 `e537974b7b8aadbba047acde011d6110a97950e6a1146eaac3f93b5c5f13a1fc`.
 - Android9(API28) 이상 /ARM64 /가로 화면. Unity6000.6.7f1 /IL2CPP /target API36.
 - 개발용 Debug 서명·debuggable 테스트 APK입니다. 스토어용 서명/AAB·실기기 검증을 마친 파일은 아닙니다. v2서명·ZIP16KB 정렬과 세ARM64 ELF의LOAD16KB 정렬을 확인했습니다.
 - 같은 패키지·서명으로 `adb install -r Builds/Android/Gatefall.apk`를 사용해 업데이트합니다. 저장을 지우는 초기화·삭제 명령은 사용하지 않습니다.
@@ -26,6 +26,8 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 | 범위 | 실제 결과 | 기록 |
 |---|---|---|
+| v0.30.3 챕터2 디자인 전체 통합 | 홈·탐색·공통 버튼·카드·자원·창 Lv1/Lv2·FX. Core8개 유지, 실제 Android2-6 탄막 Lv2·8웨이브·3별·보상/콜드 저장 | [통합 기록](Docs/Design/GATEFALL_CHAPTER2_DESIGN_INTEGRATION_2026-11-07.md) · [홈](Docs/QA/v050/chapter2-design-home-final-2400.png) · [탄막 메뉴](Docs/QA/v050/chapter2-design-barrage-price-2400.png) |
+| v0.30.2 챕터2 통합 기준 | 다솜동6작전·산탄/탄막·챕터 전환·장갑/조합 대상수·세 자리 가격 폭. 이 버전의 코어와 전장 자산을0.30.3에 보존 | 기준 커밋 `5db6ecc7fc54c1234fd1e0dfc5fc057c16aca936` |
 | v0.27.36 방벽·봉인·표식 | 충격파, 옥색 사슬과 자주색 연계 타격. 독립 Android 전투·작은 메뉴·합성 저장 확인 | [외형](Docs/QA/v050/v02736-defense-lineup.png) · [검증](TestResults/runtime-v02736.md) |
 | v0.27.35 기본 타워 디자인 | 5종 고유 색과 표식 조준 렌즈, 두 화면 편성·건설·전장·저장 확인 | [전후 비교](Docs/QA/v050/v02735-tower-comparison.png) · [검증](TestResults/runtime-v02735.md) |
 | v0.27.34 1-2 동쪽 보강 | 헌터·카드 48조건, Android 백도하 5기·460전멸과 6기 무피해·저장 | [5기](TestResults/runtime-v02734.md) · [6기](TestResults/runtime-v02734-west.md) |

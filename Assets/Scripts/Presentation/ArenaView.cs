@@ -480,11 +480,13 @@ namespace Gatefall
                     MuzzleEffect(e);
                     break;
                 case EventKind.Build: case EventKind.Upgrade:
+                    if(UrbanWardFeedback(e,p))break;
                     if (e.Value == 0) { Spawn("fx-ring", p + new Vector3(0, .5f, 0), Vector3.zero, .4f, .5f, 3f, GatefallArt.Alpha(GatefallArt.Ally, .9f)); break; }
                     Spawn("fx-ring", p, Vector3.zero, .45f, .8f, 3.2f, GatefallArt.Alpha(GatefallArt.Amber, .95f)).Stretch = new Vector2(1, .5f);
                     Burst(p + new Vector3(0, 1.2f, 0), "fx-shard", GatefallArt.Amber, e.Kind == EventKind.Upgrade ? 12 : 8, 3.2f, .5f, .2f);
                     break;
                 case EventKind.Fusion:
+                    if(UrbanWardFeedback(e,p))break;
                     Spawn("fx-pillar", p + new Vector3(0, 1.5f, 0), Vector3.zero, .35f, .6f, 1.4f, GatefallArt.Alpha(GatefallArt.Ally, .7f)).Stretch = new Vector2(1, 1.5f);
                     Spawn("fx-ring", p, Vector3.zero, .6f, .6f, 4.6f, GatefallArt.Alpha(GatefallArt.Ally, .95f)).Stretch = new Vector2(1, .5f);
                     Spawn("fx-ring-soft", p + new Vector3(0, 1.4f, 0), Vector3.zero, .5f, .5f, 3.4f, GatefallArt.Alpha(GatefallArt.Amber, .9f));

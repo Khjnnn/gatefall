@@ -11,12 +11,13 @@ namespace Gatefall
 
         void CampaignPage()
         {
-            if (controller.ScreenPage == CampaignScreen.City) City();
+            if (controller.ScreenPage == CampaignScreen.Home) Home();
+            else if (controller.ScreenPage == CampaignScreen.City) City();
             else if (controller.ScreenPage == CampaignScreen.Growth) Growth();
             else if (controller.ScreenPage == CampaignScreen.Loadout) Loadout();
             else Settings();
             if (controller.CampaignError != "") {
-                Rect r = new Rect(W / 2 - 330, H - 52, 660, 40);
+                Rect r = controller.ScreenPage==CampaignScreen.Home ? new Rect(W-548,116,516,92) : new Rect(W / 2 - 330, H - 52, 660, 40);
                 Skin(r, "ui-chip");
                 Text(r, controller.CampaignError, 15, Threat, TextAnchor.MiddleCenter, 1);
             }
@@ -38,7 +39,7 @@ namespace Gatefall
         {
             Rect full = Full();
             Fill(new Rect(full.x, full.y, full.width, 66 - full.y), new Color(.06f, .08f, .11f, .72f));
-            if (back) IconButton(600, new Box2(14, 6, 60, 54), "icon-back");
+            if (back) IconButton(603, new Box2(14, 6, 60, 54), "ui-glyph-home");
             Text(new Rect(back ? 88 : 22, 8, 520, 50), title, 24, Paper, TextAnchor.MiddleLeft, 2);
             Skin(new Rect(W - 172, 10, 156, 46), "ui-chip");
             Icon(new Rect(W - 164, 14, 38, 38), "icon-core", Color.white);
@@ -52,13 +53,13 @@ namespace Gatefall
             Fill(full, GatefallArt.Hex("1A222C"));
             Tex(map, art.Texture("district-map"), Color.white);
             Fill(new Rect(W - 420, full.y, full.xMax - (W - 420), full.height), new Color(.06f, .08f, .11f, .55f));
-            Header(controller.CurrentChapter==1 ? "종현동 · 1챕터" : "다솜동 · 2챕터", false);
+            Header(controller.CurrentChapter==1 ? "종현동 · 1챕터" : "다솜동 · 2챕터", true);
             bool crisis = controller.CrisisSelection;
             string starsLabel = crisis ? "위기 ★ " + profile.CrisisStarsTotal : "★ " + profile.StarsTotal;
-            Text(new Rect(260, 14, 192, 40), starsLabel + " / " + (CampaignCatalog.Stages.Length * 3), 17, Amber, TextAnchor.MiddleLeft, 2);
+            Text(new Rect(340, 14, 176, 40), starsLabel + " / " + (CampaignCatalog.Stages.Length * 3), 17, Amber, TextAnchor.MiddleLeft, 2);
             IconButton(602, new Box2(W - 312, 8, 58, 50), "icon-growth");
             IconButton(604, new Box2(W - 244, 8, 58, 50), "icon-settings");
-            if(profile.FirstCleared[9]) Button(652, new Box2(455, 10, 140, 46), "결계주 편성", true, Look.Secondary, null, 14);
+            if(profile.FirstCleared[9]) Button(652, new Box2(526, 10, 104, 46), "편성", true, Look.Secondary, null, 14);
 
             // Route between operations, then the markers.
             float mapRight = W - 420;

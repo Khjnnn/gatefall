@@ -393,10 +393,10 @@ namespace Gatefall
             Rect up = new Rect(x, y, 214, 82);
             string reason = canLevel ? game.CanUpgrade(tower.Id) : "강화 완료";
             Button(210, Box(up), "", canLevel && reason == "", Look.Upgrade);
-            Glyph(new Rect(up.x+12,up.y+12,GatefallUiStyle.GlyphSize,GatefallUiStyle.GlyphSize),canLevel?"ui-glyph-upgrade":"ui-glyph-check",canLevel?Amber:Muted);
+            Glyph(new Rect(up.x+12,up.y+12,GatefallUiStyle.GlyphSize,GatefallUiStyle.GlyphSize),canLevel?"ui-glyph-upgrade":"ui-glyph-check",canLevel?Paper:Muted);
             StateBadge(new Rect(up.x+166,up.y+14,40,22),!canLevel?"완료":reason==""?"":reason.StartsWith("마석")?"부족":"잠금");
             Text(new Rect(up.x+46,up.y+12,118,26),canLevel?"Lv"+(tower.Level+1)+" 강화":"강화 완료",GatefallUiStyle.FontSizeAction,Paper,TextAnchor.MiddleLeft,1);
-            if(canLevel) Cost(new Rect(up.x+10,up.y+46,78,26),d.UpgradePrice(tower.Level),0);
+            if(canLevel) { Rect price=new Rect(up.x+10,up.y+46,78,26);Skin(price,"ui-chip");Cost(price,d.UpgradePrice(tower.Level),0); }
             else Text(new Rect(up.x+16,up.y+46,150,26),"최대 Lv"+tower.Level,GatefallUiStyle.FontSizeLabel,Muted,TextAnchor.MiddleLeft,0);
             Rect fusion = new Rect(x + 222, y, 214, 82);
             int ready = options.FindAll(o => o.Reason == "").Count;
@@ -404,7 +404,7 @@ namespace Gatefall
             if (options.Count == 0)
                 fusionStatus = System.Array.Exists(TowerCatalog.Recipes, r => r.First == tower.Kind || r.Second == tower.Kind) ? "해금·편성 필요" : "후속 조합 없음";
             Button(212, Box(fusion), "", options.Count > 0, Look.Fusion);
-            Glyph(new Rect(fusion.x+12,fusion.y+12,GatefallUiStyle.GlyphSize,GatefallUiStyle.GlyphSize),"ui-glyph-fusion",options.Count>0?FusionColor:Muted);
+            Glyph(new Rect(fusion.x+12,fusion.y+12,GatefallUiStyle.GlyphSize,GatefallUiStyle.GlyphSize),"ui-glyph-fusion",options.Count>0?Paper:Muted);
             StateBadge(new Rect(fusion.x+166,fusion.y+14,40,22),ready>0?"가능":options.Count>0?"재료":"잠금");
             Text(new Rect(fusion.x+46,fusion.y+12,112,26),"조합",GatefallUiStyle.FontSizeAction,Paper,TextAnchor.MiddleLeft,1);
             Text(new Rect(fusion.x+16,fusion.y+46,182,26),fusionStatus,GatefallUiStyle.FontSizeLabel,ready>0?Paper:Muted,TextAnchor.MiddleLeft,0);
@@ -616,7 +616,10 @@ namespace Gatefall
         private void Fill(Rect r, Color c) { items.Add(new Item { Kind = Kind.Fill, Rect = r, Color = c }); }
         private void Tex(Rect r, Texture t, Color c) { if (t != null) items.Add(new Item { Kind = Kind.Texture, Rect = r, Texture = t, Color = c }); }
         private void Crop(Rect r, Texture t, Rect uv, Color c) { if (t != null) items.Add(new Item { Kind = Kind.Crop, Rect = r, Texture = t, Uv = uv, Color = c }); }
-        private void Icon(Rect r, string name, Color c) { Tex(r, art.Texture(name), c); }
+        private void Icon(Rect r, string name, Color c) {
+            string glyph=SystemGlyph(name);
+            if(glyph!=null)Glyph(r,glyph,c);else Tex(r,art.Texture(name),c);
+        }
         private void Text(Rect r, string text, int size, Color c, TextAnchor align, int weight, bool shadow = false)
         { items.Add(new Item { Kind = Kind.Text, Rect = r, Text = text, Size = size, Color = c, Align = align, Weight = weight, Shadow = shadow }); }
         private void Bar(Rect r, float f, Color c)
@@ -627,7 +630,7 @@ namespace Gatefall
         private void IconButton(int id, Box2 b, string icon)
         {
             Rect r = new Rect(b.X, b.Y, b.Width, b.Height);
-            Skin(r, "ui-button");
+            Skin(r,ButtonHeld(b)?"ui-button-pressed":"ui-button");
             float s = Mathf.Min(r.width, r.height) * .62f;
             Icon(new Rect(r.center.x - s / 2, r.center.y - s / 2, s, s), icon, Color.white);
             controller.TouchInput.Regions.Add(new TouchRegion(id, b));
@@ -636,8 +639,8 @@ namespace Gatefall
         {
             Rect r = new Rect(b.X, b.Y, b.Width, b.Height);
             Color? card=accent ?? (look==Look.Upgrade?(Color?)Amber:look==Look.Fusion?FusionColor:null);
-            string skin = !enabled ? "ui-button-disabled" : card.HasValue ? RoleSkin(card.Value) : look == Look.Primary ? "ui-button-primary" : look == Look.Danger ? "ui-button-danger" : look == Look.Ghost ? null : "ui-button";
-            if (skin != null) Skin(r, skin);
+            string skin = !enabled ? "ui-button-disabled" : look==Look.Upgrade?"ui-button-upgrade":look==Look.Fusion?"ui-button-fusion":card.HasValue ? RoleSkin(card.Value) : look == Look.Primary ? "ui-button-primary" : look == Look.Danger ? "ui-button-danger" : look == Look.Ghost ? null : "ui-button";
+            if (skin != null) Skin(r,enabled && ButtonHeld(b)?skin+"-pressed":skin);
             Color color = !enabled ? Muted : look == Look.Primary ? Ink : Paper;
             if (!string.IsNullOrEmpty(text)) {
                 if (icon != null) {
@@ -647,6 +650,17 @@ namespace Gatefall
                 } else Text(r, text, size, color, TextAnchor.MiddleCenter, 2);
             }
             if (enabled) controller.TouchInput.Regions.Add(new TouchRegion(id, b));
+        }
+
+        private bool ButtonHeld(Box2 box)
+        {
+            if(!Application.isPlaying || controller==null || layout==null)return false;
+            for(int i=0;i<Input.touchCount;i++) {
+                Touch touch=Input.GetTouch(i);
+                if(touch.fingerId==controller.TouchInput.JoystickFinger || touch.phase==TouchPhase.Ended || touch.phase==TouchPhase.Canceled)continue;
+                if(box.Contains(layout.FromScreen(new V2(touch.position.x,touch.position.y))))return true;
+            }
+            return !Application.isMobilePlatform && Input.GetMouseButton(0) && box.Contains(layout.FromScreen(new V2(Input.mousePosition.x,Input.mousePosition.y)));
         }
 
         // Shared by the IMGUI and canvas back ends so a skin looks the same in both.

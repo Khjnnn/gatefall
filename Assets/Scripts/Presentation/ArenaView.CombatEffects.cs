@@ -154,6 +154,12 @@ namespace Gatefall
             Color tint = e.Source < 0 ? GatefallArt.Ally : GatefallArt.RoleColor(kind);
             Vector3 direction = (Point(e.Position) - Point(e.Target)).normalized;
             if (direction.sqrMagnitude < .01f) direction = Vector3.right;
+            if(e.Source==(int)TowerKind.Autocannon && art.HasUrbanWard("ward-impact")) {
+                Fx hit=Neutral("ward-impact",p,Vector3.zero,.16f,.60f,.18f,tint);
+                hit.Sprite.transform.rotation=Quaternion.Euler(0,0,Mathf.Atan2(direction.y,direction.x)*Mathf.Rad2Deg);
+                if(effects.Count<112)Line(p-direction*.20f,p+direction*.35f,.09f,.045f,Color.white);
+                return;
+            }
             if (kind == TowerKind.Arc && e.Source >= 0)
                 Lightning(Point(e.Target) + Vector3.up * .38f, p);
             if (kind == TowerKind.Binding && e.Source >= 0) {
@@ -170,6 +176,30 @@ namespace Gatefall
                 if (effects.Count < 140 && kind != TowerKind.Rupture && kind != TowerKind.Gravity)
                     Line(p - direction * .19f, p + direction * .51f, .105f, .085f, Color.white);
             }
+        }
+
+        // Same event/frame clock and bounded pool as the existing feedback. No simulation delay.
+        private bool UrbanWardFeedback(CombatEvent e,Vector3 p)
+        {
+            if(!art.HasUrbanWard("ward-impact"))return false;
+            bool fusion=e.Kind==EventKind.Fusion,upgrade=e.Kind==EventKind.Upgrade;
+            Color color=fusion?GatefallUiStyle.ColorActionFusion:upgrade?GatefallArt.Amber:GatefallArt.Ally;
+            Pulse(p,upgrade?2.0f:1.8f,fusion?.48f:.34f,color,true);
+            Vector3 center=p+Vector3.up*.85f;
+            if(fusion) {
+                for(int side=-1;side<=1;side+=2)
+                    Neutral("fx-disc",center+Vector3.right*(side*.65f),Vector3.left*(side*2.1f),.26f,.38f,.10f,color);
+                int recipe=(int)e.Value;
+                Color result=recipe>=0 && recipe<TowerCatalog.Recipes.Length?GatefallArt.RoleColor(TowerCatalog.Recipes[recipe].Result):color;
+                Neutral("ward-impact",center,Vector3.zero,.28f,.75f,.22f,result);
+            } else Neutral("ward-impact",center,Vector3.zero,.22f,.40f,.12f,color);
+            int count=fusion?6:upgrade?6:4;
+            for(int i=0;i<count;i++) {
+                float angle=i*Mathf.PI*2/count;
+                Vector3 velocity=new Vector3(Mathf.Cos(angle)*.8f,1.8f+Mathf.Sin(angle)*.6f,0);
+                Neutral("fx-shard",p+Vector3.up*.35f+new Vector3(Mathf.Cos(angle),Mathf.Sin(angle)*.3f,0)*.55f,velocity,.34f,.40f,.08f,color);
+            }
+            return true;
         }
 
         private void DeathEffect(CombatEvent e)

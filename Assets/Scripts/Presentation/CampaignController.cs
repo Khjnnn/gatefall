@@ -7,13 +7,13 @@ namespace Gatefall
 {
     // v0.5 flow: City (operation map + briefing in one) -> Battle (preparation, defence, result) -> City.
     // Growth merges hunters and workshop research; Settings holds sound, records and the developer lab.
-    public enum CampaignScreen { Battle, City, Growth, Settings, Loadout }
+    public enum CampaignScreen { Battle, City, Growth, Settings, Loadout, Home }
     public sealed partial class GatefallGame
     {
         internal const int OperationsPerPage = 6;
         public int CurrentChapter => CampaignCatalog.Stages[SelectedStage].Chapter;
         internal int MapPageCount => (CampaignCatalog.ChapterCount(CurrentChapter)+OperationsPerPage-1)/OperationsPerPage;
-        public CampaignScreen ScreenPage { get; private set; } = CampaignScreen.City;
+        public CampaignScreen ScreenPage { get; private set; } = CampaignScreen.Home;
         public CampaignService Campaign { get; private set; }
         public CampaignProfile Profile { get { return Campaign.Profile; } }
         public int SelectedStage { get; private set; }
@@ -106,6 +106,7 @@ namespace Gatefall
             if (action == 600) { ReturnCity(); return true; }
             if (action == 601) { BeginLab(); return true; }
             if (action == 602) { SetPage(CampaignScreen.Growth); return true; }
+            if (action == 603) { ReturnCity(); if(ScreenPage==CampaignScreen.City)SetPage(CampaignScreen.Home); return true; }
             if (action == 604) { SetPage(CampaignScreen.Settings); return true; }
             if (action == 605 && Profile.FirstSealComplete) { CrisisSelection = !CrisisSelection; return true; }
             if(action==660 || action==661){int chapter=action==660?1:2;int start=CampaignCatalog.ChapterStart(chapter);if(Profile.IsStageOpen(start))SelectMapStage(start);return true;}

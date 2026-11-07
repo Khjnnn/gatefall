@@ -21,7 +21,7 @@ namespace Gatefall.Editor
         public static void Validate()
         {
             const BindingFlags flags=BindingFlags.Instance|BindingFlags.NonPublic;
-            const string folder="TestResults/refined-ui-20261106";
+            const string folder="TestResults/chapter2-design-20261107";
             Directory.CreateDirectory(folder+"/skins");
             var hud=new MobileHud(null,null);
             var theme=typeof(MobileHud).GetMethod("ThemeTexture",flags);
@@ -39,6 +39,12 @@ namespace Gatefall.Editor
                     if(texture.GetPixel(0,0).a!=0 || !ReferenceEquals(texture,theme.Invoke(hud,new object[]{name})) ||
                         Mathf.Abs(actual.r-expected.r)>.01f || Mathf.Abs(actual.g-expected.g)>.01f || Mathf.Abs(actual.b-expected.b)>.01f)
                         throw new BuildFailedException("City barrier role surface/cache failed: "+name);
+                    File.WriteAllBytes(folder+"/skins/"+name+".png",texture.EncodeToPNG());
+                }
+                foreach(string name in new[]{"ui-panel","ui-button-upgrade","ui-button-fusion","ui-chip"}) {
+                    var texture=(Texture2D)theme.Invoke(hud,new object[]{name});
+                    if(texture.GetPixel(0,0).a!=0 || texture.GetPixel(64,64).a<.99f || !ReferenceEquals(texture,theme.Invoke(hud,new object[]{name})))
+                        throw new BuildFailedException("Urban ward action surface/cache failed: "+name);
                     File.WriteAllBytes(folder+"/skins/"+name+".png",texture.EncodeToPNG());
                 }
                 int glyphs=0;
