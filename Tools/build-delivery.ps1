@@ -27,6 +27,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Wave-call checks failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Degenerate strategy gate failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-competent-plans.ps1') -Enforce
 if ($LASTEXITCODE -ne 0) { throw 'Competent plan gate failed' }
+# Seal inheritance: the one-second mechanics check runs on every build. The 1,170-game acceptance comparison is too slow
+# for the gate; run Tools/review-seal-inheritance.ps1 -Expanded -Enforce whenever a Seal stat changes.
+& $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-seal-inheritance.ps1') -MechanicsOnly
+if ($LASTEXITCODE -ne 0) { throw 'Seal inheritance mechanics check failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'review-rail-choices.ps1') -Enforce
 if ($LASTEXITCODE -ne 0) { throw 'Rail choice gate failed' }
 & $taskPowerShell -NoProfile -File (Join-Path $PSScriptRoot 'verify-unity.ps1') -EditorPath $EditorPath -Target Android

@@ -66,8 +66,26 @@ namespace Gatefall.Tests
             game.Start();game.Tick(.01f,new V2());return game;
         }
 
+        // The values accepted by the 1,170-game comparison (Tools/review-seal-inheritance.ps1 -Expanded -Enforce) on 2026-11-17.
+        // That comparison is too slow for the build gate, so this pin makes any change to the decision fail fast: re-run the
+        // acceptance, record it in GATEFALL_SEAL_INHERITANCE_EXPANDED_2026-11-15.md, then update the pin in the same change.
+        static void RequireShippedDecision()
+        {
+            const string again=" Re-run the -Expanded -Enforce acceptance and update this pin with the new record.";
+            var expected=new[]{SealInheritance.ChainBurst,SealInheritance.ShatterSlow,SealInheritance.GravitySpear};
+            for(int i=0;i<3;i++)Require(TowerCatalog.Recipes[3+i].Inheritance==expected[i],"Recipe "+(3+i)+" inheritance changed."+again);
+            Require(TowerCatalog.Recipes[8].Inheritance==SealInheritance.MarkedBlast && TowerCatalog.Recipes[12].Inheritance==SealInheritance.LineBurst,"Observer/Surge Seal inheritance changed."+again);
+            Require(TowerCatalog.Recipes[10].Inheritance==SealInheritance.None,"Barrage Seal was reverted to the legacy Seal because the fan version lost to it at equal cost."+again);
+            TowerStats o=TowerCatalog.CopyInheritedSealStats(SealInheritance.MarkedBlast), l=TowerCatalog.CopyInheritedSealStats(SealInheritance.LineBurst);
+            Require(o.Damage==120 && o.Secondary==60 && o.Radius==2 && o.MaxTargets==4 && o.Interval==1 && o.Range==6.4f && o.Slow==.30f && o.SlowSeconds==1.5f &&
+                o.MarkBonus==5 && o.MarkedDamageMultiplier==1.4f && o.MarkedRadiusMultiplier==2,"Observer Seal stats differ from the accepted values."+again);
+            Require(l.Damage==110 && l.Secondary==60 && l.Radius==1.5f && l.MaxTargets==5 && l.Interval==1.05f && l.Range==7 && l.Slow==.48f && l.SlowSeconds==.95f &&
+                l.LineHalfWidth==.75f && l.TailBurstTargets==3,"Surge Seal stats differ from the accepted values."+again);
+            foreach(int id in new[]{8,10,12})Require(TowerCatalog.Recipes[id].Credits==80,"Seal recipe "+id+" cost changed."+again);
+        }
         public static string[] RunMechanics()
         {
+            RequireShippedDecision();
             Enemy primary;Enemy[] escorts;
             var game=Impact(3,SealInheritance.MarkedBlast,out primary,out escorts);
             Require(Math.Abs(primary.Health-827)<.001f && game.Kills==3,"Marked direct damage or four-target cap changed.");
