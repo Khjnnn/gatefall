@@ -23,7 +23,7 @@ namespace Gatefall.Tests
         {
             public string Formation, Attack, Route, Policy;
             public int Seed, Kills, Slowed, Spent;
-            public float Damage, ThreatHp;
+            public float Damage, ThreatHp, BlastRadius;
         }
 
         static (FusionRecipe First, FusionRecipe Final) Recipes(int route, bool expanded)
@@ -242,10 +242,17 @@ namespace Gatefall.Tests
                     (6.9f,0f,66f,EnemyKind.Grunt), (7.5f,.75f,34f,EnemyKind.Grunt) },
                 ["compact quartet"] = formations["compact quartet"]
             };
+            if(expanded) {
+                var spread=new[] { (2f,0f,122f,EnemyKind.Runner), (5f,0f,155f,EnemyKind.Brute),
+                    (5f,2.6f,60f,EnemyKind.Grunt), (5f,-2.6f,60f,EnemyKind.Grunt) };
+                formations["marked elite spread"]=spread;
+                formations["unmarked elite spread"]=spread;
+            }
             foreach (int seed in expanded ? new[]{7,19,41,101,202} : RailChoiceReview.Seeds)
                 foreach (var formation in formations)
                     for (int attack=0;attack<(expanded ? 6 : 4);attack++) {
                         int route=expanded ? attack/2 : Math.Max(0,attack-1);
+                        if(formation.Key.EndsWith("elite spread") && route!=0)continue;
                         bool inherited=expanded ? attack%2==1 : attack!=0;
                         var (first,final)=Recipes(route,expanded);
                         int cost=expanded ? new[]{455,495,500}[route] : 455;
@@ -281,17 +288,18 @@ namespace Gatefall.Tests
                             Id=1000+i, Lane=game.OpenLanes[0], Waypoint=1, Kind=entry.Kind,
                             Health=entry.Health, MaxHealth=entry.Health, Position=seal.Position+new V2(entry.X,entry.Y)
                         }).ToArray();
-                        if(formation.Key=="marked rear") { enemies[1].MarkRemaining=3; enemies[1].MarkBonus=5; }
+                        if(formation.Key=="marked rear" || formation.Key=="marked elite spread") { enemies[1].MarkRemaining=3; enemies[1].MarkBonus=5; }
                         game.Enemies.AddRange(enemies);
                         game.Tick(.01f,new V2());
                         seal.Cooldown=10;
                         game.Tick(.32f,new V2());
-                        Enemy threat=formation.Key=="elite-and-escort" || formation.Key=="marked rear" ? enemies[1] : enemies[0];
+                        Enemy threat=formation.Key=="elite-and-escort" || formation.Key=="marked rear" || formation.Key.EndsWith("elite spread") ? enemies[1] : enemies[0];
                         rows.Add(new Volley { Formation=formation.Key, Seed=seed, Attack=seal.Inheritance.ToString(), Route=first.Result.ToString(),
                             Policy=inherited ? "inherited" : "legacy",
                             Kills=game.Kills, Slowed=enemies.Count(enemy=>enemy.Health>0 && enemy.SlowFraction>0),
                             Damage=game.Telemetry.TowerDamage[(int)TowerKind.Seal], ThreatHp=Math.Max(0,threat.Health),
-                            Spent=game.Telemetry.CreditsSpent });
+                            Spent=game.Telemetry.CreditsSpent,
+                            BlastRadius=game.Events.Where(e=>e.Kind==EventKind.Blast && e.Source==(int)TowerKind.Seal).Select(e=>e.Value).Single() });
                     }
             return rows.ToArray();
         }

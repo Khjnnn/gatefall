@@ -10,6 +10,7 @@ namespace Gatefall.Tests
 {
     public static class CloudSaveChecks
     {
+        const int Epoch=DailyCatalog.SeasonEpochDay;
         static void Require(bool pass,string why){if(!pass)throw new Exception("Cloud save: "+why);}
         static byte[] Encode(CampaignProfile p){return CampaignStore.Encode(p);}
         static bool Same(CampaignProfile a,CampaignProfile b){return Encode(a).SequenceEqual(Encode(b));}
@@ -24,11 +25,11 @@ namespace Gatefall.Tests
             for(int i=0;i<count;i++){p.BestStars[i]=3;p.FirstCleared[i]=true;p.BestErosion[i]=.25f;}
             p.CrisisStars[0]=2;p.Research[0]=1;p.Growth[0]=1;p.StorySeenIds.Add("C01-S001");p.TutorialSeenIds.Add("C01-S002");
             p.UnmappedProgress.Add("C99-S001",new StageProgress{Stars=2,FirstCleared=true,Erosion=.5f});
-            p.DailyLimits.LocalDay=56;p.DailyLimits.HeartAdsUsed=3;p.DailyLimits.NamedCounters.Add("normal-boxes",2);
+            p.DailyLimits.LocalDay=Epoch+56;p.DailyLimits.HeartAdsUsed=3;p.DailyLimits.NamedCounters.Add("normal-boxes",2);
             p.Supply.Cards[0]=12;p.Supply.Grades[0]=2;p.Supply.PremiumPity=4;p.Supply.OwnedCosmetics=1;
-            p.Shop.Generate(p,56,1);p.Shop.PurchasedMask=1;p.Shop.HeartsBought=2;
-            p.Daily.LocalDay=56;p.Daily.Season=3;p.Daily.Progress[0]=3;p.Daily.MissionClaims=1;
-            p.Daily.AttendanceDay=56;p.Daily.AttendancePosition=2;p.Daily.RouletteSpins=1;p.Daily.LastSpinUtc=900;
+            p.Shop.Generate(p,Epoch+56,1);p.Shop.PurchasedMask=1;p.Shop.HeartsBought=2;
+            p.Daily.LocalDay=Epoch+56;p.Daily.Season=3;p.Daily.Progress[0]=3;p.Daily.MissionClaims=1;
+            p.Daily.AttendanceDay=Epoch+56;p.Daily.AttendancePosition=2;p.Daily.RouletteSpins=1;p.Daily.LastSpinUtc=900;
             p.Daily.RewardDoubles=1;p.Daily.DoubledRun="reward";p.Daily.NormalTickets=2;p.Daily.PremiumTickets=3;
             p.Daily.PassPoints=100;p.Daily.PointsToday=5;p.Daily.FreeClaims=1;p.Daily.CapRaised=true;
             Require(p.Valid(),"fixture valid");return p;
@@ -42,7 +43,7 @@ namespace Gatefall.Tests
         static void Order(CampaignProfile p,string id,PurchaseKind kind,int amount=0,int season=0)
         {p.Daily.PurchaseLedger.Add(id,new PurchaseEntry(id,kind,amount,season));}
         static CampaignProfile Commit(CampaignProfile p)
-        {var service=new CampaignService(p,x=>{},()=>1000,()=>56);Require(service.SetMuted(p.Muted),"commit fixture");return service.Profile;}
+        {var service=new CampaignService(p,x=>{},()=>1000,()=>Epoch+56);Require(service.SetMuted(p.Muted),"commit fixture");return service.Profile;}
         static CampaignProfile Merge(CampaignProfile chosen,CampaignProfile other)
         {
             byte[] a=Encode(chosen),b=Encode(other);var result=CloudSync.Resolve(chosen,other);
@@ -95,9 +96,9 @@ namespace Gatefall.Tests
             Require(!a.Daily.PurchaseLedger.ContainsKey("detached") && a.Daily.Progress[0]==3 && a.Supply.Cards[0]==12 && !b.Daily.PurchaseLedger.ContainsKey("detached"),"deep copy");
             a=Progress(3,7);b=Progress(4,9);a.CrystalsPaid=5;b.CrystalsPaid=9000;
             Require(Merge(a,b).CrystalsPaid==5,"no larger balance fallback without orders");
-            Order(b,"old-pass",PurchaseKind.Pass,0,3);b.Daily.LocalDay=84;b.Daily.Season=4;
+            Order(b,"old-pass",PurchaseKind.Pass,0,3);b.Daily.LocalDay=Epoch+84;b.Daily.Season=4;
             Require(Merge(a,b).Daily.PassPurchased && !Merge(b,a).Daily.PassPurchased,"pass only its recorded season");
-            a.Daily.LocalDay=112;a.Daily.Season=5;Require(!Merge(a,b).Daily.PassPurchased,"old season never unlocks chosen current season");
+            a.Daily.LocalDay=Epoch+112;a.Daily.Season=5;Require(!Merge(a,b).Daily.PassPurchased,"old season never unlocks chosen current season");
             Order(b,"future-pass",PurchaseKind.Pass,0,5);Require(Merge(a,b).Daily.PassPurchased,"matching chosen season grants pass");
             var full=a.Copy();for(int i=0;i<4096;i++)Order(full,"order-"+i,PurchaseKind.OtherNonConsumable);
             var extra=b.Copy();extra.Daily.PurchaseLedger.Clear();Order(extra,"extra",PurchaseKind.OtherNonConsumable);

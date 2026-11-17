@@ -8,6 +8,7 @@ namespace Gatefall.Tests
 {
     public static class SaveIntegrityChecks
     {
+        const int Epoch=DailyCatalog.SeasonEpochDay;
         static void Require(bool ok,string why){if(!ok)throw new Exception("Save integrity: "+why);}
         static byte[] Encode(CampaignProfile p){return CampaignStore.Encode(p);}
         static bool Same(CampaignProfile a,CampaignProfile b){return Encode(a).SequenceEqual(Encode(b));}
@@ -15,7 +16,7 @@ namespace Gatefall.Tests
         {
             var report=new List<string>();var root=new CampaignProfile();var snapshots=new List<CampaignProfile>{root.Copy()};
             bool fail=false;CampaignProfile saved=null;
-            var service=new CampaignService(root,p=>{saved=p.Copy();if(fail)throw new IOException("injected");},()=>100000,()=>56);
+            var service=new CampaignService(root,p=>{saved=p.Copy();if(fail)throw new IOException("injected");},()=>100000,()=>Epoch+56);
             for(int i=0;i<CampaignProfile.AncestorLimit+1;i++){
                 var before=service.Profile.Copy();Require(service.SetMuted(i%2==0),"commit");var p=service.Profile;
                 Require(p.CommitHash!=before.CommitHash && p.AncestorHashes[0]==before.CommitHash && Same(p,saved),"persisted hash/parent");
@@ -30,20 +31,20 @@ namespace Gatefall.Tests
             fail=true;var previous=service.Profile.Copy();Require(!service.SetMuted(false) && Same(previous,service.Profile),"failed commit rolls back lineage");
             fail=false;Require(service.SetMuted(false) && service.Profile.AncestorHashes[0]==previous.CommitHash,"retry descends from committed parent");
             previous=service.Profile.Copy();service.DailyStatus();service.BeginReason(0,false);Require(Same(previous,service.Profile),"queries do not advance lineage");
-            var fork=new CampaignService(snapshots[1],p=>{},()=>100000,()=>56);Require(fork.SetMuted(!snapshots[2].Muted),"branch commit");
+            var fork=new CampaignService(snapshots[1],p=>{},()=>100000,()=>Epoch+56);Require(fork.SetMuted(!snapshots[2].Muted),"branch commit");
             Require(CloudSync.Compare(fork.Profile,snapshots[2])==CloudSaveComparison.Diverged,"same-profile branch divergence");
             report.Add("PASS every commit persists hash/parent, 32 ancestor bound/eviction, reload comparison, branches, detached copies, query and failed-save rollback");
 
-            var a=new CampaignService(new CampaignProfile(),p=>{},()=>100000,()=>56);
+            var a=new CampaignService(new CampaignProfile(),p=>{},()=>100000,()=>Epoch+56);
             Require(a.GrantCrystalPurchase("shared",60) && a.GrantPassPurchase("season3"),"purchase commits");
             Require(a.Profile.Daily.PurchaseLedger["shared"].Kind==PurchaseKind.Crystals && a.Profile.Daily.PurchaseLedger["shared"].Amount==60 &&
                 a.Profile.Daily.PurchaseLedger["season3"].Season==3,"typed grant metadata");
             var left=a.Profile.Copy();left.CrystalsPaid=5;var right=a.Profile.Copy();right.CrystalsPaid=0;
-            var other=new CampaignService(right,p=>{},()=>100000,()=>84);Require(other.GrantCrystalPurchase("other",330) && other.GrantPassPurchase("season4"),"independent purchases");
+            var other=new CampaignService(right,p=>{},()=>100000,()=>Epoch+84);Require(other.GrantCrystalPurchase("other",330) && other.GrantPassPurchase("season4"),"independent purchases");
             var merged=CloudSync.Resolve(left,other.Profile);
             Require(merged.CrystalsPaid==335 && merged.Daily.Season==3 && merged.Daily.HasPass(3) && merged.Daily.HasPass(4),"spent balance plus only missing order");
             Require(Same(merged,CloudSync.Resolve(CampaignStore.Decode(Encode(merged)),other.Profile)),"merge reload retry idempotent");
-            var next=new CampaignService(merged,p=>{},()=>100000,()=>84);Require(next.RefreshHearts() && next.Profile.Daily.PassPurchased,"restored entitlement activates in its season");
+            var next=new CampaignService(merged,p=>{},()=>100000,()=>Epoch+84);Require(next.RefreshHearts() && next.Profile.Daily.PassPurchased,"restored entitlement activates in its season");
             previous=next.Profile.Copy();Require(next.GrantCrystalPurchase("other",999) && Same(previous,next.Profile),"restored crystal order never credited twice");
             Require(next.GrantPassPurchase("season3") && Same(previous,next.Profile),"old pass replay never grants current season");
             var entry=new PurchaseEntry("non-consumable",PurchaseKind.OtherNonConsumable,0);left.Daily.PurchaseLedger.Add(entry.OrderId,entry);

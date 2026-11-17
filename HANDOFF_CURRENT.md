@@ -1,3 +1,7 @@
+# 현재 전달 — 2026-11-17 v0.33.2/code154
+
+1-1~1-3 무료 출전, 1장 완료 +10 하트(그 밖의 클리어 하트는 1장 +1뿐), 관측 종결 표식 적중 시 반경 2배, 시즌 1 = 2026-11-16, 옛 시즌 번호 저장 읽기 수정(`Tests/Fixtures/v0331-season742.bin`). 저장은 기기 로컬 파일뿐이며 클라우드 SDK는 미연결. 다음 확인은 [플레이 확인 목록](Docs/Design/GATEFALL_PLAYTEST_CHECKLIST_2026-11-17.md). 113,697,810바이트/SHA256 e9dc7f5e4a6bc7a43ca48a3db91ab1e4a5e61b12887539800676768b0c9e4974. [APK](Builds/Android/Gatefall-v0.33.2.apk)
+
 # 현재 전달 — 2026-11-17 v0.33.1/code153
 
 계승 종결 세 경로 재검토: 관측·쇄도 보강, 탄막은 기존 종결로 복귀. 조합 재료 선택 중 공격 모양·선로 겹침 미리보기(`FusionPreview.cs`, `ArenaView.FusionPreview.cs`). 113,692,857바이트/SHA256 8ba103bcc414eaffd735cf1fd58cd121e332cce4ac7e2775729efa6e03a58154. [기록](Docs/Design/GATEFALL_SEAL_INHERITANCE_EXPANDED_2026-11-15.md) · [APK](Builds/Android/Gatefall-v0.33.1.apk)

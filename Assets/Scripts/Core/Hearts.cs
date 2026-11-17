@@ -19,6 +19,7 @@ namespace Gatefall.Core
     public static class HeartRules
     {
         public const int MaximumHearts=5, MaximumExtraHearts=999, RegenSeconds=900, DailyAdLimit=10, CrystalPrice=30; public const int IdleSaveSeconds=300;
+        public const int BackfillLimit=6;
         public static void Refresh(CampaignProfile p,long utcSeconds,int localDay)
         {
             if(utcSeconds<0 || localDay<0)throw new ArgumentOutOfRangeException("clock");
@@ -64,17 +65,21 @@ namespace Gatefall.Core
             if(MaximumHearts-p.Hearts+MaximumExtraHearts-p.ExtraHearts<5 || !SpendCrystals(p,CrystalPrice))return false;
             Grant(p,5);return true;
         }
+        // 1-1~1-3 are the tutorial: normal attempts there cost no heart (plan section 3).
+        public const int FreeTutorialStages=3, ChapterOneCompletionHearts=10;
+        public static bool IsFreeLaunch(int stage,bool crisis) { return !crisis && stage>=0 && stage<FreeTutorialStages; }
+        // Chapter 1 refunds each first win (+1) and its first completion grants a one-time +10 buffer for chapter 2
+        // (owner decision 2026-11-14: "초반에는 클리어 보상으로 10개"). Later chapters grant none; see the heart economy model.
         public static int ClearReward(int stage,bool firstClear,bool firstThreeStar)
         {
-            var s=CampaignCatalog.Stages[stage];int reward=firstThreeStar ? 1 : 0;
-            if(firstClear){reward+=s.Chapter==1 ? 10 : s.Chapter==2 ? 3 : 2;
-                if(s.LocalNumber==CampaignCatalog.ChapterCount(s.Chapter))reward+=10;}
-            return reward;
+            if(!firstClear || CampaignCatalog.Stages[stage].Chapter!=1)return 0;
+            return stage==CampaignCatalog.ChapterStart(1)+CampaignCatalog.ChapterCount(1)-1 ? 1+ChapterOneCompletionHearts : 1;
         }
         public static void Backfill(CampaignProfile p)
         {
             if(p.HeartRewardsBackfilled)return;
-            for(int i=0;i<p.FirstCleared.Length;i++)Grant(p,ClearReward(i,p.FirstCleared[i],p.BestStars[i]==3));
+            int reward=0;for(int i=0;i<p.FirstCleared.Length;i++)reward+=ClearReward(i,p.FirstCleared[i],p.BestStars[i]==3);
+            Grant(p,Math.Min(BackfillLimit,reward));
             p.HeartRewardsBackfilled=true;
         }
     }

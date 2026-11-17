@@ -307,13 +307,16 @@ namespace Gatefall
             if(controller.DailyAdPending){controller.TouchInput.Regions.Clear();return;}
             if (!controller.ResultSaved) { Button(690, new Box2(r.center.x - 150, by, 300, 60), "저장 다시 시도", true, Look.Primary, null, 18); return; }
             bool next = won && controller.SelectedStage < CampaignCatalog.Stages.Length-1 && controller.Profile.IsStageOpen(controller.SelectedStage + 1) && !game.Rules.Crisis;
+            bool freeRetry=HeartRules.IsFreeLaunch(controller.SelectedStage,game.Rules.Crisis);
+            bool empty=controller.Profile.Hearts+controller.Profile.ExtraHearts==0;
             if (next) {
+                bool freeNext=HeartRules.IsFreeLaunch(controller.SelectedStage+1,false);
                 Button(600, new Box2(r.x + 24, by, 150, 60), "지도", true, Look.Secondary, null, 17);
-                Button((int)MobileAction.Restart, new Box2(r.x + 184, by, 150, 60), "다시 ♥1", true, Look.Secondary, null, 17);
-                Button(607, new Box2(r.x + 344, by, 232, 60), "다음 작전 ♥1", true, controller.Profile.Hearts+controller.Profile.ExtraHearts==0?Look.Danger:Look.Primary, null, 19);
+                Button((int)MobileAction.Restart, new Box2(r.x + 184, by, 150, 60), "다시 "+(freeRetry?"무료":"♥1"), true, Look.Secondary, null, 17);
+                Button(607, new Box2(r.x + 344, by, 232, 60), "다음 작전 "+(freeNext?"무료":"♥1"), true, empty && !freeNext?Look.Danger:Look.Primary, null, 19);
             } else {
                 Button(600, new Box2(r.x + 24, by, 200, 60), "지도", true, Look.Secondary, null, 17);
-                Button((int)MobileAction.Restart, new Box2(r.x + 236, by, 340, 60), "다시 도전 ♥1", true, controller.Profile.Hearts+controller.Profile.ExtraHearts==0?Look.Danger:Look.Primary, null, 19);
+                Button((int)MobileAction.Restart, new Box2(r.x + 236, by, 340, 60), "다시 도전 "+(freeRetry?"무료":"♥1"), true, empty && !freeRetry?Look.Danger:Look.Primary, null, 19);
             }
         }
     }

@@ -69,21 +69,21 @@ namespace Gatefall.Tests
             report.Add("PASS grant overflow, spend order, daily named counters, ten ads, crystal price/capacity and free-before-paid");
 
             long now=10000;int day=1,writes=0;bool fail=false;CampaignProfile saved=null;
-            var svc=new CampaignService(At(),q=>{if(fail)throw new IOException("injected");writes++;saved=q.Copy();},()=>now,()=>day);
-            string run,resume;Require(svc.Begin(0,false,out run) && writes==1 && svc.Profile.Hearts==4 && saved.PendingRun==run && saved.SaveSerial==1,"atomic launch");
+            var svc=new CampaignService(Open(3),q=>{if(fail)throw new IOException("injected");writes++;saved=q.Copy();},()=>now,()=>day);
+            string run,resume;Require(svc.Begin(3,false,out run) && writes==1 && svc.Profile.Hearts==4 && saved.PendingRun==run && saved.SaveSerial==1,"atomic launch");
             var reloaded=new CampaignService(CampaignStore.Decode(CampaignStore.Encode(saved)),q=>writes++,()=>now,()=>day);
             Require(reloaded.Resume(out resume) && resume==run && writes==1 && reloaded.Profile.Hearts==4 && reloaded.Profile.SaveSerial==1,"resume must not spend/write");
             Require(svc.Abandon(run) && svc.Profile.Hearts==4 && svc.Profile.SaveSerial==2,"abandon refunds");
-            Require(svc.Begin(0,false,out run) && svc.Profile.Hearts==3,"restart costs heart");int reward;
-            Require(svc.Complete(run,Result(svc,0,false),out reward) && reward==0 && svc.Profile.Hearts==3,"defeat refunds");
-            snapshot=svc.Profile.Copy();fail=true;Require(!svc.Begin(0,false,out run) && Same(snapshot,svc.Profile),"launch rollback");
-            fail=false;Require(svc.Begin(0,false,out run),"retry launch");snapshot=svc.Profile.Copy();fail=true;
-            Require(!svc.Complete(run,Result(svc,0),out reward) && Same(snapshot,svc.Profile),"victory rollback");
-            fail=false;Require(svc.Complete(run,Result(svc,0),out reward),"retry victory");long serial=svc.Profile.SaveSerial;int extra=svc.Profile.ExtraHearts;
-            Require(svc.Complete(run,Result(svc,0),out reward) && svc.Profile.SaveSerial==serial && svc.Profile.ExtraHearts==extra,"duplicate result");
-            var empty=At(0);empty.DailyLimits.LocalDay=0;svc=new CampaignService(empty,q=>{throw new Exception("must not persist");},()=>now,()=>day);
-            Require(svc.BeginReason(0,false)=="하트 부족" && !svc.Begin(0,false,out run) && svc.Error=="하트 부족" && Same(empty,svc.Profile),"empty launch changed profile");
-            now=10900;svc=new CampaignService(empty,null,()=>now,()=>day);Require(svc.Begin(0,false,out run) && svc.Profile.Hearts==0 && svc.Profile.SaveSerial==1,"offline regen before launch");
+            Require(svc.Begin(3,false,out run) && svc.Profile.Hearts==3,"restart costs heart");int reward;
+            Require(svc.Complete(run,Result(svc,3,false),out reward) && reward==0 && svc.Profile.Hearts==3,"defeat refunds");
+            snapshot=svc.Profile.Copy();fail=true;Require(!svc.Begin(3,false,out run) && Same(snapshot,svc.Profile),"launch rollback");
+            fail=false;Require(svc.Begin(3,false,out run),"retry launch");snapshot=svc.Profile.Copy();fail=true;
+            Require(!svc.Complete(run,Result(svc,3),out reward) && Same(snapshot,svc.Profile),"victory rollback");
+            fail=false;Require(svc.Complete(run,Result(svc,3),out reward),"retry victory");long serial=svc.Profile.SaveSerial;int extra=svc.Profile.ExtraHearts;
+            Require(svc.Complete(run,Result(svc,3),out reward) && svc.Profile.SaveSerial==serial && svc.Profile.ExtraHearts==extra,"duplicate result");
+            var empty=Open(3);empty.Hearts=0;empty.DailyLimits.LocalDay=0;svc=new CampaignService(empty,q=>{throw new Exception("must not persist");},()=>now,()=>day);
+            Require(svc.BeginReason(3,false)=="하트 부족" && !svc.Begin(3,false,out run) && svc.Error=="하트 부족" && Same(empty,svc.Profile),"empty launch changed profile");
+            now=10900;svc=new CampaignService(empty,null,()=>now,()=>day);Require(svc.Begin(3,false,out run) && svc.Profile.Hearts==0 && svc.Profile.SaveSerial==1,"offline regen before launch");
             report.Add("PASS atomic launch/serial, resume, no refunds, empty launch unchanged, offline regen and failed-save rollback");
 
             now=10000;
@@ -102,17 +102,18 @@ namespace Gatefall.Tests
             for(int chapter=1;chapter<=CampaignCatalog.PlayableChapterCount;chapter++){
                 int first=CampaignCatalog.ChapterStart(chapter),last=first+CampaignCatalog.ChapterCount(chapter)-1;
                 foreach(int stage in new[]{first,last}){
-                    int amount=chapter==1 ? 10 : chapter==2 ? 3 : 2;if(stage==last)amount+=10;
+                    int amount=chapter==1 ? (stage==last ? 11 : 1) : 0;
+                    int cost=HeartRules.IsFreeLaunch(stage,false) ? 0 : 1;
                     svc=new CampaignService(Open(stage),null,()=>now,()=>day);
                     Require(svc.Begin(stage,false,out run) && svc.Complete(run,Result(svc,stage),out reward),"chapter first win");
-                    Require(svc.Profile.Hearts==5 && svc.Profile.ExtraHearts==amount,"chapter/last/three-star reward "+chapter+"/"+stage);
-                    Require(svc.Begin(stage,false,out run) && svc.Complete(run,Result(svc,stage),out reward) && svc.Profile.Hearts==4 && svc.Profile.ExtraHearts==amount,"replay reward");
+                    Require(svc.Profile.Hearts+svc.Profile.ExtraHearts==5-cost+amount,"chapter/last/three-star reward "+chapter+"/"+stage);
+                    Require(svc.Begin(stage,false,out run) && svc.Complete(run,Result(svc,stage),out reward) && svc.Profile.Hearts+svc.Profile.ExtraHearts==5-2*cost+amount,"replay reward");
                 }
             }
-            svc=new CampaignService(At(),null,()=>now,()=>day);Require(svc.Begin(0,false,out run) && svc.Complete(run,Result(svc,0,true,false,.2f),out reward) && svc.Profile.ExtraHearts==9,"low-star first win");
-            Require(svc.Begin(0,false,out run) && svc.Complete(run,Result(svc,0),out reward) && svc.Profile.Hearts==5 && svc.Profile.ExtraHearts==9,"later first three-star");
+            svc=new CampaignService(At(),null,()=>now,()=>day);Require(svc.Begin(0,false,out run) && svc.Complete(run,Result(svc,0,true,false,.2f),out reward) && svc.Profile.Hearts==5 && svc.Profile.ExtraHearts==1,"low-star first win");
+            Require(svc.Begin(0,false,out run) && svc.Complete(run,Result(svc,0),out reward) && svc.Profile.Hearts==5 && svc.Profile.ExtraHearts==1,"later first three-star");
             svc=new CampaignService(Open(6),null,()=>now,()=>day);Require(svc.Begin(0,true,out run) && svc.Complete(run,Result(svc,0,true,true),out reward) && svc.Profile.Hearts==4 && svc.Profile.ExtraHearts==0,"crisis duplicated normal reward");
-            report.Add("PASS chapter 1/2/3+ first clear, last-stage +10, first/later three-star +1, replay and crisis isolation");
+            report.Add("PASS chapter 1 first clear +1 and last +11, chapter 2/3+ and extra three-star +0, replay and crisis isolation");
 
             p=Open(CampaignCatalog.Stages.Length);p.MagicCores=4321;p.SelectedHunter=2;p.Muted=true;p.Research=new[]{4,3,2,1};p.Growth=new[]{3,2,1};p.Loadout=7;
             p.StoryMask=123;p.TutorialMask=321;p.CrisisStars[0]=2;p.BestErosion[0]=.25f;p.BestStars[1]=2;
@@ -120,9 +121,7 @@ namespace Gatefall.Tests
             p.StorySeenIds.Add("C01-S001");p.TutorialSeenIds.Add("C10-S240");p.UnmappedProgress.Add("C10-S240",new StageProgress{Stars=2,CrisisStars=1,Erosion=.4f,FirstCleared=true});
             byte[] legacy=V3(p);string directory=Path.Combine(Path.GetTempPath(),"gatefall-hearts-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
             string path=Path.Combine(directory,"profile.sav");File.WriteAllBytes(path,legacy);var store=new CampaignStore(path);var migrated=store.Load();
-            int backfill=0;for(int i=0;i<p.FirstCleared.Length;i++){int chapter=CampaignCatalog.Stages[i].Chapter;backfill+=chapter==1 ? 10 : chapter==2 ? 3 : 2;
-                if(CampaignCatalog.Stages[i].LocalNumber==CampaignCatalog.ChapterCount(chapter))backfill+=10;if(p.BestStars[i]==3)backfill++;}
-            Require(migrated.Hearts==5 && migrated.ExtraHearts==Math.Min(999,backfill) && migrated.HeartRewardsBackfilled,"v3 backfill total");
+            Require(HeartRules.BackfillLimit==6 && migrated.Hearts==5 && migrated.ExtraHearts==6 && migrated.HeartRewardsBackfilled,"v3 backfill capped at six");
             Require(migrated.Supply.Cards.All(n=>n==0) && migrated.Supply.Grades.All(n=>n==1) && migrated.Supply.PremiumPity==0 && migrated.Supply.OwnedCosmetics==0 && migrated.Shop.LocalDay==-1,"v3 supply/shop defaults");
             Require(V3(migrated).SequenceEqual(legacy) && File.ReadAllBytes(path+".legacy-v3.bak").SequenceEqual(legacy),"v3 fields/backup changed");
             Require(CampaignStore.Encode(migrated).SequenceEqual(File.ReadAllBytes(path)),"v4 migration not saved");
@@ -135,6 +134,8 @@ namespace Gatefall.Tests
             var corrupt=(byte[])bytes.Clone();corrupt[corrupt.Length-1]^=1;bool rejected=false;try{CampaignStore.Decode(corrupt);}catch(InvalidDataException){rejected=true;}Require(rejected,"v4 checksum accepted changed heart/daily payload");
             store.Save(migrated);File.WriteAllBytes(path,new byte[]{1,2,3});Require(store.Load().HeartRewardsBackfilled && store.Warning!="","backup recovery");
             p=At(0,998);HeartRules.Backfill(p);Require(p.HeartRewardsBackfilled,"backfill flag");p=Open(CampaignCatalog.Stages.Length);p.ExtraHearts=998;HeartRules.Backfill(p);Require(p.ExtraHearts==999,"backfill cap");
+            p=Open(2);HeartRules.Backfill(p);Require(p.ExtraHearts==2,"partial progress backfill");
+            p=Open(14);p.Hearts=0;HeartRules.Backfill(p);Require(p.Hearts==5 && p.ExtraHearts==1,"six total, not six plus missing base");
             report.Add("PASS v3 file to v4: empty supply/shop, old-field preservation, backup/backfill, checksum recovery and byte-identical v4 with non-empty supply");
 
             var invalid=new Action<CampaignProfile>[] {q=>q.Hearts=-1,q=>q.Hearts=6,q=>q.ExtraHearts=-1,q=>q.ExtraHearts=1000,q=>q.CrystalsFree=-1,q=>q.CrystalsPaid=-1,

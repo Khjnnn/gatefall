@@ -27,15 +27,20 @@ namespace Gatefall
             public Action Reward,Fail;
             public void Show(string placement,Action rewarded,Action failed) {Reward=rewarded;Fail=failed;}
         }
-        static GatefallGame Host(int hearts,int crystals=0)
+        static GatefallGame Host(int hearts,int crystals=0,int stage=3)
         {
             long now=DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var p=new CampaignProfile{Hearts=hearts,CrystalsFree=crystals,LastSeenUtc=now,HeartAnchorUtc=now};
-            return new GatefallGame{Campaign=new CampaignService(p,x=>{},()=>now,()=>1),
+            for(int i=0;i<stage;i++){p.FirstCleared[i]=true;p.BestStars[i]=3;}
+            return new GatefallGame{SelectedStage=stage,Campaign=new CampaignService(p,x=>{},()=>now,()=>DailyCatalog.SeasonEpochDay+1),
                 Simulation=new DefenseSimulation(new GameBalance(),7),TouchInput=new MobileInput(new MobileLayout(960,600,new Box2()))};
         }
         public static string RunHomeFlowChecks()
         {
+            for(int stage=0;stage<3;stage++) {
+                var free=Host(0,0,stage);free.BeginPreparation();
+                Require(!free.HeartShortage && free.ScreenPage==CampaignScreen.Battle && free.Profile.Hearts==0 && free.Profile.ExtraHearts==0,"free tutorial never opens shortage "+stage);
+            }
             var g=Host(0);g.BeginPreparation();Require(g.HeartShortage && g.ScreenPage==CampaignScreen.Home,"empty Home launch");
             var ad=new DeferredAd();g.RewardedAds=ad;g.CampaignAction(696);
             Require(g.HeartAdPending && g.Profile.DailyLimits.HeartAdsUsed==0,"reward before callback");
@@ -50,16 +55,16 @@ namespace Gatefall
             Require(g.HeartShortage && !g.HeartAdPending && g.Profile.DailyLimits.HeartAdsUsed==0,"unready ad");
             g.RewardedAds=new FakeRewardedAdService{Succeeds=false};g.CampaignAction(696);
             Require(g.HeartShortage && g.Profile.Hearts==0 && g.Profile.DailyLimits.HeartAdsUsed==0,"failed ad");
-            g=Host(0);var p=g.Profile.Copy();p.FirstCleared[0]=true;p.BestStars[0]=3;
+            g=Host(0);var p=g.Profile.Copy();p.FirstCleared[3]=true;p.BestStars[3]=3;
             g.Campaign=new CampaignService(p,x=>{});g.ResultSaved=true;g.ScreenPage=CampaignScreen.Battle;
-            g.activeBattle=g.Campaign.Battle(0,false);g.NewRun(false);g.CampaignAction(607);
-            Require(g.HeartShortage && g.SelectedStage==0,"next shortage preserves result selection");
-            g.CampaignAction(696);Require(g.SelectedStage==1 && g.Profile.PendingStage==1 && g.Profile.Hearts==0,"next refill launches intended operation");
+            g.activeBattle=g.Campaign.Battle(3,false);g.NewRun(false);g.CampaignAction(607);
+            Require(g.HeartShortage && g.SelectedStage==3,"next shortage preserves result selection");
+            g.CampaignAction(696);Require(g.SelectedStage==4 && g.Profile.PendingStage==4 && g.Profile.Hearts==0,"next refill launches intended operation");
             g=Host(2);g.BeginPreparation();string interrupted=g.CurrentRunId;
             g.SetPage(CampaignScreen.Home);g.BeginPreparation();
             Require(g.Profile.Hearts==0 && g.CurrentRunId!=interrupted,"interrupted attempt is not a free retry");
             g=Host(0);p=g.Profile.Copy();for(int i=0;i<6;i++){p.FirstCleared[i]=true;p.BestStars[i]=3;}
-            g.Campaign=new CampaignService(p,x=>{});g.CrisisSelection=true;g.BeginPreparation();g.CampaignAction(696);
+            g.Campaign=new CampaignService(p,x=>{});g.SelectedStage=0;g.CrisisSelection=true;g.BeginPreparation();g.CampaignAction(696);
             Require(g.Profile.PendingCrisis && g.Simulation.Rules.Crisis,"crisis refill keeps mode");
             int writes=0;g=Host(1);g.Campaign=new CampaignService(g.Profile,x=>writes++);
             UnityEngine.Time.unscaledTime=0;g.RefreshHomeHearts();g.TickHomeHearts();Require(writes==1,"refresh on open only once");
@@ -67,6 +72,8 @@ namespace Gatefall
             g.SetPage(CampaignScreen.Growth);UnityEngine.Time.unscaledTime=2;g.TickHomeHearts();Require(writes==1,"hidden Home does not refresh");
             g=Host(0);g.Campaign=new CampaignService(g.Profile,x=>{throw new Exception("disk full");});g.BeginPreparation();g.CampaignAction(696);
             Require(g.HeartShortage && g.CurrentRunId=="" && g.Profile.DailyLimits.HeartAdsUsed==0,"failed reward save cannot launch");
+            g=Host(0,0,0);g.Campaign=new CampaignService(g.Profile,x=>{throw new Exception("disk full");});g.BeginPreparation();
+            Require(!g.HeartShortage && g.CurrentRunId=="" && g.CampaignError.Contains("저장 실패"),"free save failure opens no heart dialog");
             return "PASS: real CampaignController Home/map/retry/next/crisis launches, interrupted attempt charge, one-second refresh, deferred/duplicate/failed ads and failed reward saves (host stubs only).";
         }
         static GatefallGame DailyHost()
@@ -74,7 +81,7 @@ namespace Gatefall
             var g=ShopHost();var p=g.Profile.Copy();p.Daily=g.Campaign.DailyStatus();
             foreach(var row in DailyCatalog.Missions())p.Daily.Progress[(int)row.Mission]=row.Target;
             p.Daily.PassPoints=150;Require(p.Valid(),"daily fixture validity");
-            g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);g.DailyRandom=max=>0;return g;
+            g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);g.DailyRandom=max=>0;return g;
         }
         static GatefallGame VictoryHost(bool won=true)
         {
@@ -108,7 +115,7 @@ namespace Gatefall
             Require(!expected.ClaimPassTier(1,true),"paid locked Core");g.CampaignAction(950);Require(g.CampaignError==expected.Error,"paid refusal reason");Same(g,expected,"locked paid tier");
             Require(expected.SpendCrystalsToRaiseDailyCap(),"raise Core");g.CampaignAction(884);Same(g,expected,"raise daily cap");
             Require(!expected.SpendCrystalsToRaiseDailyCap(),"raise twice Core");g.CampaignAction(884);Require(g.CampaignError==expected.Error,"raise twice reason");Same(g,expected,"raise twice");
-            g=DailyHost();var p=g.Profile.Copy();p.Daily.PurchaseLedger.Add("audit-pass",new PurchaseEntry("audit-pass",PurchaseKind.Pass,0,p.Daily.Season));g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);g.CampaignAction(880);expected=Expected(g);
+            g=DailyHost();var p=g.Profile.Copy();p.Daily.PurchaseLedger.Add("audit-pass",new PurchaseEntry("audit-pass",PurchaseKind.Pass,0,p.Daily.Season));g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);g.CampaignAction(880);expected=Expected(g);
             Require(expected.ClaimPassTier(1,true),"owned paid Core");g.CampaignAction(950);Same(g,expected,"owned paid tier");
             g=VictoryHost();expected=Expected(g);ad=new DeferredAd();g.RewardedAds=ad;
             Require(g.CanDoubleReward,"double available");int amount=g.ResultReward;g.CampaignAction(887);Same(g,expected,"double before callback");
@@ -120,17 +127,17 @@ namespace Gatefall
                 g=doubleReward?VictoryHost():DailyHost();if(!doubleReward)g.CampaignAction(681);expected=Expected(g);
                 g.RewardedAds=new FakeRewardedAdService{Succeeds=false};g.CampaignAction(doubleReward?887:881);Same(g,expected,"failed ad");Require(!g.DailyAdPending && g.CampaignError!="","ad failure text");
                 g.RewardedAds=new FakeRewardedAdService{IsReady=false};g.CampaignAction(doubleReward?887:881);Same(g,expected,"unready ad");
-                g.RewardedAds=new FakeRewardedAdService();g.Campaign=new CampaignService(g.Profile,x=>{throw new Exception("disk full");},()=>g.Profile.LastSeenUtc,()=>1);
+                g.RewardedAds=new FakeRewardedAdService();g.Campaign=new CampaignService(g.Profile,x=>{throw new Exception("disk full");},()=>g.Profile.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);
                 g.CampaignAction(doubleReward?887:881);Same(g,expected,"ad save rollback");Require(g.CampaignError.Contains("저장 실패"),"ad save failure text");
             }
-            g=VictoryHost();p=g.Profile.Copy();p.Daily.RewardDoubles=5;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);Require(!g.CanDoubleReward,"double cap");
-            g=VictoryHost();p=g.Profile.Copy();p.MagicCores=100000000;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);Require(!g.CanDoubleReward,"double balance cap");
-            g=VictoryHost();p=g.Profile.Copy();p.SaveSerial=long.MaxValue;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);Require(!g.CanDoubleReward,"double save serial cap");
+            g=VictoryHost();p=g.Profile.Copy();p.Daily.RewardDoubles=5;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);Require(!g.CanDoubleReward,"double cap");
+            g=VictoryHost();p=g.Profile.Copy();p.MagicCores=100000000;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);Require(!g.CanDoubleReward,"double balance cap");
+            g=VictoryHost();p=g.Profile.Copy();p.SaveSerial=long.MaxValue;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);Require(!g.CanDoubleReward,"double save serial cap");
             g=DailyHost();Require(g.HomeNotice(680),"free shop dot");g.CampaignAction(680);g.CampaignAction(815);Require(!g.HomeNotice(680),"free shop dot claimed");
             g.CampaignAction(808);Require(g.HomeNotice(680),"refreshed free shop dot");
-            g=DailyHost();p=g.Profile.Copy();p.MagicCores=100000000;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);Require(!g.HomeNotice(682) && !g.HomeNotice(680),"capacity suppresses reward dots");
-            g=DailyHost();p=g.Profile.Copy();p.Daily.PassPoints=0;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);Require(!g.HomeNotice(880),"unearned pass dot");
-            g=DailyHost();p=g.Profile.Copy();p.Daily.RouletteSpins=3;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);Require(!g.HomeNotice(681),"spin daily cap dot");
+            g=DailyHost();p=g.Profile.Copy();p.MagicCores=100000000;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);Require(!g.HomeNotice(682) && !g.HomeNotice(680),"capacity suppresses reward dots");
+            g=DailyHost();p=g.Profile.Copy();p.Daily.PassPoints=0;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);Require(!g.HomeNotice(880),"unearned pass dot");
+            g=DailyHost();p=g.Profile.Copy();p.Daily.RouletteSpins=3;g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);Require(!g.HomeNotice(681),"spin daily cap dot");
             g=DailyHost();g.CampaignAction(880);before=CampaignStore.Encode(g.Profile);for(int i=0;i<20;i++)g.CampaignAction(886);
             Require(g.DailyFirst+g.TouchInput.Layout.DailyVisibleRows()==30,"pass last page");g.CampaignAction(885);Require(g.DailyFirst<25,"pass up");
             Require(Convert.ToBase64String(before)==Convert.ToBase64String(CampaignStore.Encode(g.Profile)),"pass scrolling mutated profile");
@@ -138,13 +145,13 @@ namespace Gatefall
         }
         static GatefallGame ShopHost(int cleared=3)
         {
-            var g=Host(5,250);var p=g.Profile.Copy();p.MagicCores=500;p.CrystalsPaid=200;
+            var g=Host(5,250,0);var p=g.Profile.Copy();p.MagicCores=500;p.CrystalsPaid=200;
             for(int i=0;i<=cleared;i++){p.FirstCleared[i]=true;p.BestStars[i]=3;}
             p.Supply.Cards[0]=4;
-            g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>1);g.SupplyRandom=max=>0;return g;
+            g.Campaign=new CampaignService(p,x=>{},()=>p.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);g.SupplyRandom=max=>0;return g;
         }
         static CampaignService Expected(GatefallGame g)
-        {long utc=g.Profile.LastSeenUtc;return new CampaignService(g.Profile,x=>{},()=>utc,()=>1);}
+        {long utc=g.Profile.LastSeenUtc;return new CampaignService(g.Profile,x=>{},()=>utc,()=>DailyCatalog.SeasonEpochDay+1);}
         static void Same(GatefallGame g,CampaignService expected,string action)
         {Require(Convert.ToBase64String(CampaignStore.Encode(g.Profile))==Convert.ToBase64String(CampaignStore.Encode(expected.Profile)),action+" differs from Core");}
         public static string RunShopFlowChecks()
@@ -184,10 +191,10 @@ namespace Gatefall
             g.CampaignAction(804);g.CampaignAction(809);Require(Convert.ToBase64String(before)==Convert.ToBase64String(CampaignStore.Encode(g.Profile)),"disabled IAP rows");
             g=ShopHost();g.CampaignAction(680);g.CampaignAction(801);expected=Expected(g);Require(expected.OpenBox(BoxKind.Premium,max=>0)!=null,"premium Core");g.CampaignAction(806);Same(g,expected,"premium free-first crystals");
             g=ShopHost();g.CampaignAction(680);g.CampaignAction(801);expected=Expected(g);
-            g.Campaign=new CampaignService(g.Profile,x=>{throw new Exception("disk full");},()=>g.Profile.LastSeenUtc,()=>1);
+            g.Campaign=new CampaignService(g.Profile,x=>{throw new Exception("disk full");},()=>g.Profile.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);
             g.CampaignAction(805);Require(g.BoxResult==null && g.CampaignError.Contains("저장 실패"),"failed box save");Same(g,expected,"box save rollback");
             g=ShopHost();var pity=g.Profile.Copy();pity.Supply.PremiumPity=SupplyCatalog.PityBoxes-1;
-            g.Campaign=new CampaignService(pity,x=>{},()=>pity.LastSeenUtc,()=>1);g.CampaignAction(680);g.CampaignAction(801);
+            g.Campaign=new CampaignService(pity,x=>{},()=>pity.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);g.CampaignAction(680);g.CampaignAction(801);
             expected=Expected(g);result=expected.OpenBox(BoxKind.Premium,max=>0);g.CampaignAction(806);Same(g,expected,"pity box");
             Require(g.BoxResult.PityFired && result.PityFired && g.Profile.Supply.PremiumPity==0,"pity result line source");
             foreach(TowerKind kind in g.BoxResult.Cards)Require(ShopLabels.ResultRows(g.BoxResult,g.Profile).Length>0 && ShopLabels.Progress(g.Profile,kind).Contains(" / "),"post-pity card progress");
@@ -195,7 +202,7 @@ namespace Gatefall
             for(int i=0;i<5;i++){g.CampaignAction(805);Require(g.BoxResult!=null,"normal box within cap");g.CampaignAction(819);}
             expected=Expected(g);g.CampaignAction(805);Same(g,expected,"daily box cap");Require(g.BoxResult==null && g.NormalBoxesRemaining==0 && g.CampaignError==g.Campaign.OpenBoxReason(BoxKind.Normal),"daily cap reason");
             g=ShopHost();g.CampaignAction(680);g.CampaignAction(801);pity=g.Profile.Copy();pity.Supply.Grades[0]=6;pity.Supply.Cards[0]=80;
-            g.Campaign=new CampaignService(pity,x=>{},()=>pity.LastSeenUtc,()=>1);expected=Expected(g);result=expected.OpenBox(BoxKind.Normal,max=>0);g.CampaignAction(805);Same(g,expected,"surplus box");
+            g.Campaign=new CampaignService(pity,x=>{},()=>pity.LastSeenUtc,()=>DailyCatalog.SeasonEpochDay+1);expected=Expected(g);result=expected.OpenBox(BoxKind.Normal,max=>0);g.CampaignAction(805);Same(g,expected,"surplus box");
             Require(g.BoxResult.SurplusCores>0 && ShopLabels.ResultRows(g.BoxResult,g.Profile)[0].Contains("마핵 전환"),"surplus result");
             g=ShopHost(0);g.CampaignAction(680);Require(g.ScreenPage==CampaignScreen.Home,"shop lock");
             foreach(int id in new[]{681,682,683}){g.CampaignAction(id);Require(g.DailyPage,"daily page replaces placeholder");g.CampaignAction(603);}

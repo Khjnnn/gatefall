@@ -42,7 +42,7 @@ namespace Gatefall
         }
         void DrawFusionPreview(DefenseSimulation game,FusionRecipe recipe,TowerStats s,V2 origin)
         {
-            V2 impact;V2 aim=FusionPreview.Aim(game,s,origin,out impact);
+            V2 impact;float radius;V2 aim=FusionPreview.Aim(game,s,origin,out impact,out radius);
             Vector3 p=Point(origin), forward=Point(aim), side=new Vector3(-aim.Y,aim.X,0);
             Color role=GatefallArt.RoleColor(recipe.Result), rim=Alpha(role,.8f);
             bool line=s.LineHalfWidth>0, cone=!line && s.ConeCos>0;
@@ -72,7 +72,7 @@ namespace Gatefall
             // Radius is an impact footprint, distinct from the tower's acquisition range.
             if(!line && !cone && s.Radius>0) {
                 previewSplash.enabled=true;previewSplash.color=rim;previewSplash.transform.position=Point(impact);
-                previewSplash.transform.localScale=Vector3.one*(s.Radius*2/RangeDiameter);
+                previewSplash.transform.localScale=Vector3.one*(radius*2/RangeDiameter);
             }
         }
     }

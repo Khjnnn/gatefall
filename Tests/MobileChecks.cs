@@ -429,11 +429,12 @@ namespace Gatefall.Tests
             Require(rewarded==1 && failed==2,"failed/unready ads must not reward");
             long utc=10000;int writes=0;
             var profile=new CampaignProfile{Hearts=0,ExtraHearts=0,CrystalsFree=30,HeartAnchorUtc=utc,LastSeenUtc=utc};
+            for(int i=0;i<3;i++){profile.FirstCleared[i]=true;profile.BestStars[i]=3;}
             var service=new CampaignService(profile,p=>writes++,()=>utc,()=>1);
-            string id;Require(!service.Begin(0,false,out id) && service.BeginReason(0,false)=="하트 부족" && writes==0,"empty launch");
-            Require(service.RefillHeartByAd() && service.Begin(0,false,out id) && service.Profile.Hearts==0 && writes==2,"reward then launch");
+            string id;Require(!service.Begin(3,false,out id) && service.BeginReason(3,false)=="하트 부족" && writes==0,"empty launch");
+            Require(service.RefillHeartByAd() && service.Begin(3,false,out id) && service.Profile.Hearts==0 && writes==2,"reward then launch");
             Require(service.Resume(out id) && writes==2,"same run resumes without spending");
-            Require(service.RefillHeartsByCrystals() && service.Begin(0,false,out id) && service.Profile.Hearts==4 && service.Profile.CrystalsFree==0,"crystals then new attempt");
+            Require(service.RefillHeartsByCrystals() && service.Begin(3,false,out id) && service.Profile.Hearts==4 && service.Profile.CrystalsFree==0,"crystals then new attempt");
             return "PASS: home geometry on 12 screens; 5/7 tabs, 3/5 right entries; "+hits+" bounds/touch checks; ad success/failure/unready and refill-to-launch.";
         }
         static bool Intersects(Box2 a,Box2 b) {return a.X<b.X+b.Width && b.X<a.X+a.Width && a.Y<b.Y+b.Height && b.Y<a.Y+a.Height;}
@@ -474,11 +475,11 @@ namespace Gatefall.Tests
                     input.Reset();input.Pointer(2,PointerPhase.Begin,p);input.Pointer(2,PointerPhase.Cancel,p);Require(input.Actions.Count==0,"canceled claim");
                 }
             }
-            var d=new DailyState{LocalDay=7,Season=1};
+            var d=new DailyState{LocalDay=DailyCatalog.SeasonEpochDay+7,Season=1};
             for(int today=0;today<7;today++) {
-                d.AttendanceDay=6;d.AttendancePosition=today;
+                d.AttendanceDay=DailyCatalog.SeasonEpochDay+6;d.AttendancePosition=today;
                 for(int i=0;i<7;i++)Require(Gatefall.DailyLabels.AttendanceState(d,i)==(i<today?"수령 완료":i==today?"오늘":"잠김"),"attendance before claim");
-                d.AttendanceDay=7;d.AttendancePosition=(today+1)%7;
+                d.AttendanceDay=DailyCatalog.SeasonEpochDay+7;d.AttendancePosition=(today+1)%7;
                 for(int i=0;i<7;i++)Require(Gatefall.DailyLabels.AttendanceState(d,i)==(i<=today?"수령 완료":"잠김"),"attendance after claim/wrap");
             }
             Require(Gatefall.DailyLabels.DaysLeft(d)==21,"season days");

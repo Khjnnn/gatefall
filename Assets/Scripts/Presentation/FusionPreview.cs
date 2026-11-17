@@ -57,13 +57,19 @@ namespace Gatefall
         // Target query is private in DefenseSimulation. Mirror its availability and Lead ordering
         // (distance to core, then id), including marked preference; never mutate its scratch list.
         public static V2 Aim(DefenseSimulation game,TowerStats s,V2 origin,out V2 impact)
+        {float radius;return Aim(game,s,origin,out impact,out radius);}
+        public static V2 Aim(DefenseSimulation game,TowerStats s,V2 origin,out V2 impact,out float radius)
         {
+            radius=s.Radius;
             Enemy best=null;float range2=s.Range*s.Range;
             foreach(Enemy enemy in game.Enemies) {
                 if(enemy.Health<=0 || enemy.IncomingDamage>=enemy.Health || V2.DistanceSquared(origin,enemy.Position)>range2)continue;
                 if(best==null || Preferred(game,s,enemy,best))best=enemy;
             }
-            if(best!=null) {impact=best.Position;return (impact-origin).Normalized;}
+            if(best!=null) {
+                if(s.Inheritance==SealInheritance.MarkedBlast && best.MarkRemaining>0)radius*=s.MarkedRadiusMultiplier;
+                impact=best.Position;return (impact-origin).Normalized;
+            }
             float nearest=float.MaxValue, lead=float.MaxValue;V2 tangent=new V2(1,0);impact=origin;
             foreach(int lane in game.OpenLanes) {
                 V2[] road=game.Roads[lane];

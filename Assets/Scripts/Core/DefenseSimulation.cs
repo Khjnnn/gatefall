@@ -624,8 +624,12 @@ namespace Gatefall.Core
             if(s.Chain!=null) { ImpactChain(p, primary); return; }
             if(s.ConeCos>0){Damage(primary,s.Damage,p,p.Position,inheritance:s.Slow>0 ? s.Inheritance : SealInheritance.None);return;}
             if(s.Radius>0) {
-                Emit(EventKind.Blast,position,new V2(),s.Radius,(int)p.Kind,inheritance:s.Inheritance);
-                List<Enemy> targets=Targets(position,s.Radius); int count=0;
+                // Check the live mark before this impact applies its own primary-only mark.
+                bool marked=s.Inheritance==SealInheritance.MarkedBlast && primary!=null && primary.MarkRemaining>0;
+                float radius=marked ? s.Radius*s.MarkedRadiusMultiplier : s.Radius;
+                Emit(EventKind.Blast,position,new V2(),radius,(int)p.Kind,
+                    inheritance:s.Inheritance==SealInheritance.MarkedBlast && !marked ? SealInheritance.None : s.Inheritance);
+                List<Enemy> targets=Targets(position,radius); int count=0;
                 if(s.Inheritance==SealInheritance.GravitySpear) {
                     if(targets.Count>0)Damage(targets[0],s.Secondary,p,p.Position,
                         applySlow:false, applyMark:false, inheritance:SealInheritance.GravitySpear);
@@ -637,7 +641,7 @@ namespace Gatefall.Core
                 }
                 if(!p.FixedImpact && primary!=null) {
                     bool focused=s.Inheritance==SealInheritance.MarkedBlast;
-                    float direct=focused && primary.MarkRemaining>0 ? s.Damage*s.MarkedDamageMultiplier : s.Damage;
+                    float direct=marked ? s.Damage*s.MarkedDamageMultiplier : s.Damage;
                     Damage(primary,direct,p,p.Position,applySlow:s.Inheritance!=SealInheritance.ShatterSlow,
                         inheritance:focused ? s.Inheritance : SealInheritance.None);
                     targets.Remove(primary);

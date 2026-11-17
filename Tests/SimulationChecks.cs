@@ -174,7 +174,7 @@ namespace Gatefall.Tests
                 g.Tick(.32f,new V2());
                 var stats=g.Stats(TowerCatalog.Recipes[8]);
                 Near(marked.Health,1000-stats.Damage*stats.MarkedDamageMultiplier-5);
-                Near(lead.Health,1000); Near(escort.Health,1000-stats.Secondary); Near(escort.MarkRemaining,0);
+                Near(lead.Health,1000-stats.Secondary); Near(escort.Health,1000-stats.Secondary); Near(escort.MarkRemaining,0);
                 Assert(marked.MarkRemaining>2,"primary mark refresh");
                 LeadWithoutMark();
             });

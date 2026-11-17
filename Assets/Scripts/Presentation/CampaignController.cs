@@ -95,7 +95,7 @@ namespace Gatefall
             string id;
             if (!Campaign.Begin(stage,crisis,out id)) {
                 CampaignError=Campaign.Error;
-                if(Campaign.Error=="하트 부족") {
+                if(Campaign.Error=="하트 부족" && !HeartRules.IsFreeLaunch(stage,crisis)) {
                     shortageStage=stage;shortageCrisis=crisis;HeartShortage=true;
                     TouchInput.Reset();RefreshHomeHearts();
                 }

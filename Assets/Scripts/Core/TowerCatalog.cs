@@ -14,7 +14,7 @@ namespace Gatefall.Core
         public float ConeCos, LineHalfWidth;
         public int MaxTargets;
         public int TailBurstTargets, ConeSlowTargets;
-        public float MarkedDamageMultiplier;
+        public float MarkedDamageMultiplier, MarkedRadiusMultiplier;
         public SealInheritance Inheritance;
         public float[] Chain;
         public TowerStats Copy()
@@ -31,7 +31,8 @@ namespace Gatefall.Core
                 Secondary > 0 ? Damage.ToString("0.#") + "/주변 " + Secondary.ToString("0.#") : Damage.ToString("0.#");
             return "피해 " + damage + " · " + Interval.ToString("0.##") + "초\n사거리 " + Range.ToString("0.#") +
                 " · 최대 " + MaxTargets + "명" + (Radius > 0 ? " · 반경 " + Radius.ToString("0.#") : "") +
-                (Slow > 0 ? "\n감속 " + (Slow * 100).ToString("0") + "% / " + SlowSeconds.ToString("0.#") + "초" : "");
+                (Slow > 0 ? "\n감속 " + (Slow * 100).ToString("0") + "% / " + SlowSeconds.ToString("0.#") + "초" : "") +
+                (MarkedRadiusMultiplier>1 ? "\n표식 명중: 직격 ×"+MarkedDamageMultiplier.ToString("0.#")+" · 폭발 반경 ×"+MarkedRadiusMultiplier.ToString("0.#") : "");
         }
     }
     public sealed class TowerDefinition
@@ -116,7 +117,7 @@ namespace Gatefall.Core
             S(102,1.13f,6.4f,3,1.65f,secondary:48,chain:new[]{102f,80f,62f}),
             S(158,1f,6.4f,4,1.75f,.38f,1.05f,48),
             S(56,1.15f,6.4f,6,2.25f,.47f,1.35f,72),
-            S(120,1f,6.4f,4,2f,.35f,1.5f,60,mark:5),
+            S(120,1f,6.4f,4,2f,.30f,1.5f,60,mark:5),
             S(57,1.02f,6f,7,slow:.32f,seconds:1.1f,cone:.7071068f),
             S(110,1.05f,7f,5,1.5f,.48f,.95f,60,line:.75f)
         };
@@ -131,7 +132,10 @@ namespace Gatefall.Core
             }
             if (inheritance == SealInheritance.LineBurst) stats.TailBurstTargets = 3;
             if (inheritance == SealInheritance.FanSlow) stats.ConeSlowTargets = 2;
-            if (inheritance == SealInheritance.MarkedBlast) stats.MarkedDamageMultiplier = 1.4f;
+            if (inheritance == SealInheritance.MarkedBlast) {
+                stats.MarkedDamageMultiplier = 1.4f;
+                stats.MarkedRadiusMultiplier = 2;
+            }
             return stats;
         }
 
@@ -154,7 +158,7 @@ namespace Gatefall.Core
                 case SealInheritance.ChainBurst: return "연쇄 끝 폭발";
                 case SealInheritance.ShatterSlow: return "정예 직격 · 주변 감속";
                 case SealInheritance.GravitySpear: return "범위 감속 · 선두 빛창";
-                case SealInheritance.MarkedBlast: return "표식 집중 · 대상 폭발";
+                case SealInheritance.MarkedBlast: return "표식 집중 · 표식 명중 반경 2배";
                 case SealInheritance.FanSlow: return "부채꼴 · 선두 감속";
                 case SealInheritance.LineBurst: return "직선 감속 · 끝 폭발";
                 default: return "";

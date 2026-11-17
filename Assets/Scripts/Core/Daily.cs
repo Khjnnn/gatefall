@@ -34,7 +34,7 @@ namespace Gatefall.Core
     }
     public static class DailyCatalog
     {
-        public const int SeasonEpochDay=0, SeasonDays=28, TierCount=30, PointsPerTier=50;
+        public const int SeasonEpochDay=20773, SeasonDays=28, TierCount=30, PointsPerTier=50;
         public const int VictoryPoints=5, DailyPointCap=60, CapCrystalPrice=30;
         public const int RouletteDailyLimit=3, RouletteCooldownSeconds=14400, DoubleDailyLimit=5;
         static readonly MissionOffer[] missions={new MissionOffer(DailyMission.Wins,3,3,5),new MissionOffer(DailyMission.ThreeStars,1,3,5),
@@ -62,7 +62,7 @@ namespace Gatefall.Core
         public static RouletteSlot[] RouletteDisclosure(){return (RouletteSlot[])roulette.Clone();}
         public static PassTier[] PassRewards(){return (PassTier[])tiers.Clone();}
         public static int SeasonNumber(int localDay)
-        {if(localDay<SeasonEpochDay)throw new ArgumentOutOfRangeException("localDay");return (localDay-SeasonEpochDay)/SeasonDays+1;}
+        {if(localDay<0)throw new ArgumentOutOfRangeException("localDay");return localDay<SeasonEpochDay ? 1 : (localDay-SeasonEpochDay)/SeasonDays+1;}
         internal static RouletteSlot Roll(Func<int,int> rng)
         {
             if(rng==null)throw new ArgumentNullException("rng");int roll=rng(10000);
@@ -138,8 +138,18 @@ namespace Gatefall.Core
             for(int i=0;i<count;i++){
                 string id=r.ReadString();var entry=new PurchaseEntry(id,(PurchaseKind)r.ReadInt32(),r.ReadInt32(),r.ReadInt32());
                 if(p.PurchaseLedger.ContainsKey(id))throw new InvalidDataException("중복 주문 번호");p.PurchaseLedger.Add(id,entry);}
+            // 0.33.0/0.33.1 numbered seasons from 1970-01-01 (e.g. 742). 0.33.2 counts from SeasonEpochDay. The season itself
+            // did not change, only its label: relabel it and the matching pass entries, keeping points and claims.
+            if(p.LocalDay>=0 && p.Season!=DailyCatalog.SeasonNumber(p.LocalDay) && p.Season==LegacySeasonNumber(p.LocalDay)) {
+                int legacy=p.Season;p.Season=DailyCatalog.SeasonNumber(p.LocalDay);
+                foreach(string id in new List<string>(p.PurchaseLedger.Keys)) {
+                    var e=p.PurchaseLedger[id];
+                    if(e.Kind==PurchaseKind.Pass && e.Season==legacy)p.PurchaseLedger[id]=new PurchaseEntry(e.OrderId,e.Kind,e.Amount,p.Season);
+                }
+            }
             if(!p.Valid())throw new InvalidDataException("잘못된 일일 기록");return p;
         }
+        internal static int LegacySeasonNumber(int localDay){return localDay/DailyCatalog.SeasonDays+1;}
     }
     internal static class DailyRules
     {

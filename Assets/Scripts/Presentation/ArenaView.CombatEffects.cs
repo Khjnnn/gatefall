@@ -260,6 +260,10 @@ namespace Gatefall
                 Pulse(p, diameter, .23f, tint, true);
             } else if (kind == TowerKind.Seal) {
                 Neutral("fx-pillar", p + Vector3.up * 1.1f, Vector3.zero, .20f, .65f, .10f, Color.white).Stretch = new Vector2(1, 1.7f);
+                if(e.Inheritance==SealInheritance.MarkedBlast && effects.Count<96) {
+                    tint=GatefallArt.RoleColor(TowerKind.Observer);
+                    Pulse(p,diameter*.35f,.18f,GatefallArt.RoleColor(TowerKind.Marker),true);
+                }
                 Pulse(p, diameter, .25f, tint, true);
             } else {
                 Neutral("fx-disc", p + Vector3.up * .20f, Vector3.zero, .065f, diameter * .22f, diameter * .08f, Color.white);

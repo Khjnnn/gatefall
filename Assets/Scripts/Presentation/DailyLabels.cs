@@ -39,7 +39,8 @@ namespace Gatefall
         {return d.PassPoints>=row.Tier*DailyCatalog.PointsPerTier && (!paid || d.PassPurchased) &&
             ((paid?d.PaidClaims:d.FreeClaims)&(1<<(row.Tier-1)))==0 && CanGrant(p,paid?row.Paid:row.Free);}
         public static int DaysLeft(DailyState d)
-        {return DailyCatalog.SeasonDays-(d.LocalDay-DailyCatalog.SeasonEpochDay)%DailyCatalog.SeasonDays;}
+        {return d.LocalDay<DailyCatalog.SeasonEpochDay ? DailyCatalog.SeasonEpochDay+DailyCatalog.SeasonDays-d.LocalDay :
+            DailyCatalog.SeasonDays-(d.LocalDay-DailyCatalog.SeasonEpochDay)%DailyCatalog.SeasonDays;}
         public static string AttendanceState(DailyState d,int index)
         {
             bool claimed=d.AttendanceDay>=d.LocalDay;

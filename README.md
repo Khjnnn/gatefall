@@ -1,4 +1,4 @@
-# Gatefall — 라온시 · v0.33.1
+# Gatefall — 라온시 · v0.33.2
 
 귀환자 강윤과 제7방위대가 검은 탑의 범람을 막는 모바일 디펜스입니다. 각성자를 직접 움직이며 자동 공격하고, 결계주를 건설·강화·조합해 도시 결계를 지킵니다. 현재 일반 캠페인은 **종현동 1-1~1-14, 다솜동 2-1~2-22, 라온역 3-1~3-8, 총 44작전**입니다. v0.32.1은 라온역 3-2~3-8에 좁은 화면 가림 수정, 조합 카드의 재료 표시, 3-3~3-8 난이도 조정을 더한 버전입니다. 7개 월드/240스테이지는 [장기 기획](Docs/Design/GATEFALL_240_STAGE_CAMPAIGN_PLAN.md)이며 구현 완료 수가 아닙니다.
 
@@ -18,8 +18,8 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 ## 설치와 현재 전달본
 
-- [Gatefall-v0.33.1.apk](Builds/Android/Gatefall-v0.33.1.apk), 동일 내용의 [Gatefall.apk](Builds/Android/Gatefall.apk).
-- code153 / 113,692,857바이트 / SHA256 `8ba103bcc414eaffd735cf1fd58cd121e332cce4ac7e2775729efa6e03a58154`.
+- [Gatefall-v0.33.2.apk](Builds/Android/Gatefall-v0.33.2.apk), 동일 내용의 [Gatefall.apk](Builds/Android/Gatefall.apk).
+- code154 / 113,697,810바이트 / SHA256 `e9dc7f5e4a6bc7a43ca48a3db91ab1e4a5e61b12887539800676768b0c9e4974`.
 - Android9(API28) 이상 /ARM64 /가로 화면. Unity6000.6.7f1 /IL2CPP /target API36.
 - 개발용 Debug 서명·debuggable 테스트 APK입니다. 스토어용 서명/AAB·실기기 검증을 마친 파일은 아닙니다. v2서명·ZIP16KB 정렬과 세ARM64 ELF의LOAD16KB 정렬을 확인했습니다.
 - 같은 패키지·서명으로 `adb install -r Builds/Android/Gatefall.apk`를 사용해 업데이트합니다. 저장을 지우는 초기화·삭제 명령은 사용하지 않습니다.
@@ -28,6 +28,7 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 | 범위 | 실제 결과 | 기록 |
 |---|---|---|
+| v0.33.2 하트 규칙·관측 종결·시즌 | 1-1~1-3 무료 출전, 1장 완료 +10 하트, 하트 경제 모의(`Tools/review-heart-economy.ps1`), 관측 종결의 표식 적중 시 반경 2배, 시즌 1 = 2026-11-16, 0.33.0/0.33.1 저장의 옛 시즌 번호 읽기 수정 | [하트 기획 전달 기록](Docs/Design/GATEFALL_HEARTS_SHOP_GACHA_PLAN_2026-11-14.md) · [플레이 확인 목록](Docs/Design/GATEFALL_PLAYTEST_CHECKLIST_2026-11-17.md) |
 | v0.33.1 계승 종결 조정·조합 미리보기 | 관측·쇄도 종결 보강, 탄막 종결은 기존 동작으로 복귀(같은 비용 기존 대비 약했음). 재료 선택 중 실제 공격 모양과 선로 겹침 표시, 조합 카드 상황 문구. Android 3-6 완주 | [계승 종결 기록](Docs/Design/GATEFALL_SEAL_INHERITANCE_EXPANDED_2026-11-15.md) |
 | v0.33.0 하트·상점·보급 상자 | 하트(15분 충전, 여분 999), 홈 탭 줄, 일일 상점, 보급 상자와 결계주 등급(+10% 한도), 광고 룰렛·임무·출석·패스, 저장 v4, 클라우드 저장 병합 규칙. 광고는 가짜 서비스이고 결제·Play 게임즈·AdMob SDK는 미연결. Android 에뮬레이터에서 v3 → v4 업데이트, 하트 0 → 광고 → 출전, 상점·상자·등급, 3-8 한 판과 보상 2배 확인 | [기획과 전달 기록](Docs/Design/GATEFALL_HEARTS_SHOP_GACHA_PLAN_2026-11-14.md) · [검증](TestResults/hearts-shop-20261114/verify-ui.json) |
 | v0.32.2~0.32.4 전투 화면·라온역 그림 | 입구 방향 표지 등 전투 화면 읽기 쉬움 개선, 라온역 바닥·장식 | [전달 기록](Docs/Design/GATEFALL_BATTLE_READABILITY_DELIVERY_2026-11-14.md) · [그림 비교](Docs/Design/GATEFALL_RAON_ART_COMPARISON_2026-11-14.md) |

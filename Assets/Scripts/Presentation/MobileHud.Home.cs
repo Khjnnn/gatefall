@@ -64,8 +64,9 @@ namespace Gatefall
                 if(r.width==0)continue;
                 bool unlocked=entry.UnlockStage<0 || profile.FirstCleared[entry.UnlockStage];
                 if(entry.Action==606) {
-                    bool empty=profile.Hearts+profile.ExtraHearts==0;
-                    Button(entry.Action,Box(r),"작전 출전\n♥1"+(empty?" · 하트 부족":""),!controller.SaveBlocked,empty?Look.Danger:Look.Primary,null,layout.HomeCompact?17:20);
+                    bool free=HeartRules.IsFreeLaunch(controller.SelectedStage,controller.CrisisSelection);
+                    bool empty=!free && profile.Hearts+profile.ExtraHearts==0;
+                    Button(entry.Action,Box(r),"작전 출전\n"+(free?"무료":"♥1")+(empty?" · 하트 부족":""),!controller.SaveBlocked,empty?Look.Danger:Look.Primary,null,layout.HomeCompact?17:20);
                 } else HomeNavigationCard(entry.Action,r,entry.Name,unlocked?entry.Detail:entry.UnlockStage==9?"1-10 클리어":"1-3 클리어",entry.Glyph,unlocked,Ally);
                 if(controller.HomeNotice(entry.Action))Text(new Rect(r.xMax-22,r.y+4,16,20),"●",12,Threat,TextAnchor.MiddleCenter,1);
             }

@@ -10,7 +10,7 @@ namespace Gatefall.Tests
 
         public static string Run()
         {
-            var p=new CampaignProfile { Growth=new[]{6,4,3}, Research=new[]{4,2,2,2} };
+            var p=new CampaignProfile { Growth=new[]{6,4,3}, Research=new[]{4,2,2,2}, ExtraHearts=2 };
             int first=CampaignCatalog.FindStage("C03-S002");
             for(int i=0;i<first;i++){p.BestStars[i]=3;p.FirstCleared[i]=true;p.BestErosion[i]=0;}
             var s=new CampaignService(p,null);

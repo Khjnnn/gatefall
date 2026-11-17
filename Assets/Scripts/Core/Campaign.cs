@@ -402,6 +402,7 @@ namespace Gatefall.Core
         public string BeginReason(int stage,bool crisis)
         {
             if(!Profile.IsStageOpen(stage) || crisis && !Profile.FirstSealComplete)return "아직 해금되지 않은 작전입니다.";
+            if(HeartRules.IsFreeLaunch(stage,crisis))return "";
             var p=Profile.Copy();HeartRules.Refresh(p,utcClock(),localDayClock());
             return p.Hearts+p.ExtraHearts==0 ? "하트 부족" : "";
         }
@@ -409,7 +410,7 @@ namespace Gatefall.Core
         {
             // Always a new attempt. Resume returns the saved attempt without spending again.
             id=""; if(!Profile.IsStageOpen(stage) || crisis && !Profile.FirstSealComplete) { Error="아직 해금되지 않은 작전입니다.";return false; }
-            var p=Profile.Copy();if(!HeartRules.Spend(p,utcClock(),localDayClock())) {Error="하트 부족";return false;}
+            var p=Profile.Copy();if(!HeartRules.IsFreeLaunch(stage,crisis) && !HeartRules.Spend(p,utcClock(),localDayClock())) {Error="하트 부족";return false;}
             p.PendingRun=Guid.NewGuid().ToString("N");p.PendingStage=stage;p.PendingCrisis=crisis;
             if(!Commit(p))return false;id=p.PendingRun;return true;
         }

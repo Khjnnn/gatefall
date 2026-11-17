@@ -66,7 +66,8 @@ namespace Gatefall.Tests
             File.WriteAllBytes(save,future);File.WriteAllBytes(save+".bak",good);bool newerRejected=false;try{store.Load();}catch(IOException){newerRejected=true;}
             A(newerRejected && File.ReadAllBytes(save).SequenceEqual(future) && File.ReadAllBytes(save+".bak").SequenceEqual(good),"newer save silently rolled back");
             report.Add("PASS newer-format primary never silently falls back to an older backup or overwrites new progress");
-            var svc=new CampaignService(Entry(),null);A(!svc.SetLoadout(1<<11),"locked scatter selected");
+            var entry=Entry();entry.ExtraHearts=1;
+            var svc=new CampaignService(entry,null);A(!svc.SetLoadout(1<<11),"locked scatter selected");
             for(int i=14;i<20;i++){
                 string id;A(svc.Begin(i,false,out id),"chapter progression begin");int reward;var battle=svc.Battle(i,false);
                 A(svc.Complete(id,Victory(battle),out reward),"chapter progression commit");A(reward==CampaignCatalog.Stages[i].FirstReward,"first reward");int credits=svc.Profile.MagicCores;A(svc.Complete(id,Victory(battle),out reward) && svc.Profile.MagicCores==credits,"duplicate payment");

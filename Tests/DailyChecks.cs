@@ -10,6 +10,7 @@ namespace Gatefall.Tests
 {
     public static class DailyChecks
     {
+        const int Epoch=DailyCatalog.SeasonEpochDay;
         static void Require(bool pass,string why){if(!pass)throw new Exception("Daily: "+why);}
         static bool Same(CampaignProfile a,CampaignProfile b){return CampaignStore.Encode(a).SequenceEqual(CampaignStore.Encode(b));}
         static CampaignProfile Open()
@@ -20,7 +21,7 @@ namespace Gatefall.Tests
         sealed class Fixture
         {
             public long Now=100000;
-            public int Day=56,Writes;
+            public int Day=Epoch+56,Writes;
             public bool Fail;
             public CampaignProfile Saved;
             public CampaignService Service;
@@ -67,7 +68,7 @@ namespace Gatefall.Tests
         public static string Run()
         {
             var report=new List<string>();var f=new Fixture();var s=f.Service;
-            var preview=s.DailyStatus();Require(f.Writes==0 && s.Profile.Daily.LocalDay==-1 && preview.LocalDay==56,"read-only refreshed preview");
+            var preview=s.DailyStatus();Require(f.Writes==0 && s.Profile.Daily.LocalDay==-1 && preview.LocalDay==Epoch+56,"read-only refreshed preview");
             preview.Progress[0]=3;preview.PurchaseLedger.Add("preview",new PurchaseEntry("preview",PurchaseKind.OtherNonConsumable,0));Require(s.Profile.Daily.Progress[0]==0 && s.Profile.Daily.PurchaseLedger.Count==0,"preview aliases profile");
             foreach(var mission in DailyCatalog.Missions())Require(!s.ClaimDailyMission(mission.Mission),"incomplete claim");
             string run;int reward;Require(s.Begin(0,false,out run),"loss launch");Require(s.Complete(run,f.Result(false,false,20),out reward),"loss commit");
@@ -81,9 +82,9 @@ namespace Gatefall.Tests
             Require(s.Profile.MagicCores==cores+18 && s.Profile.Daily.PassPoints==points+30 && s.Profile.Daily.NormalTickets==1,"mission rewards/completion ticket");
             var complete=s.Profile.Copy();Require(s.Complete(s.Profile.LastRewardRun,f.Result(),out reward) && Same(complete,s.Profile),"victory replay progressed missions");
             Require(!s.ClaimDailyMission((DailyMission)6),"invalid mission");
-            f.Day=55;f.Now=99999;Require(!s.ClaimDailyMission(DailyMission.Wins) && s.DailyStatus().MissionClaims==63,"backward mission claims");
-            f.Day=56;Require(!s.ClaimDailyMission(DailyMission.Wins),"clock restored duplicate mission");
-            f.Day=57;var daily=s.DailyStatus();Require(daily.Progress.All(n=>n==0) && daily.MissionClaims==0 && daily.PassPoints==points+30,"new day mission preview");
+            f.Day=Epoch+55;f.Now=99999;Require(!s.ClaimDailyMission(DailyMission.Wins) && s.DailyStatus().MissionClaims==63,"backward mission claims");
+            f.Day=Epoch+56;Require(!s.ClaimDailyMission(DailyMission.Wins),"clock restored duplicate mission");
+            f.Day=Epoch+57;var daily=s.DailyStatus();Require(daily.Progress.All(n=>n==0) && daily.MissionClaims==0 && daily.PassPoints==points+30,"new day mission preview");
             f.Win();Require(s.Profile.Daily.Progress[0]==1 && s.Profile.Daily.Progress[1]==1 && s.Profile.Daily.Progress[2]==0,"new day event");
             report.Add("PASS six missions from victories/fusions/crisis/boxes/ads; one claim and completion ticket; loss, duplicate run, day rollover/backward clock");
 
@@ -98,7 +99,7 @@ namespace Gatefall.Tests
             }
             Require(s.Profile.Daily.AttendancePosition==0 && s.Profile.Daily.PremiumTickets==1,"attendance wrap/day seven");
             Require(s.ClaimAttendance() && s.Profile.Daily.AttendancePosition==1,"attendance next strip");
-            f=new Fixture();s=f.Service;Require(s.ClaimAttendance(),"attendance before season");f.Day=84;
+            f=new Fixture();s=f.Service;Require(s.ClaimAttendance(),"attendance before season");f.Day=Epoch+84;
             Require(s.ClaimAttendance() && s.Profile.Daily.AttendancePosition==2,"season preserves strip");
             report.Add("PASS 7-day attendance: exact rewards, skipped days preserve position, wrap, season independence and no backward-clock reclaims");
 
@@ -159,7 +160,7 @@ namespace Gatefall.Tests
             var p=Open();p.CrystalsFree=10;p.CrystalsPaid=20;f=new Fixture(p);Require(f.Service.SpendCrystalsToRaiseDailyCap() && f.Service.Profile.CrystalsFree==0 && f.Service.Profile.CrystalsPaid==0,"cap mixed spend");
             report.Add("PASS pass points: victories/missions share 60 daily cap, 30 crystals buys +60 once, free-first spending and daily reset");
 
-            p=Open();HeartRules.Refresh(p,100000,56);p.Daily.PassPoints=1500;p.Daily.PointsToday=60;
+            p=Open();HeartRules.Refresh(p,100000,Epoch+56);p.Daily.PassPoints=1500;p.Daily.PointsToday=60;
             f=new Fixture(p);s=f.Service;Require(s.GrantPassPurchase("GPA.pass:season-3"),"pass IAP entitlement");
             var rows=DailyCatalog.PassRewards();Require(rows.Length==30 && rows.Select(x=>x.Tier).SequenceEqual(Enumerable.Range(1,30)),"thirty data rows");
             foreach(var row in rows)foreach(bool paidTrack in new[]{false,true}){
@@ -171,13 +172,13 @@ namespace Gatefall.Tests
             f.Win();Require(s.Profile.Daily.PassPoints==1500,"points stop at tier thirty");
             var copy=s.Profile.Copy();copy.Daily.Progress[0]=0;copy.Daily.PurchaseLedger.Add("copy",new PurchaseEntry("copy",PurchaseKind.OtherNonConsumable,0));Require(s.Profile.Daily.Progress[0]==1 && !s.Profile.Daily.PurchaseLedger.ContainsKey("copy"),"state deep copy");
             rows[0]=null;Require(DailyCatalog.PassRewards()[0]!=null,"pass table array alias");
-            f.Day=83;Require(s.RefreshHearts() && s.Profile.Daily.PassPurchased && s.Profile.Daily.FreeClaims==(1<<30)-1,"last season day");
-            f.Day=84;Require(s.RefreshHearts() && s.Profile.Daily.Season==4 && s.Profile.Daily.PassPoints==0 && s.Profile.Daily.FreeClaims==0 &&
+            f.Day=Epoch+83;Require(s.RefreshHearts() && s.Profile.Daily.PassPurchased && s.Profile.Daily.FreeClaims==(1<<30)-1,"last season day");
+            f.Day=Epoch+84;Require(s.RefreshHearts() && s.Profile.Daily.Season==4 && s.Profile.Daily.PassPoints==0 && s.Profile.Daily.FreeClaims==0 &&
                 s.Profile.Daily.PaidClaims==0 && !s.Profile.Daily.PassPurchased && s.Profile.Daily.PurchaseLedger.Count==1 && s.Profile.Daily.NormalTickets==3,"new season reset/preservation");
             int oldWrites=f.Writes;Require(s.GrantPassPurchase("GPA.pass:season-3") && !s.Profile.Daily.PassPurchased && f.Writes==oldWrites,"old season order cannot re-unlock");
             Require(s.GrantPassPurchase("GPA.pass:season-4") && s.Profile.Daily.PassPurchased,"new season purchase");
-            f.Day=56;Require(s.DailyStatus().Season==4 && !s.ClaimPassTier(1,false),"backward season");
-            Require(DailyCatalog.SeasonNumber(0)==1 && DailyCatalog.SeasonNumber(27)==1 && DailyCatalog.SeasonNumber(28)==2,"epoch/season boundaries");
+            f.Day=Epoch+56;Require(s.DailyStatus().Season==4 && !s.ClaimPassTier(1,false),"backward season");
+            int e=DailyCatalog.SeasonEpochDay;Require(DailyCatalog.SeasonNumber(0)==1 && DailyCatalog.SeasonNumber(e+27)==1 && DailyCatalog.SeasonNumber(e+28)==2,"epoch/season boundaries (season 1 starts 2026-11-16)");
             report.Add("PASS 30 tiers and both data-driven tracks, totals/cosmetic, per-track claim bits, season epoch/boundary and preserved orders/tickets");
 
             f=new Fixture();s=f.Service;paid=s.Profile.CrystalsPaid;
@@ -207,10 +208,10 @@ namespace Gatefall.Tests
             Require(!s.Complete(run,f.Result(true,true,2),out reward) && reward==0 && Same(snap,s.Profile),"victory mission rollback");
             f.Fail=false;Require(s.Complete(run,f.Result(true,true,2),out reward) && s.Profile.Daily.Progress[3]==1 && s.Profile.Daily.Progress[2]==2,"retry crisis telemetry");
             f.Day++;Rollback(f,()=>s.ClaimAttendance(),"new day attendance/reset");
-            f.Day=84;Rollback(f,()=>s.GrantPassPurchase("next-season"),"new season reset/purchase");
+            f.Day=Epoch+84;Rollback(f,()=>s.GrantPassPurchase("next-season"),"new season reset/purchase");
             report.Add("PASS injected save failures atomically roll back every mutation, mission completion ticket, ad hooks, victory telemetry and day/season resets");
 
-            p=Open();p.MagicCores=200;p.CrystalsFree=200;p.CrystalsPaid=50;HeartRules.Refresh(p,100000,56);
+            p=Open();p.MagicCores=200;p.CrystalsFree=200;p.CrystalsPaid=50;HeartRules.Refresh(p,100000,Epoch+56);
             p.Daily.NormalTickets=1;p.Daily.PremiumTickets=1;p.DailyLimits.NamedCounters["normal-boxes"]=5;
             f=new Fixture(p);s=f.Service;Require(s.OpenBoxReason(BoxKind.Normal)=="" && s.OpenBox(BoxKind.Normal,n=>0)!=null &&
                 s.Profile.MagicCores==205 && s.Profile.Daily.NormalTickets==0 && s.Profile.DailyLimits.NamedCounters["normal-boxes"]==5,"ticket before cores/bypasses purchase quota");
@@ -229,8 +230,8 @@ namespace Gatefall.Tests
             f=new Fixture();s=f.Service;ReadyMissions(f);s.Profile.Daily.NormalTickets=int.MaxValue;
             foreach(var offer in DailyCatalog.Missions().Take(5))Require(s.ClaimDailyMission(offer.Mission),"ticket-cap mission setup");
             snap=s.Profile.Copy();Require(!s.ClaimDailyMission(DailyMission.Ad) && Same(snap,s.Profile),"full completion-ticket storage consumed last mission");
-            f=new Fixture();s=f.Service;Require(s.PurchaseShopSlot(5),"shop high-water setup");f.Day=57;Require(s.RefreshHearts(),"day advance without shop");
-            f.Day=56;Require(s.DailyShop().LocalDay==57 && s.PurchaseShopSlot(5),"shop preview follows persisted high-water day");
+            f=new Fixture();s=f.Service;Require(s.PurchaseShopSlot(5),"shop high-water setup");f.Day=Epoch+57;Require(s.RefreshHearts(),"day advance without shop");
+            f.Day=Epoch+56;Require(s.DailyShop().LocalDay==Epoch+57 && s.PurchaseShopSlot(5),"shop preview follows persisted high-water day");
             Require(!s.PurchaseShopSlot(5),"backward shop free reward twice");
             report.Add("PASS reward capacity failures preserve claims/spins/completion ticket; shop preview follows the persisted high-water date");
 
@@ -242,14 +243,14 @@ namespace Gatefall.Tests
             Require(migrated.AncestorHashes.Count==0 && migrated.CommitHash!=p.CommitHash &&
                 CampaignStore.Decode(legacy).CommitHash!=migrated.CommitHash,"v3 starts independent lineage");
             Require(CloudSync.Compare(legacy,legacy)==CloudSaveComparison.Same,"identical validated v3 snapshots match");
-            p=Open();HeartRules.Refresh(p,100000,56);d=p.Daily;
-            d.Progress=new[]{3,1,2,1,1,1};d.MissionClaims=63;d.AttendancePosition=6;d.AttendanceDay=56;
+            p=Open();HeartRules.Refresh(p,100000,Epoch+56);d=p.Daily;
+            d.Progress=new[]{3,1,2,1,1,1};d.MissionClaims=63;d.AttendancePosition=6;d.AttendanceDay=Epoch+56;
             d.RouletteSpins=3;d.RewardDoubles=5;d.LastSpinUtc=99999;d.DoubledRun="last-victory";d.NormalTickets=7;d.PremiumTickets=9;
             d.PassPoints=1500;d.PointsToday=120;d.CapRaised=true;d.FreeClaims=(1<<30)-1;d.PaidClaims=(1<<30)-1;
             d.PurchaseLedger.Add("GPA.Z:opaque/order",new PurchaseEntry("GPA.Z:opaque/order",PurchaseKind.Pass,0,3));d.PurchaseLedger.Add("GPA.A:other-order",new PurchaseEntry("GPA.A:other-order",PurchaseKind.Crystals,60));p.Supply.OwnedCosmetics=7;
             byte[] bytes=CampaignStore.Encode(p);var restored=CampaignStore.Decode(bytes);Require(bytes.SequenceEqual(CampaignStore.Encode(restored)),"populated v4 byte identity");
             Require(restored.Daily.PurchaseLedger.Keys.OrderBy(x=>x).SequenceEqual(d.PurchaseLedger.Keys.OrderBy(x=>x)) && restored.Daily.MissionClaims==63 && restored.Daily.PaidClaims==(1<<30)-1,"populated v4 fields");
-            var invalid=new Action<DailyState>[] {q=>q.LocalDay=-2,q=>q.MissionClaims=64,q=>q.Progress[0]=4,q=>q.AttendancePosition=7,q=>q.AttendanceDay=57,
+            var invalid=new Action<DailyState>[] {q=>q.LocalDay=-2,q=>q.MissionClaims=64,q=>q.Progress[0]=4,q=>q.AttendancePosition=7,q=>q.AttendanceDay=Epoch+57,
                 q=>q.RouletteSpins=4,q=>q.LastSpinUtc=-2,q=>q.RewardDoubles=6,q=>q.NormalTickets=-1,q=>q.PremiumTickets=-1,q=>q.Season=999,q=>q.PassPoints=1501,
                 q=>q.PointsToday=121,q=>q.PurchaseLedger.Clear(),q=>q.FreeClaims=int.MaxValue,q=>q.PurchaseLedger.Add("bad\nid",new PurchaseEntry("bad\nid",PurchaseKind.Crystals,1))};
             foreach(var change in invalid){var bad=p.Copy();change(bad.Daily);Require(!bad.Valid(),"invalid daily state accepted");}

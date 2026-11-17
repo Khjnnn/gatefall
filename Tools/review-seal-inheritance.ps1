@@ -1,16 +1,17 @@
-param([switch]$Expanded,[string]$Tag='current-v2',[switch]$Enforce)
+param([switch]$Expanded,[string]$Tag='current-v2',[switch]$Enforce,[switch]$MechanicsOnly)
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 $core = (Get-ChildItem -LiteralPath (Join-Path $project 'Assets/Scripts/Core') -Filter '*.cs').FullName
 $checks = @('Tests/RailChoiceReview.cs','Tests/SealInheritanceReview.cs','Tests/SealInheritanceChecks.cs') | ForEach-Object { Join-Path $project $_ }
 Add-Type -CompilerOptions '/langversion:7.3' -Path @($core + $checks)
+if($MechanicsOnly){[Gatefall.Tests.SealInheritanceChecks]::RunMechanics();exit 0}
 if($Enforce -and !$Expanded){throw 'Acceptance requires -Expanded'}
 
 $results = Join-Path $project $(if ($Expanded) { 'TestResults/seal-inheritance-expanded' } else { 'TestResults/seal-inheritance' })
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 $volleys = [Gatefall.Tests.SealInheritanceReview]::RunVolleys([bool]$Expanded)
 $volleys | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $results 'volleys.json') -Encoding utf8
-$volleys | Where-Object Seed -eq 7 | Format-Table -AutoSize | Out-String | Write-Output
+$volleys | Where-Object Seed -eq 7 | Format-Table Formation,Route,Policy,Kills,ThreatHp,BlastRadius,Damage,Spent -AutoSize | Out-String | Write-Output
 
 $rows = [Gatefall.Tests.SealInheritanceReview]::Run([bool]$Expanded)
 $rows | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $results 'campaign.json') -Encoding utf8
