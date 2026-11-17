@@ -16,7 +16,7 @@ namespace Gatefall.Core
         public static bool ValidId(string id)
         {if(string.IsNullOrEmpty(id) || id.Length>96)return false;foreach(char c in id)if(!char.IsLetterOrDigit(c) && c!='-' && c!='_' && c!='.')return false;return true;}
     }
-    // v3: stable stage IDs and unbounded-by-machine-word seen IDs. Indexed arrays exist only in memory.
+    // Unshipped v4: v3 records plus economy, purchase ledger and bounded commit lineage.
     // Unknown future stage records survive a read/write. Checksums detect corruption, not save editing.
     public sealed class CampaignStore
     {
@@ -39,7 +39,7 @@ namespace Gatefall.Core
             if(p==null || !p.Valid())throw new InvalidDataException("Invalid campaign profile");
             using(var mem=new MemoryStream()){
                 using(var w=new BinaryWriter(mem,Encoding.UTF8,true)){
-                    w.Write("GATEFALL-RAON");w.Write(3);
+                    w.Write("GATEFALL-RAON");w.Write(4);
                     w.Write(p.MagicCores);w.Write(p.SelectedHunter);w.Write(p.StoryMask);w.Write(p.TutorialMask);w.Write(p.Muted);
                     foreach(int v in p.Research)w.Write(v);foreach(int v in p.Growth)w.Write(v);w.Write(p.Loadout);
                     w.Write(p.PendingRun);w.Write(p.PendingStage<0 ? "" : CampaignCatalog.Stages[p.PendingStage].Id);w.Write(p.PendingCrisis);w.Write(p.LastRewardRun);w.Write(p.LastReward);
@@ -50,6 +50,13 @@ namespace Gatefall.Core
                         if(i>=0)WriteProgress(w,p.BestStars[i],p.CrisisStars[i],p.BestErosion[i],p.FirstCleared[i]);
                         else {var v=p.UnmappedProgress[id];WriteProgress(w,v.Stars,v.CrisisStars,v.Erosion,v.FirstCleared);}}
                     WriteIds(w,p.StorySeenIds);WriteIds(w,p.TutorialSeenIds);
+                    w.Write(p.Hearts);w.Write(p.ExtraHearts);w.Write(p.HeartAnchorUtc);w.Write(p.LastSeenUtc);w.Write(p.SaveSerial);
+                    w.Write(p.CrystalsPaid);w.Write(p.CrystalsFree);w.Write(p.HeartRewardsBackfilled);
+                    w.Write(p.DailyLimits.LocalDay);w.Write(p.DailyLimits.HeartAdsUsed);
+                    var counters=new List<string>(p.DailyLimits.NamedCounters.Keys);counters.Sort(StringComparer.Ordinal);w.Write(counters.Count);
+                    foreach(string key in counters){w.Write(key);w.Write(p.DailyLimits.NamedCounters[key]);}
+                    p.Supply.Write(w);w.Write(p.ShopSeed);p.Shop.Write(w);p.Daily.Write(w);
+                    w.Write(p.CommitHash);w.Write(p.AncestorHashes.Count);foreach(string hash in p.AncestorHashes)w.Write(hash);
                 }return Checksum(mem.ToArray());
             }
         }
@@ -60,7 +67,7 @@ namespace Gatefall.Core
             using(var sha=SHA256.Create()){var hash=sha.ComputeHash(data,32,data.Length-32);for(int i=0;i<32;i++)if(hash[i]!=data[i])throw new InvalidDataException("Profile checksum mismatch");}
             using(var mem=new MemoryStream(data,32,data.Length-32,false))using(var r=new BinaryReader(mem,Encoding.UTF8)){
                 if(r.ReadString()!="GATEFALL-RAON")throw new InvalidDataException("Unknown profile format");
-                version=r.ReadInt32();if(version>3)throw new NewerProfileException("A newer save version was found; original and backup preserved");if(version<1)throw new InvalidDataException("Unknown profile version");
+                version=r.ReadInt32();if(version>4)throw new NewerProfileException("A newer save version was found; original and backup preserved");if(version<1)throw new InvalidDataException("Unknown profile version");
                 var p=new CampaignProfile{MagicCores=r.ReadInt32(),SelectedHunter=r.ReadInt32(),StoryMask=r.ReadInt32(),TutorialMask=r.ReadInt32(),Muted=r.ReadBoolean()};
                 if(version<3){
                     for(int i=0;i<6;i++)ReadProgress(r,p,i);
@@ -80,7 +87,21 @@ namespace Gatefall.Core
                     }
                     p.StorySeenIds=ReadIds(r);p.TutorialSeenIds=ReadIds(r);
                 }
-                if(mem.Position!=mem.Length || !p.Valid())throw new InvalidDataException("Invalid profile values");return p;
+                if(version==4){
+                    p.Hearts=r.ReadInt32();p.ExtraHearts=r.ReadInt32();p.HeartAnchorUtc=r.ReadInt64();p.LastSeenUtc=r.ReadInt64();p.SaveSerial=r.ReadInt64();
+                    p.CrystalsPaid=r.ReadInt32();p.CrystalsFree=r.ReadInt32();p.HeartRewardsBackfilled=r.ReadBoolean();
+                    p.DailyLimits.LocalDay=r.ReadInt32();p.DailyLimits.HeartAdsUsed=r.ReadInt32();
+                    int n=r.ReadInt32();if(n<0 || n>4096)throw new InvalidDataException("Invalid daily counter count");
+                    for(int i=0;i<n;i++){string key=r.ReadString();int value=r.ReadInt32();
+                        if(!StageProgress.ValidId(key) || value<0 || p.DailyLimits.NamedCounters.ContainsKey(key))throw new InvalidDataException("Invalid/duplicate daily counter");
+                        p.DailyLimits.NamedCounters.Add(key,value);}
+                    p.Supply=SupplyState.Read(r);p.ShopSeed=r.ReadInt32();p.Shop=DailyShopState.Read(r);p.Daily=DailyState.Read(r);
+                    p.CommitHash=r.ReadString();int ancestors=r.ReadInt32();
+                    if(ancestors<0 || ancestors>CampaignProfile.AncestorLimit)throw new InvalidDataException("Invalid ancestor count");
+                    for(int i=0;i<ancestors;i++)p.AncestorHashes.Add(r.ReadString());
+                }
+                if(mem.Position!=mem.Length || !p.Valid())throw new InvalidDataException("Invalid profile values");
+                if(version<4)HeartRules.Backfill(p);return p;
             }
         }
         public CampaignProfile Load()
@@ -91,12 +112,12 @@ namespace Gatefall.Core
             catch(NewerProfileException){throw;}
             catch(Exception){try{bytes=File.ReadAllBytes(path+".bak");p=Decode(bytes,out version);Warning="저장 파일을 백업에서 복구했습니다.";}
                 catch(Exception e){throw new InvalidDataException("프로필과 백업을 읽을 수 없습니다. 원본 파일을 보존했습니다.",e);}}
-            if(version<3){
+            if(version<4){
                 try{string legacy=path+".legacy-v"+version+".bak";
                     if(!File.Exists(legacy))File.WriteAllBytes(legacy,bytes);
                     // Verify a byte-for-byte legacy backup before replacing anything.
                     byte[] saved=File.ReadAllBytes(legacy);if(Convert.ToBase64String(saved)!=Convert.ToBase64String(bytes))throw new IOException("Legacy backup differs");
-                    Save(p);Warning="기존 진행을 보존하고 2챕터 저장 형식으로 이행했습니다.";
+                    Save(p);Warning="기존 진행을 보존하고 하트 저장 v4로 이행했습니다.";
                 }catch(Exception e){Warning="저장 형식 이행 보류 · 기존 진행 유지: "+e.Message;}
             }return p;
         }

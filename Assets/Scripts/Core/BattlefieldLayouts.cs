@@ -86,7 +86,7 @@ namespace Gatefall.Core
             if (cache.TryGetValue(stage.Index, out layout)) return layout;
             var d = stage.Layout ?? definitions[stage.Index];
             layout = new BattlefieldLayout { Id = d.Id, Theme = d.Theme, Roads = d.Roads,
-                Sockets = PlaceSockets(d.Roads, stage.Lanes, stage.SocketCount, stage.Index) };
+                Sockets = PlaceSockets(d, stage) };
             cache.Add(stage.Index, layout);
             return layout;
         }
@@ -117,24 +117,29 @@ namespace Gatefall.Core
             return road[road.Length - 1];
         }
 
-        private static V2[] PlaceSockets(V2[][] roads, int[] lanes, int count, int stage)
+        private static V2[] PlaceSockets(BattlefieldLayout layout, CampaignStage operation)
         {
+            V2[][] roads=layout.Roads;
+            int[] lanes=operation.Lanes;
+            int count=operation.SocketCount, stage=operation.Index;
+            bool rail=operation.Chapter==3 && operation.LocalNumber>=2;
             float maxReach = stage>=14 ? 3.35f : stage < 3 ? 4f : 3.25f;
             var originalCandidates = new List<V2>();
             var extraCandidates = new List<V2>();
-            for (int ix = 0; ix <= 64; ix++) for (int iy = 0; iy <= 22; iy++) {
-                V2 p = new V2(-20.8f + ix * .65f, -7f + iy * .65f);
-                if(stage>=14 && p.X< -10 && p.Y>5.0f)continue;
+            for (int ix = 0; ix <= (rail ? 68 : 64); ix++) for (int iy = 0; iy <= (rail ? 32 : 22); iy++) {
+                V2 p = new V2((rail ? -22.1f : -20.8f) + ix * .65f, (rail ? -10.4f : -7f) + iy * .65f);
+                if(stage>=14 && !rail && p.X< -10 && p.Y>5.0f)continue;
+                if(rail && (p.X< -10 && p.Y>5 || p.Y>8.5f || p.Y< -8.5f))continue;
                 if (p.Length < 4.1f || p.X < -16 && p.Y < -5.1f || p.X > 17 && p.Y < -5.8f) continue;
                 float near = float.MaxValue;
                 foreach (int lane in lanes) near = Math.Min(near, RoadDistance(p, roads[lane]));
                 if (near >= 2.55f && near <= maxReach) originalCandidates.Add(p);
                 if (near >= 2.15f && near <= maxReach) extraCandidates.Add(p);
             }
-            var result = new List<V2>();
+            var result = layout.Sockets==null ? new List<V2>() : new List<V2>(layout.Sockets);
             float[] portions = { .72f, .43f, .88f, .2f, .57f, .32f, .8f };
             float[] forwardPortions = { .16f, .34f, .50f, .65f, .82f };
-            for (int n = 0; n < count; n++) {
+            for (int n = result.Count; n < count; n++) {
                 bool original = n < OriginalSocketCount(stage);
                 var candidates = original ? originalCandidates : extraCandidates;
                 int lane = lanes[n % lanes.Length], unused;

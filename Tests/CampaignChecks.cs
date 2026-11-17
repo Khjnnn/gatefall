@@ -629,8 +629,10 @@ namespace Gatefall.Tests
                 var profile=seed.Profile.Copy();profile.Muted=true;profile.SelectedHunter=1;
                 byte[] persisted=null;var svc=new CampaignService(profile,p=>persisted=CampaignStore.Encode(p));string id;
                 Assert(svc.Begin(0,true,out id),"begin crisis");var expected=svc.Profile.Copy();
-                expected.PendingRun="";expected.PendingStage=-1;expected.PendingCrisis=false;
+                expected.PendingRun="";expected.PendingStage=-1;expected.PendingCrisis=false;expected.SaveSerial++;
                 Assert(svc.Abandon(id),"abandon");
+                Assert(svc.Profile.AncestorHashes[0]==expected.CommitHash,"abandon ancestry");
+                expected.CommitHash=svc.Profile.CommitHash;expected.AncestorHashes=new List<string>(svc.Profile.AncestorHashes);
                 Assert(Convert.ToBase64String(CampaignStore.Encode(svc.Profile))==Convert.ToBase64String(CampaignStore.Encode(expected)),"unrelated profile fields changed");
                 Assert(CampaignStore.Decode(persisted).Valid() && Convert.ToBase64String(persisted)==Convert.ToBase64String(CampaignStore.Encode(expected)),"persisted record differs");
                 int reward;Assert(!svc.Complete(id,Win(0),out reward) && svc.Profile.MagicCores==profile.MagicCores,"abandoned run redeemed");

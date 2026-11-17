@@ -59,6 +59,8 @@ namespace Gatefall.Tests
                     var hybrid=Fuse(g,i,a,b,4); string why; Assert(g.TryUpgrade(hybrid.Id,null,out why),why);
                     var c=Build(g,7,TowerCatalog.Recipes[i+3].Second); if(g.Elapsed<120)Advance(g,(float)(120-g.Elapsed)+.02f);
                     var seal=Fuse(g,i+3,hybrid,c,4,"seal"); Assert(seal.PaidCredits==455 && seal.InvestedCores==2,"capstone accounting");
+                    Assert(seal.Inheritance==(SealInheritance)(i+1) && g.Stats(seal).Inheritance==seal.Inheritance &&
+                        g.Stats(TowerCatalog.Recipes[i+3]).Inheritance==seal.Inheritance,"capstone recipe, preview and runtime must agree");
                     Assert(g.Telemetry.CreditsSpent==455,"double spending history"); string before=Fingerprint(g);
                     Assert(!g.TryFuse(i+3,hybrid.Id,c.Id,4,"seal",out why),"replayed command"); Assert(before==Fingerprint(g),"replay mutated");
                     int credits=g.Credits; Assert(g.TrySell(seal.Id,"sell",out why),why); Assert(g.Credits==credits+341 && g.Cores==2 && g.Towers.Count==0,"sale");
@@ -98,6 +100,111 @@ namespace Gatefall.Tests
                 var g=New(); g.Balance.PlayerDamage=0; var a=Dummy(g,501,new V2(7,0));
                 for(int i=0;i<7;i++)Dummy(g,502+i,new V2(7.1f+i*.1f,0)); Impact(g,TowerKind.Shatter,a);
                 Near(a.Health,36); int hit=0; foreach(Enemy e in g.Enemies)if(e.Health<100)hit++; Assert(hit==5,"target cap"); Near(g.Telemetry.TowerDamage[(int)TowerKind.Shatter],192); });
+            Check("Inherited chain bursts only at its final hop and skips chained enemies",()=> {
+                var g=New(); g.Balance.PlayerDamage=0;
+                var start=Dummy(g,501,new V2(10,2),hp:1000);
+                var middle=Dummy(g,502,new V2(7,2),hp:1000);
+                var last=Dummy(g,503,new V2(4,2),hp:1000);
+                var crowd=Dummy(g,504,new V2(3.9f,3.5f),hp:1000);
+                var outlier=Dummy(g,505,new V2(10,4),hp:1000);
+                InheritedImpact(g,3,start);
+                var stats=g.Stats(TowerCatalog.Recipes[3]);
+                Near(start.Health,1000-stats.Chain[0]); Near(middle.Health,1000-stats.Chain[1]);
+                Near(last.Health,1000-stats.Chain[2]); Near(crowd.Health,1000-stats.Secondary); Near(outlier.Health,1000);
+                Assert(g.Events.FindAll(e=>e.Kind==EventKind.Blast && V2.Distance(e.Position,last.Position)<.01f).Count==1,"burst must follow last hop");
+                Assert(g.Events.FindAll(e=>e.Kind==EventKind.Hit && e.Inheritance==SealInheritance.ChainBurst).Count==3,"lightning event count");
+            });
+            Check("Inherited shatter targets heavy enemies and slows only its splash",()=> {
+                var g=New(); g.Balance.PlayerDamage=0;
+                var front=Dummy(g,501,new V2(0,-5),hp:1000);
+                var elite=Dummy(g,502,new V2(.5f,-6),EnemyKind.Brute,1000);
+                g.Towers.Add(new Tower { Id=999, Kind=TowerKind.Seal, Inheritance=SealInheritance.ShatterSlow, Position=new V2(.5f,-7) });
+                g.Tick(.01f,new V2());
+                Assert(g.Projectiles.Exists(p=>p.FromTower && p.TargetId==elite.Id),"shatter should prioritize the elite");
+                g.Towers.Clear();
+                g.Projectiles.Clear();
+                InheritedImpact(g,4,elite);
+                var stats=g.Stats(TowerCatalog.Recipes[4]);
+                Near(elite.Health,1000-stats.Damage); Near(elite.SlowFraction,0);
+                Near(front.Health,1000-stats.Secondary); Near(front.SlowFraction,stats.Slow);
+            });
+            Check("Inherited gravity slows its cluster and adds one spear to the closest enemy to the barrier",()=> {
+                var g=New(); g.Balance.PlayerDamage=0;
+                var centre=Dummy(g,501,new V2(9,0),hp:1000);
+                var lead=Dummy(g,502,new V2(8,0),hp:1000);
+                var rear=Dummy(g,503,new V2(9.2f,0),hp:1000);
+                lead.MarkRemaining=3; lead.MarkBonus=5;
+                InheritedImpact(g,5,centre);
+                var stats=g.Stats(TowerCatalog.Recipes[5]);
+                Near(centre.Health,1000-stats.Damage); Near(rear.Health,1000-stats.Damage);
+                Near(lead.Health,1000-stats.Damage-stats.Secondary-5); Near(centre.SlowFraction,stats.Slow);
+                Assert(g.Telemetry.MarkedHits==1 && g.Events.FindAll(e=>e.Kind==EventKind.Hit && e.Inheritance==SealInheritance.GravitySpear).Count==1,
+                    "one spear and one mark follow-up");
+            });
+            Check("Legacy replays retain the original attack; Observer and Surge inherit while Barrage uses the legacy fallback",()=> {
+                var g=new DefenseSimulation(new GameBalance(),7,null,false);
+                foreach(int id in new[]{3,4,5,8,10,12}) {
+                    var original=g.Stats(TowerCatalog.Recipes[id]);
+                    Assert(original.Inheritance==SealInheritance.None && original.Chain==null,"unexpected legacy variant");
+                    Near(original.Damage,120); Near(original.Secondary,60); Near(original.Slow,.35);
+                }
+                var current=New();
+                Assert(current.Stats(TowerCatalog.Recipes[8]).Inheritance==SealInheritance.MarkedBlast,"observer recipe");
+                Assert(current.Stats(TowerCatalog.Recipes[10]).Inheritance==SealInheritance.None,"barrage fallback");
+                Near(current.Stats(TowerCatalog.Recipes[10]).Damage,120); Near(current.Stats(TowerCatalog.Recipes[10]).Secondary,60);
+                Assert(current.Stats(TowerCatalog.Recipes[12]).Inheritance==SealInheritance.LineBurst,"surge recipe");
+                var researched=new DefenseSimulation(new GameBalance(),7,new CampaignBattle {Research=new[]{4,4,4,4}});
+                researched.Cards[(int)CardKind.Control]=1;
+                Near(researched.Stats(TowerCatalog.Recipes[3]).Slow,0);
+                Assert(researched.Stats(TowerCatalog.Recipes[4]).Slow>.38f,"slow variants keep their control research");
+                Assert(researched.Stats(TowerCatalog.Recipes[8]).Slow>=.35f,"observer retains the capstone slow");
+                researched.Cards[(int)CardKind.Blast]=1;
+                Assert(researched.Stats(TowerCatalog.Recipes[10]).Radius>2,"barrage fallback uses the legacy blast radius");
+                Assert(researched.Stats(TowerCatalog.Recipes[12]).Radius>1.25f,"blast research should reach the line tail");
+            });
+            Check("Observer capstone targets a marked enemy, buffs its direct hit, and only marks the primary",()=> {
+                var g=New(); g.Balance.PlayerDamage=0;
+                var lead=Dummy(g,501,new V2(2,-5),hp:1000);
+                var marked=Dummy(g,502,new V2(5,-5),EnemyKind.Brute,1000);
+                marked.MarkRemaining=3; marked.MarkBonus=5;
+                var escort=Dummy(g,503,new V2(5.2f,-5),hp:1000);
+                g.Towers.Add(new Tower {Id=600,Kind=TowerKind.Seal,Position=new V2(0,-5),Inheritance=SealInheritance.MarkedBlast});
+                g.Tick(.01f,new V2());
+                Assert(g.Projectiles.Exists(p=>p.FromTower && p.TargetId==marked.Id),"marked target priority");
+                g.Tick(.32f,new V2());
+                var stats=g.Stats(TowerCatalog.Recipes[8]);
+                Near(marked.Health,1000-stats.Damage*stats.MarkedDamageMultiplier-5);
+                Near(lead.Health,1000); Near(escort.Health,1000-stats.Secondary); Near(escort.MarkRemaining,0);
+                Assert(marked.MarkRemaining>2,"primary mark refresh");
+                LeadWithoutMark();
+            });
+            Check("Barrage capstone caps seven live cone hits and slows the first two only",()=> {
+                var g=New(); g.Balance.PlayerDamage=0;
+                var first=Dummy(g,501,new V2(2,-5),hp:1000);
+                var second=Dummy(g,502,new V2(2.5f,-5.2f),hp:1000);
+                for(int i=0;i<7;i++)Dummy(g,503+i,new V2(3+i*.2f,-5.4f),hp:1000);
+                var outside=Dummy(g,520,new V2(0,-9),hp:1000);
+                var behind=Dummy(g,521,new V2(-3,-5),hp:1000);
+                g.Towers.Add(new Tower {Id=600,Kind=TowerKind.Seal,Position=new V2(0,-5),Inheritance=SealInheritance.FanSlow});
+                g.Tick(.35f,new V2());
+                Assert(g.Enemies.FindAll(e=>e.Health<1000).Count==7,"cone hit cap");
+                Assert(g.Enemies.FindAll(e=>e.SlowFraction>0).Count==2 && first.SlowFraction>0 && second.SlowFraction>0,"leading two cone slows");
+                Near(outside.Health,1000); Near(behind.Health,1000);
+                Assert(!g.Events.Exists(e=>e.Kind==EventKind.Blast),"cone must not add a radius blast");
+            });
+            Check("Surge capstone slows only the actual line hits and bursts once at the last hit without duplicate damage",()=> {
+                var g=New(); g.Balance.PlayerDamage=0;
+                var line=new List<Enemy>();
+                for(int i=0;i<5;i++)line.Add(Dummy(g,501+i,new V2(2+i*1.2f,-5),hp:1000));
+                var flank=Dummy(g,520,new V2(7,-4),hp:1000);
+                var side=Dummy(g,521,new V2(3,-6.2f),hp:1000);
+                g.Towers.Add(new Tower {Id=600,Kind=TowerKind.Seal,Position=new V2(0,-5),Inheritance=SealInheritance.LineBurst});
+                g.Tick(.01f,new V2());
+                var stats=g.Stats(TowerCatalog.Recipes[12]);
+                foreach(Enemy e in line) {Near(e.Health,1000-stats.Damage); Near(e.SlowFraction,stats.Slow);}
+                Near(flank.Health,1000-stats.Secondary); Near(flank.SlowFraction,0); Near(side.Health,1000);
+                Assert(g.Events.FindAll(e=>e.Kind==EventKind.Blast && V2.Distance(e.Position,line[4].Position)<.01f).Count==1,"one tail blast");
+            });
             Check("Rupture hits its fixed location after the original target leaves",()=> {
                 var g=New(); g.Balance.PlayerDamage=0; var a=Dummy(g,501,new V2(7,0)); var b=Dummy(g,502,new V2(7.3f,0));
                 g.Projectiles.Add(new Projectile { Id=9001,TargetId=a.Id,SourceId=1,FromTower=true,FixedImpact=true,Kind=TowerKind.Rupture,Position=new V2(7,0),ImpactPosition=new V2(7,0),Stats=g.Stats(TowerKind.Rupture,1),Speed=20 });
@@ -139,6 +246,22 @@ namespace Gatefall.Tests
                 var g=new DefenseSimulation(new GameBalance { Duration=.01f,CoreHealth=1,PlayerDamage=0,SpawnEnemies=false,OfferCards=false },1); g.Start();
                 var e=Dummy(g,501,new V2(1.12f,0),EnemyKind.Siege); e.Waypoint=4; g.Tick(.02f,new V2()); Assert(g.State==RunState.Lost,"defeat precedence"); });
             CombatRuns(); report.Add("PASS: "+checks+" simulation checks. Scripted combat is not a human playtest."); return string.Join(Environment.NewLine,report.ToArray());
+        }
+        static void InheritedImpact(DefenseSimulation g, int recipeId, Enemy primary)
+        {
+            var stats=g.Stats(TowerCatalog.Recipes[recipeId]);
+            g.Events.Clear();
+            g.Projectiles.Add(new Projectile { Id=9000, SourceId=6000, TargetId=primary.Id,
+                Position=primary.Position, Kind=TowerKind.Seal, FromTower=true, Stats=stats, Speed=20 });
+            g.Tick(.02f,new V2());
+        }
+        static void LeadWithoutMark()
+        {
+            var game=New(); game.Balance.PlayerDamage=0;
+            var target=Dummy(game,501,new V2(4,-5),hp:1000);
+            InheritedImpact(game,8,target);
+            Near(target.Health,1000-game.Stats(TowerCatalog.Recipes[8]).Damage);
+            Assert(target.MarkRemaining>2,"an unmarked primary should receive the first mark");
         }
         private static void CombatRuns()
         {

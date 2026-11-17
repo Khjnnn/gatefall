@@ -35,10 +35,12 @@ namespace Gatefall.Core
         public int Wave;
         // Kill: identity of the defeated enemy for continuity with its last rendered sprite.
         public int EnemyId;
+        public SealInheritance Inheritance;
         public bool IsEntranceWarning { get { return Kind == EventKind.Warning && Wave >= 0 && Value >= 0; } }
         public bool IsBossWarning { get { return Kind == EventKind.Warning && Wave < 0 && Value == 3; } }
-        public CombatEvent(EventKind kind, V2 position, V2 target, float value, int source = -1, int wave = -1, int enemyId = 0)
-        { Kind = kind; Position = position; Target = target; Value = value; Source = source; Wave = wave; EnemyId = enemyId; }
+        public CombatEvent(EventKind kind, V2 position, V2 target, float value, int source = -1, int wave = -1, int enemyId = 0,
+            SealInheritance inheritance = SealInheritance.None)
+        { Kind = kind; Position = position; Target = target; Value = value; Source = source; Wave = wave; EnemyId = enemyId; Inheritance = inheritance; }
     }
     public sealed class SlowEffect { public int Source; public float Fraction, Remaining; }
     public sealed partial class Enemy
@@ -60,6 +62,8 @@ namespace Gatefall.Core
         public int Id, Socket, Level = 1, PaidCredits, InvestedCores;
         public TowerKind Kind; public V2 Position, Aim;
         public float Cooldown, Commission; public string Lineage;
+        public SealInheritance Inheritance;
+        public string DisplayName => TowerCatalog.DisplayName(Kind, Inheritance);
     }
     public sealed class Projectile
     {
@@ -76,9 +80,11 @@ namespace Gatefall.Core
         public readonly int Wave, Total;
         public readonly double FirstSpawn, LastSpawn;
         readonly int[] lanes, kinds;
-        internal WaveBriefing(int wave,int total,double first,double last,int[] laneCounts,int[] kindCounts)
-        { Wave=wave;Total=total;FirstSpawn=first;LastSpawn=last;lanes=laneCounts;kinds=kindCounts; }
+        readonly EnemyKind[] laneThreats;
+        internal WaveBriefing(int wave,int total,double first,double last,int[] laneCounts,int[] kindCounts,EnemyKind[] laneThreats)
+        { Wave=wave;Total=total;FirstSpawn=first;LastSpawn=last;lanes=laneCounts;kinds=kindCounts;this.laneThreats=laneThreats; }
         public int LaneCount(int lane) {return lane>=0 && lane<lanes.Length ? lanes[lane] : 0;}
+        public EnemyKind LaneThreat(int lane) => lane>=0 && lane<laneThreats.Length ? laneThreats[lane] : EnemyKind.Grunt;
         public int KindCount(EnemyKind kind) {int i=(int)kind;return i>=0 && i<kinds.Length ? kinds[i] : 0;}
         // Priority describes an important counter, rather than the most numerous enemy.
         public EnemyKind Threat {get {for(int i=kinds.Length-1;i>=0;i--)if(kinds[i]>0)return (EnemyKind)i;return EnemyKind.Grunt;}}
@@ -150,6 +156,7 @@ namespace Gatefall.Core
         public readonly List<CombatEvent> Events = new List<CombatEvent>();
         public readonly List<SpawnGroup> Schedule = new List<SpawnGroup>();
         readonly List<Enemy> targetScratch = new List<Enemy>(256);
+        readonly HashSet<int> tailHitIds = new HashSet<int>();
         int swarmCreditRemainder;
         public readonly List<CardKind> CardOffers = new List<CardKind>();
         public readonly int[] Cards = new int[6];
@@ -164,6 +171,7 @@ namespace Gatefall.Core
         public int Cores { get; private set; }
         public int Kills { get; private set; }
         public int Wave { get; private set; }
+        public int BossWave { get; private set; } = -1;
         public int ActiveGate { get { if(Rules!=null && Rules.Stage!=null)return Rules.Stage.Lanes[Wave%Rules.Stage.Lanes.Length]; return Wave == 0 ? 0 : Wave == 2 ? 1 : 2; } }
         public bool AwaitingCard { get { return CardOffers.Count > 0; } }
         public bool WaveClearVictory { get { return Rules!=null && Rules.Stage!=null; } }
@@ -216,15 +224,19 @@ namespace Gatefall.Core
         {
             if(wave<0)return null;
             int total=0;int[] lanes=new int[GatePositions.Length],kinds=new int[5];
+            var laneThreats=new EnemyKind[lanes.Length];
             double first=double.PositiveInfinity,last=double.NegativeInfinity;
             foreach(SpawnGroup g in Schedule) {
                 if(g.Wave!=wave || g.Count<=0)continue;
                 total+=g.Count;
-                if(g.Lane>=0 && g.Lane<lanes.Length)lanes[g.Lane]+=g.Count;
+                if(g.Lane>=0 && g.Lane<lanes.Length) {
+                    lanes[g.Lane]+=g.Count;
+                    if(g.Kind>laneThreats[g.Lane])laneThreats[g.Lane]=g.Kind;
+                }
                 int kind=(int)g.Kind;if(kind>=0 && kind<kinds.Length)kinds[kind]+=g.Count;
                 first=Math.Min(first,g.Start);last=Math.Max(last,g.Start+(g.Count-1)*g.Interval);
             }
-            return total==0 ? null : new WaveBriefing(wave,total,first,last,lanes,kinds);
+            return total==0 ? null : new WaveBriefing(wave,total,first,last,lanes,kinds,laneThreats);
         }
         public string DefeatReason { get; private set; }
         public float HunterInvulnerability { get; private set; }
@@ -236,11 +248,18 @@ namespace Gatefall.Core
         private int nextId, supplyIndex; private float fireCooldown;
         private readonly double[] supplyDue = {30,60,90,120,150};
         private double[] waveDue;
+        readonly bool useSealInheritance;
+
         public DefenseSimulation(GameBalance balance, int seed, CampaignBattle rules = null)
+            : this(balance, seed, rules, true) { }
+
+        // The review harness can replay the same commands with the original final tower.
+        internal DefenseSimulation(GameBalance balance, int seed, CampaignBattle rules, bool useSealInheritance)
         {
             if (balance == null) throw new ArgumentNullException("balance");
             if (balance.Duration <= 0 || balance.PlayerHealth <= 0 || balance.CoreHealth <= 0 || balance.PlayerFireInterval <= 0)
                 throw new ArgumentException("Duration, health and attack interval must be positive.");
+            this.useSealInheritance = useSealInheritance;
             Rules=rules==null ? null : rules.Copy(); Balance = ConfigureBalance(balance); balance=Balance; Seed=seed; random = new Random(seed);
             PlayerPosition = new V2(0,-2.2f); PlayerAim = new V2(0,1);
             PlayerHealth = balance.PlayerHealth; CoreHealth = balance.CoreHealth; MinimumCoreHealth=CoreHealth;
@@ -257,7 +276,10 @@ namespace Gatefall.Core
             ConfigureRaon();
         }
         private void Group(int wave, int lane, EnemyKind kind, int count, double start, double interval)
-        { Schedule.Add(new SpawnGroup { Wave=wave,Lane=lane,Kind=kind,Count=count,Start=start,Interval=interval }); }
+        {
+            Schedule.Add(new SpawnGroup { Wave=wave,Lane=lane,Kind=kind,Count=count,Start=start,Interval=interval });
+            if(kind==EnemyKind.Boss)BossWave=wave;
+        }
         public void Start() { if (State == RunState.Ready) State = RunState.Running; }
         public void TogglePause() { if (State == RunState.Running) State = RunState.Paused; else if (State == RunState.Paused && !AwaitingCard) State = RunState.Running; }
         public int NearestSocket(bool emptyOnly = false)
@@ -272,14 +294,19 @@ namespace Gatefall.Core
         public Tower TowerById(int id) { foreach(Tower t in Towers)if(t.Id==id)return t; return null; }
         public TowerStats Stats(Tower tower) { return Stats(tower,tower.Level); }
         // Preview a level at this socket without changing the tower or spending currency.
-        public TowerStats Stats(Tower tower,int level) { TowerStats s=Stats(tower.Kind,level); ApplyAdjacency(tower,s,level); return s; }
-        public TowerStats Stats(TowerKind kind, int level)
+        public TowerStats Stats(Tower tower,int level) { TowerStats s=Stats(tower.Kind,level,tower.Inheritance); ApplyAdjacency(tower,s,level); return s; }
+        public TowerStats Stats(FusionRecipe recipe) => Stats(recipe.Result, 1, RecipeInheritance(recipe));
+        public TowerStats Stats(TowerKind kind, int level) => Stats(kind, level, SealInheritance.None);
+        SealInheritance RecipeInheritance(FusionRecipe recipe) => useSealInheritance ? recipe.Inheritance : SealInheritance.None;
+
+        TowerStats Stats(TowerKind kind, int level, SealInheritance inheritance)
         {
-            TowerDefinition def=TowerCatalog.Get(kind); TowerStats s=RawStats(kind,level);
+            TowerDefinition def=TowerCatalog.Get(kind); TowerStats s=RawStats(kind,level,inheritance);
             if ((def.Tags&TowerTag.Ballistic)!=0) { float scale=1+.15f*Cards[(int)CardKind.Ballistic]; s.Damage*=scale; s.Secondary*=scale;
                 if (s.Chain!=null) for (int i=0;i<s.Chain.Length;i++) s.Chain[i]*=scale; }
-            if ((def.Tags&TowerTag.Control)!=0) s.SlowSeconds+=.4f*Cards[(int)CardKind.Control];
-            if ((def.Tags&TowerTag.Blast)!=0) s.Radius+=.25f*Cards[(int)CardKind.Blast];
+            if ((def.Tags&TowerTag.Control)!=0 && s.Slow>0)
+                s.SlowSeconds+=.4f*Cards[(int)CardKind.Control];
+            if ((def.Tags&TowerTag.Blast)!=0 && inheritance!=SealInheritance.FanSlow) s.Radius+=.25f*Cards[(int)CardKind.Blast];
             s.Range*=1+.1f*Cards[(int)CardKind.Range]; ApplyResearch(kind,s); return s;
         }
         private string CanAct() { return State!=RunState.Running && State!=RunState.Paused && !(State==RunState.Ready && Rules!=null) ? "전투 중에만 가능합니다." : AwaitingCard ? "성장 카드를 먼저 선택하세요." : ""; }
@@ -333,7 +360,7 @@ namespace Gatefall.Core
             string reason=CanAct(); if(reason!="")return reason;
             if(recipeId<0 || recipeId>=TowerCatalog.Recipes.Length)return "존재하지 않는 조합식입니다.";
             if(!Allows(TowerCatalog.Recipes[recipeId].Result))return "이 융합식은 작전 클리어 후 해금됩니다.";
-            if(recipeId==10 && Rules!=null && !Rules.Lab && !Rules.BarrageSealUnlocked)return "2-5 클리어 후 상위 경로가 열립니다.";
+            reason=RecipeLock(recipeId);if(reason!="")return reason;
             Tower a=TowerById(first),b=TowerById(second); if(a==null || b==null)return "재료 타워 두 개를 선택하세요.";
             if(a.Id==b.Id)return "서로 다른 타워가 필요합니다.";
             FusionRecipe r=TowerCatalog.Recipes[recipeId]; if(!r.Matches(a,b))return "재료 종류와 Lv2 이상 조건을 확인하세요.";
@@ -341,13 +368,21 @@ namespace Gatefall.Core
             reason=NearSocket(anchor); if(reason!="")return reason; reason=Funds(r.Credits); if(reason!="")return reason;
             return Cores<1 ? (WaveCallsEnabled ? "공명 촉매 부족 (3·5웨이브 보급)" : "공명 촉매 부족 (60초 / 120초 지급)") : "";
         }
+        private string RecipeLock(int recipeId)
+        {
+            if(Rules==null || Rules.Lab)return "";
+            if(recipeId==10 && !Rules.BarrageSealUnlocked)return "2-5 클리어 후 상위 경로가 열립니다.";
+            if(recipeId==12 && !Rules.SurgeSealUnlocked)return "3-5 클리어 후 상위 경로가 열립니다.";
+            return "";
+        }
         public bool TryFuse(int recipeId,int first,int second,int anchor,string command,out string reason)
         {
             if(!Command(command,out reason))return false; reason=CanFuse(recipeId,first,second,anchor); if(reason!="")return false;
             Tower a=TowerById(first),b=TowerById(second); FusionRecipe r=TowerCatalog.Recipes[recipeId];
             Tower result=new Tower { Id=++nextId,Socket=anchor,Position=BoardSockets[anchor],Kind=r.Result,Aim=new V2(0,1),
                 PaidCredits=a.PaidCredits+b.PaidCredits+r.Credits,InvestedCores=a.InvestedCores+b.InvestedCores+1,
-                Commission=1,Cooldown=Stats(r.Result,1).Interval,Lineage="("+a.Lineage+"+"+b.Lineage+")" };
+                Commission=1,Cooldown=Stats(r).Interval,Lineage="("+a.Lineage+"+"+b.Lineage+")",
+                Inheritance=RecipeInheritance(r) };
             Paid(r.Credits,command,"fusion "+result.Lineage+" -> "+r.Result+" @"+anchor);
             Cores--; Towers.Remove(a); Towers.Remove(b); Towers.Add(result); Telemetry.Fusions++;
             if(Telemetry.FirstFusion<0)Telemetry.FirstFusion=Elapsed; Emit(EventKind.Fusion,result.Position,new V2(),recipeId); return true;
@@ -454,21 +489,29 @@ namespace Gatefall.Core
                 tower.Cooldown-=dt; if(tower.Cooldown>0)continue;
                 TowerStats s=Stats(tower); List<Enemy> targets=Targets(tower.Position,s.Range,true); if(targets.Count==0)continue;
                 if(tower.Kind==TowerKind.Binding)targets.Sort((a,b)=> { int d=a.SlowFraction.CompareTo(b.SlowFraction); return d!=0 ? d : Lead(a,b); });
-                if(tower.Kind==TowerKind.Rupture) {foreach(Enemy candidate in targets)candidate.ClusterScore=Cluster(candidate,s.Radius);targets.Sort((a,b)=> { int d=b.ClusterScore.CompareTo(a.ClusterScore);return d!=0 ? d : Lead(a,b); });}
+                if(tower.Kind==TowerKind.Rupture || s.Inheritance==SealInheritance.GravitySpear) {
+                    foreach(Enemy candidate in targets)candidate.ClusterScore=Cluster(candidate,s.Radius);
+                    targets.Sort((a,b)=> { int d=b.ClusterScore.CompareTo(a.ClusterScore);return d!=0 ? d : Lead(a,b); });
+                }
+                if(s.Inheritance==SealInheritance.ShatterSlow)
+                    targets.Sort((a,b)=> { int d=(b.Kind>=EnemyKind.Brute).CompareTo(a.Kind>=EnemyKind.Brute);return d!=0 ? d : Lead(a,b); });
                 // Prefer the lead target another active attack tower can reach; otherwise keep normal lead targeting.
                 if(tower.Kind==TowerKind.Marker) {
                     Enemy supported=targets.Find(e=>Towers.Exists(t=>t.Id!=tower.Id && t.Kind!=TowerKind.Marker && t.Kind!=TowerKind.Beacon && t.Kind!=TowerKind.Barrier &&
                         t.Commission<=0 && V2.Distance(t.Position,e.Position)<=Stats(t).Range));
                     if(supported!=null) {targets.Remove(supported);targets.Insert(0,supported);}
                 }
-                if(tower.Kind==TowerKind.Observer)targets.Sort((a,b)=> { int d=(b.MarkRemaining>0).CompareTo(a.MarkRemaining>0); return d!=0 ? d : Lead(a,b); });
+                if(tower.Kind==TowerKind.Observer || s.Inheritance==SealInheritance.MarkedBlast)
+                    targets.Sort((a,b)=> { int d=(b.MarkRemaining>0).CompareTo(a.MarkRemaining>0); return d!=0 ? d : Lead(a,b); });
                 tower.Aim=(targets[0].Position-tower.Position).Normalized;
+                if(s.LineHalfWidth>0){FireLine(tower,s,targets);tower.Cooldown=s.Interval;continue;}
                 if(s.ConeCos>0){
                     // One simultaneous volley, capped per distinct living target. No secondary radius explosion.
                     int hit=0;foreach(var target in targets){
                         V2 dir=(target.Position-tower.Position).Normalized;
                         if(dir.X*tower.Aim.X+dir.Y*tower.Aim.Y+.00001f<s.ConeCos)continue;
-                        Shoot(tower.Position,target,tower,s);if(++hit>=s.MaxTargets)break;
+                        bool slow=s.ConeSlowTargets==0 || hit<s.ConeSlowTargets;
+                        Shoot(tower.Position,target,tower,s,slow);if(++hit>=s.MaxTargets)break;
                     }
                     tower.Cooldown=s.Interval;continue;
                 }
@@ -511,7 +554,8 @@ namespace Gatefall.Core
             }
             if(g.Kind==EnemyKind.Boss) {
                 int next; V2[] road=Roads[g.Lane];
-                enemy.Position=BattlefieldLayouts.Along(road,Math.Max(0,BattlefieldLayouts.RoadLength(road)-6),out next);
+                float distance=Rules?.Stage?.BossEntryDistance ?? Math.Max(0,BattlefieldLayouts.RoadLength(road)-6);
+                enemy.Position=BattlefieldLayouts.Along(road,distance,out next);
                 enemy.Waypoint=next; BossSpawned=true;
             }
             Enemies.Add(enemy);
@@ -526,17 +570,44 @@ namespace Gatefall.Core
             targetScratch.Sort(LeadComparison);return targetScratch;
         }
         private int Cluster(Enemy t,float radius) { int count=0;float r2=radius*radius;foreach(Enemy e in Enemies)if(e.Health>0 && V2.DistanceSquared(t.Position,e.Position)<=r2)count++;return count; }
+        private void FireLine(Tower tower,TowerStats stats,List<Enemy> hits)
+        {
+            V2 origin=tower.Position, aim=tower.Aim;
+            float Forward(Enemy enemy) => (enemy.Position.X-origin.X)*aim.X+(enemy.Position.Y-origin.Y)*aim.Y;
+            // Reuse the target list once the lead direction is known. Keep the far
+            // corners of the shot's rectangle, which fall outside the aim radius.
+            hits.Clear();
+            foreach(Enemy enemy in Enemies) {
+                if(enemy.Health<=0 || enemy.IncomingDamage>=enemy.Health)continue;
+                float along=Forward(enemy);
+                float across=(enemy.Position.X-origin.X)*aim.Y-(enemy.Position.Y-origin.Y)*aim.X;
+                if(along>=0 && along<=stats.Range && Math.Abs(across)<=stats.LineHalfWidth)hits.Add(enemy);
+            }
+            hits.Sort((a,b)=> {int distance=Forward(a).CompareTo(Forward(b));return distance!=0?distance:a.Id.CompareTo(b.Id);});
+            var attack=new Projectile{FromTower=true,Kind=tower.Kind,SourceId=tower.Id,Stats=stats};
+            Emit(EventKind.TowerShot,origin,origin+aim*stats.Range,stats.Damage,(int)tower.Kind,inheritance:stats.Inheritance);
+            int count=Math.Min(hits.Count,stats.MaxTargets);
+            if(stats.TailBurstTargets>0)tailHitIds.Clear();
+            for(int i=0;i<count;i++) {
+                if(stats.TailBurstTargets>0)tailHitIds.Add(hits[i].Id);
+                Damage(hits[i],stats.Damage,attack,origin);
+            }
+            if(stats.TailBurstTargets>0 && count>0)ImpactTailBurst(attack,hits[count-1].Position,tailHitIds);
+        }
         public Enemy LivingEnemy(int id) {foreach(Enemy e in Enemies)if(e.Id==id && e.Health>0)return e;return null;}
-        private void Shoot(V2 origin,Enemy target,Tower tower,TowerStats stats)
+        private void Shoot(V2 origin,Enemy target,Tower tower,TowerStats stats,bool applySlow=true)
         {
             float reservation=Rules!=null && Rules.Stage!=null && (stats==null || stats.Radius<=0 && stats.Chain==null) ?
                 ArmorAdjustedDamage(target,tower==null ? Balance.PlayerDamage : stats.Damage,tower==null ? TowerKind.Autocannon : tower.Kind,tower!=null) : 0;
             target.IncomingDamage+=reservation;
+            TowerStats snapshot=stats==null ? null : stats.Copy();
+            if(snapshot!=null && !applySlow)snapshot.Slow=0;
             Projectiles.Add(new Projectile { Id=++nextId,Position=origin,TargetId=target.Id,ImpactPosition=target.Position,
                 SourceId=tower==null ? 0 : tower.Id,Kind=tower==null ? TowerKind.Autocannon : tower.Kind,
                 Damage=tower==null ? Balance.PlayerDamage : stats.Damage,Speed=Rules!=null && Rules.Stage!=null ? (tower==null ? 30 : 28) : (tower==null ? 21 : 18),
-                FromTower=tower!=null,Stats=stats==null ? null : stats.Copy(),FixedImpact=tower!=null && tower.Kind==TowerKind.Rupture,ReservedDamage=reservation });
-            Emit(tower==null ? EventKind.HunterShot : EventKind.TowerShot,origin,target.Position,tower==null ? Balance.PlayerDamage : stats.Damage,tower==null ? -1 : (int)tower.Kind);
+                FromTower=tower!=null,Stats=snapshot,FixedImpact=tower!=null && tower.Kind==TowerKind.Rupture,ReservedDamage=reservation });
+            Emit(tower==null ? EventKind.HunterShot : EventKind.TowerShot,origin,target.Position,tower==null ? Balance.PlayerDamage : stats.Damage,
+                tower==null ? -1 : (int)tower.Kind,inheritance:stats?.Inheritance ?? SealInheritance.None);
         }
         private void UpdateProjectiles(float dt)
         {
@@ -550,31 +621,76 @@ namespace Gatefall.Core
         private void Impact(Projectile p,Enemy primary,V2 position)
         {
             TowerStats s=p.Stats; if(s==null) { Damage(primary,p.Damage,p,p.Position); return; }
-            if(s.Chain!=null) {
-                HashSet<int> hit=new HashSet<int>(); Enemy e=primary; V2 from=p.Position;
-                for(int i=0;i<s.Chain.Length && e!=null;i++) { hit.Add(e.Id); V2 last=e.Position; Damage(e,s.Chain[i],p,from); from=last;
-                    List<Enemy> options=Targets(last,s.ChainRange); e=options.Find(x=>!hit.Contains(x.Id)); } return;
-            }
-            if(s.ConeCos>0){Damage(primary,s.Damage,p,p.Position);return;}
+            if(s.Chain!=null) { ImpactChain(p, primary); return; }
+            if(s.ConeCos>0){Damage(primary,s.Damage,p,p.Position,inheritance:s.Slow>0 ? s.Inheritance : SealInheritance.None);return;}
             if(s.Radius>0) {
-                Emit(EventKind.Blast,position,new V2(),s.Radius,(int)p.Kind);
+                Emit(EventKind.Blast,position,new V2(),s.Radius,(int)p.Kind,inheritance:s.Inheritance);
                 List<Enemy> targets=Targets(position,s.Radius); int count=0;
-                if(!p.FixedImpact && primary!=null) { Damage(primary,s.Damage,p,p.Position); targets.Remove(primary); count++; }
-                foreach(Enemy e in targets) { if(count>=s.MaxTargets)break; Damage(e,s.Secondary>0 ? s.Secondary : s.Damage,p,position); count++; }
+                if(s.Inheritance==SealInheritance.GravitySpear) {
+                    if(targets.Count>0)Damage(targets[0],s.Secondary,p,p.Position,
+                        applySlow:false, applyMark:false, inheritance:SealInheritance.GravitySpear);
+                    foreach(Enemy e in targets) {
+                        if(count++>=s.MaxTargets)break;
+                        Damage(e,s.Damage,p,position);
+                    }
+                    return;
+                }
+                if(!p.FixedImpact && primary!=null) {
+                    bool focused=s.Inheritance==SealInheritance.MarkedBlast;
+                    float direct=focused && primary.MarkRemaining>0 ? s.Damage*s.MarkedDamageMultiplier : s.Damage;
+                    Damage(primary,direct,p,p.Position,applySlow:s.Inheritance!=SealInheritance.ShatterSlow,
+                        inheritance:focused ? s.Inheritance : SealInheritance.None);
+                    targets.Remove(primary);
+                    count++;
+                }
+                foreach(Enemy e in targets) {
+                    if(count++>=s.MaxTargets)break;
+                    Damage(e,s.Secondary>0 ? s.Secondary : s.Damage,p,position,
+                        inheritance:s.Inheritance==SealInheritance.ShatterSlow ? s.Inheritance : SealInheritance.None);
+                }
             } else Damage(primary,s.Damage,p,p.Position);
+        }
+        void ImpactChain(Projectile p, Enemy primary)
+        {
+            TowerStats stats=p.Stats;
+            var hit=tailHitIds;
+            hit.Clear();
+            Enemy enemy=primary;
+            V2 last=p.Position;
+            for(int hop=0;hop<stats.Chain.Length && enemy!=null;hop++) {
+                hit.Add(enemy.Id);
+                V2 point=enemy.Position;
+                Damage(enemy,stats.Chain[hop],p,last,inheritance:stats.Inheritance);
+                last=point;
+                if(hop+1<stats.Chain.Length)
+                    enemy=Targets(last,stats.ChainRange).Find(candidate=>!hit.Contains(candidate.Id));
+            }
+            if(stats.TailBurstTargets>0 && hit.Count>0)ImpactTailBurst(p,last,hit);
+        }
+        void ImpactTailBurst(Projectile p, V2 last, HashSet<int> hit)
+        {
+            TowerStats stats=p.Stats;
+            Emit(EventKind.Blast,last,new V2(),stats.Radius,(int)p.Kind,inheritance:stats.Inheritance);
+            int remaining=stats.TailBurstTargets;
+            foreach(Enemy target in Targets(last,stats.Radius)) {
+                if(hit.Contains(target.Id))continue;
+                Damage(target,stats.Secondary,p,last,applySlow:false);
+                if(--remaining==0)break;
+            }
         }
         // Light direct projectiles lose a fixed amount against elite armor. Area, chains and control attacks pierce it.
         // Keep reservation and actual impact identical; the marker follow-up is applied afterwards and also pierces.
         static float ArmorAdjustedDamage(Enemy enemy,float raw,TowerKind kind,bool fromTower)
         {
-            if(enemy.Armor<=0 || fromTower && kind!=TowerKind.Autocannon && kind!=TowerKind.Scatter)return raw;
+            if(enemy.Armor<=0 || fromTower && kind!=TowerKind.Autocannon && kind!=TowerKind.Scatter && kind!=TowerKind.Piercer)return raw;
             return Math.Max(raw*.2f,raw-enemy.Armor);
         }
-        private void Damage(Enemy e,float damage,Projectile p,V2 from)
+        private void Damage(Enemy e,float damage,Projectile p,V2 from,bool applySlow=true,bool applyMark=true,
+            SealInheritance inheritance=SealInheritance.None)
         {
             if(e==null || e.Health<=0)return;
             damage=ArmorAdjustedDamage(e,damage,p.Kind,p.FromTower);
-            if(p.FromTower && p.Kind!=TowerKind.Marker && p.Kind!=TowerKind.Beacon && e.MarkRemaining>0) {
+            if(applyMark && p.FromTower && p.Kind!=TowerKind.Marker && p.Kind!=TowerKind.Beacon && e.MarkRemaining>0) {
                 // Record only bonus damage that can actually reduce the target's health.
                 Telemetry.MarkedHits++;
                 float bonus = Math.Min(e.MarkBonus, Math.Max(0, e.Health - damage));
@@ -582,15 +698,19 @@ namespace Gatefall.Core
                 if (bonus > 0) Emit(EventKind.MarkFollowUp, e.Position, from, bonus, (int)p.Kind);
                 damage+=e.MarkBonus;
             }
-            if(p.FromTower && p.Stats!=null && p.Stats.MarkBonus>0) {
+            if(p.FromTower && p.Stats!=null && p.Stats.MarkBonus>0 &&
+                (p.Stats.Inheritance!=SealInheritance.MarkedBlast || inheritance==SealInheritance.MarkedBlast)) {
                 e.MarkRemaining=3; e.MarkBonus=Math.Max(e.MarkBonus,p.Stats.MarkBonus);
             }
             if(p.FromTower)Telemetry.TowerDamage[(int)p.Kind]+=Math.Min(e.Health,damage);
-            e.Health-=damage; e.HitFlash=.065f; Emit(EventKind.Hit,e.Position,from,damage,p.FromTower ? (int)p.Kind : -1);
+            e.Health-=damage; e.HitFlash=.065f;
+            if(e.Health<=0 && (inheritance==SealInheritance.ShatterSlow || inheritance==SealInheritance.FanSlow))
+                inheritance=SealInheritance.None;
+            Emit(EventKind.Hit,e.Position,from,damage,p.FromTower ? (int)p.Kind : -1,inheritance:inheritance);
             if(e.Health<=0) { if(e.Kind==EnemyKind.Boss)BossDefeated=true; Kills++; int reward=e.Kind==EnemyKind.Siege ? 5 : e.Kind==EnemyKind.Brute ? 3 : 1;
                 if(e.Swarm) {swarmCreditRemainder++;reward=swarmCreditRemainder/4;swarmCreditRemainder%=4;}
                 Credits+=reward; Emit(EventKind.Kill,e.Position,from,reward,(int)e.Kind,enemyId:e.Id); return; }
-            if (p.Stats != null && p.Stats.Slow > 0)
+            if (applySlow && p.Stats != null && p.Stats.Slow > 0)
                 ApplySlow(e, p.SourceId, p.Stats.Slow, p.Stats.SlowSeconds);
         }
         private static void ApplySlow(Enemy enemy, int source, float fraction, float duration)
@@ -627,8 +747,9 @@ namespace Gatefall.Core
             Enemies.RemoveAll(e=>e.Health<=0);
         }
         private void Finish(bool won) { bool missed=won && Rules!=null && Rules.Stage!=null && Rules.Stage.Boss && !BossDefeated; if(missed)won=false; State=won ? RunState.Won : RunState.Lost; DefeatReason=won ? "" : missed ? "잿빛 문지기를 처치하지 못했습니다." : CoreHealth<=0 ? "도시 결계가 붕괴했습니다." : "헌터가 쓰러졌습니다."; Emit(EventKind.End,PlayerPosition,new V2(),won ? 1 : 0); }
-        private void Emit(EventKind k,V2 p,V2 t,float v,int source=-1,int wave=-1,int enemyId=0)
-        { Events.Add(new CombatEvent(k,p,t,v,source,wave,enemyId)); }
+        private void Emit(EventKind k,V2 p,V2 t,float v,int source=-1,int wave=-1,int enemyId=0,
+            SealInheritance inheritance=SealInheritance.None)
+        { Events.Add(new CombatEvent(k,p,t,v,source,wave,enemyId,inheritance)); }
         private static float Clamp(float x,float a,float b) { return Math.Max(a,Math.Min(b,x)); }
     }
 }

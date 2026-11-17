@@ -9,14 +9,14 @@ namespace Gatefall
     {
         public int Selected = -1;
         public bool ShowRange;
-        public int PreviewKind = -1;
+        public FusionRecipe PreviewRecipe;
         public readonly List<int> Partners = new List<int>();
         public bool[] FusionReady = new bool[0];
         public bool[] CompactFusionBadge = new bool[0];
         public void EnsureCapacity(int count) { if (FusionReady.Length != count) {FusionReady = new bool[count];CompactFusionBadge=new bool[count];} }
         public bool HasPointer;
         public V2 Pointer;
-        public void Clear() { Selected = -1; ShowRange = false; PreviewKind = -1; Partners.Clear(); System.Array.Clear(FusionReady, 0, FusionReady.Length); System.Array.Clear(CompactFusionBadge,0,CompactFusionBadge.Length);HasPointer = false; }
+        public void Clear() { Selected = -1; ShowRange = false; PreviewRecipe = null; Partners.Clear(); System.Array.Clear(FusionReady, 0, FusionReady.Length); System.Array.Clear(CompactFusionBadge,0,CompactFusionBadge.Length);HasPointer = false; }
     }
 
     // Battlefield presentation reads shared route data without changing simulation state.
@@ -45,6 +45,9 @@ namespace Gatefall
         private readonly List<Object> owned = new List<Object>();
         private readonly Sprite square;
         private readonly SpriteRenderer[] pads, padMarks, padPlus, rifts;
+        private readonly int minimumBuildCost;
+        private static readonly Color AvailablePad = Color.Lerp(GatefallArt.Paper, Color.white, .5f);
+        private static readonly Color IdlePad = Color.Lerp(GatefallArt.Muted, Color.white, .25f);
         private readonly float[] riftAlarm;
         private readonly TowerVisual[] towers;
         private readonly SpriteRenderer[] glyphs;
@@ -74,6 +77,9 @@ namespace Gatefall
         public ArenaView(Transform parent, DefenseSimulation game, GatefallArt art)
         {
             board = game; this.art = art;
+            minimumBuildCost = int.MaxValue;
+            foreach (TowerKind kind in TowerCatalog.Buildable)
+                if (game.Allows(kind)) minimumBuildCost = Mathf.Min(minimumBuildCost, TowerCatalog.Get(kind).BuildCost);
             towers = new TowerVisual[game.BoardSockets.Length]; glyphs = new SpriteRenderer[game.BoardSockets.Length];
             root = new GameObject("Arena v0.15").transform;
             root.SetParent(parent, false);
@@ -100,6 +106,7 @@ namespace Gatefall
             }
             rangeFill = Make("Range fill", art.Sprite("fx-disc"), Vector3.zero, Vector3.one, new Color(1, 1, 1, .07f), 140);
             rangeRing = Make("Range ring", art.Sprite("fx-range"), Vector3.zero, Vector3.one, new Color(1, 1, 1, .5f), 141);
+            InitializeFusionPreview();
 
             coreDome = Make("Barrier dome", art.Sprite("fx-ring-soft"), new Vector3(0, .1f, 0), new Vector3(3.8f, 3.3f, 1), GatefallArt.Alpha(GatefallArt.Ally, .55f), 160);
             coreShield = Make("Emergency shield", art.Sprite("fx-disc"), new Vector3(0, .4f, 0), new Vector3(10.4f, 8.8f, 1), GatefallArt.Alpha(GatefallArt.Ally, .0f), 3200);
@@ -146,6 +153,9 @@ namespace Gatefall
 
         private void SyncPads(DefenseSimulation game, ArenaSelection selection)
         {
+            bool pickingPartner = selection.PreviewRecipe != null;
+            bool affordable = game.Credits >= minimumBuildCost &&
+                (game.TowerLimit == 0 || game.Towers.Count < game.TowerLimit);
             for (int i = 0; i < pads.Length; i++) {
                 bool selected = selection.Selected == i, partner = selection.Partners.Contains(i);
                 padMarks[i].enabled = selected || partner;
@@ -155,22 +165,28 @@ namespace Gatefall
                     padMarks[i].color = partner ? GatefallArt.Ally : GatefallArt.Amber;
                 }
                 bool empty = game.TowerAt(i) == null;
-                padPlus[i * 2].enabled = padPlus[i * 2 + 1].enabled = empty;
-                pads[i].color = empty && game.IsPreparing ? Color.Lerp(Color.white, new Color(1, .97f, .88f), .5f + .5f * Mathf.Sin(time * 3 + i)) : Color.white;
+                bool showPlus = empty && !pickingPartner && (game.IsPreparing || affordable);
+                padPlus[i * 2].enabled = padPlus[i * 2 + 1].enabled = showPlus;
+                if (pickingPartner) pads[i].color = selected || partner ? Color.white : IdlePad;
+                else if (!empty || selected) pads[i].color = Color.white;
+                else if (game.IsPreparing) pads[i].color = Color.Lerp(Color.white, new Color(1, .97f, .88f), .5f + .5f * Mathf.Sin(time * 3 + i));
+                else pads[i].color = showPlus ? AvailablePad : IdlePad;
             }
             bool range = selection.ShowRange && selection.Selected >= 0;
+            HideFusionPreview();
             rangeRing.enabled = rangeFill.enabled = range;
             if (range) {
                 Tower tower = game.TowerAt(selection.Selected);
-                bool preview = selection.PreviewKind >= 0;
-                float radius = preview ? game.Stats((TowerKind)selection.PreviewKind, 1).Range : tower != null ? game.Stats(tower).Range : 0;
+                TowerStats preview = pickingPartner ? fusionPreview.Stats(game,selection.PreviewRecipe) : null;
+                float radius = preview!=null ? preview.Range : tower != null ? game.Stats(tower).Range : 0;
                 rangeRing.enabled = rangeFill.enabled = radius > 0;
                 Vector3 p = Point(game.BoardSockets[selection.Selected]);
                 rangeRing.transform.position = rangeFill.transform.position = p;
                 rangeRing.transform.localScale = Vector3.one * (radius * 2 / RangeDiameter);
                 rangeFill.transform.localScale = Vector3.one * (radius * 2 / DiscDiameter);
-                rangeRing.color = GatefallArt.Alpha(preview ? GatefallArt.Amber : tower != null ? GatefallArt.RoleColor(tower.Kind) : Color.white, .85f);
-                rangeFill.color = GatefallArt.Alpha(preview ? GatefallArt.Amber : Color.white, .07f);
+                rangeRing.color = GatefallArt.Alpha(pickingPartner ? GatefallArt.Amber : tower != null ? GatefallArt.RoleColor(tower.Kind) : Color.white, .85f);
+                rangeFill.color = GatefallArt.Alpha(pickingPartner ? GatefallArt.Amber : Color.white, .07f);
+                if(preview!=null)DrawFusionPreview(game,selection.PreviewRecipe,preview,game.BoardSockets[selection.Selected]);
             }
         }
 
@@ -585,8 +601,9 @@ namespace Gatefall
 
         public void Dispose()
         {
-            if (root != null) { root.gameObject.SetActive(false); Object.Destroy(root.gameObject); }
-            foreach (Object item in owned) if (item != null) Object.Destroy(item);
+            // Editor audits build and discard arenas outside play mode, where Destroy is not allowed.
+            if (root != null) { root.gameObject.SetActive(false); if (Application.isPlaying) Object.Destroy(root.gameObject); else Object.DestroyImmediate(root.gameObject); }
+            foreach (Object item in owned) if (item != null) { if (Application.isPlaying) Object.Destroy(item); else Object.DestroyImmediate(item); }
         }
 
         private static float EnemyScale(EnemyKind kind) { return kind == EnemyKind.Boss ? .60f : kind == EnemyKind.Siege ? .75f : kind == EnemyKind.Grunt ? .42f : kind == EnemyKind.Runner ? .46f : .68f; }

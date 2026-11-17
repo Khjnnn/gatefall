@@ -7,7 +7,7 @@ namespace Gatefall
     {
         public const string StyleId = "gatefall-city-barrier";
         public const string StyleVersion = "1.3.1";
-        public const string ManifestSha256 = "52f13f5c344939faa5f8523139a8d328a438806ac02f656f17450f948a943f20";
+        public const string ManifestSha256 = "f497d3c5df5a29f517cefb9e69e10eee73a83a8640ad7559b73a984b0f29d0d9";
         public static readonly Color ColorPanelTop = new Color(48f / 255f, 58f / 255f, 73f / 255f, 1f);
         public static readonly Color ColorPanelBottom = new Color(27f / 255f, 36f / 255f, 49f / 255f, 1f);
         public static readonly Color ColorPanelRim = new Color(104f / 255f, 117f / 255f, 131f / 255f, 1f);

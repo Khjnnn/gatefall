@@ -35,11 +35,13 @@ namespace Gatefall.Core
         public bool HasAdvancedTowers { get { return Rules != null && (Rules.Lab || Rules.Stage.HasAdvancedTowers); } }
         public bool Allows(TowerKind kind)
         {
-            if(Rules==null)return kind!=TowerKind.Barrier && kind!=TowerKind.Marker && kind!=TowerKind.Observer && kind!=TowerKind.Beacon;
+            if(Rules==null)return kind!=TowerKind.Barrier && kind!=TowerKind.Marker && kind!=TowerKind.Observer && kind!=TowerKind.Beacon &&
+                kind!=TowerKind.Piercer && kind!=TowerKind.Surge;
             if(Rules.Lab)return true;
             if(!Rules.Stage.Allows(kind))return false;
             if((kind==TowerKind.Marker || kind==TowerKind.Beacon) && !Rules.MarkerUnlocked || kind==TowerKind.Observer && !Rules.ObserverUnlocked)return false;
             if(kind==TowerKind.Scatter && !Rules.ScatterUnlocked || kind==TowerKind.Barrage && !Rules.BarrageUnlocked)return false;
+            if(kind==TowerKind.Piercer && !Rules.PiercerUnlocked || kind==TowerKind.Surge && !Rules.SurgeUnlocked)return false;
             if(Rules.Stage.Index>=6 && TowerCatalog.Get(kind).Tier==1 && (Rules.Loadout&(1<<(int)kind))==0)return false;
             return true;
         }
@@ -55,7 +57,7 @@ namespace Gatefall.Core
                 int before=reachable;
                 foreach(FusionRecipe r in TowerCatalog.Recipes) {
                     int needed=(1<<(int)r.First)|(1<<(int)r.Second);
-                    if((reachable&needed)==needed && Allows(r.Result))reachable|=1<<(int)r.Result;
+                    if((reachable&needed)==needed && Allows(r.Result) && RecipeLock(r.Id)=="")reachable|=1<<(int)r.Result;
                 }
                 if(reachable==before)break;
             }
@@ -166,9 +168,11 @@ namespace Gatefall.Core
             PlayerPosition=next;
             if(movement.Length>.05f) {PlayerAim=movement.Normalized;lastMovement=movement.Normalized;}
         }
-        TowerStats RawStats(TowerKind kind,int level)
+        TowerStats RawStats(TowerKind kind,int level,SealInheritance inheritance)
         {
-            TowerStats s=TowerCatalog.Get(kind).Levels[level-1].Copy();
+            TowerStats s=kind==TowerKind.Seal && inheritance!=SealInheritance.None
+                ? TowerCatalog.CopyInheritedSealStats(inheritance)
+                : TowerCatalog.Get(kind).Levels[level-1].Copy();
             if(Rules!=null && kind==TowerKind.Autocannon) {s.Damage=level==1 ? 14 : level==2 ? 22 : 30;s.Interval=.7f;}
             if(Rules!=null && Rules.Stage!=null) {
                 if(kind==TowerKind.Binding && level>=2) {
@@ -176,7 +180,7 @@ namespace Gatefall.Core
                     if(targets>0)s.MaxTargets=targets;
                 }
                 if(kind==TowerKind.Autocannon)s.Interval=.46f;
-                else if(kind!=TowerKind.Barrier)s.Interval*=.85f;
+                else if(kind!=TowerKind.Barrier && s.LineHalfWidth==0)s.Interval*=.85f;
                 if(TowerCatalog.Get(kind).Tier==2) {
                     float scale=Rules.Stage.HybridDamage;
                     s.Damage*=scale;s.Secondary*=scale;
@@ -189,20 +193,24 @@ namespace Gatefall.Core
         {
             if(Rules==null)return;
             TowerTag tags=TowerCatalog.Get(kind).Tags;
-            // Both research lines add from the same unmodified value, once; cards never multiply research.
+            // Research and account grades add from the same unmodified value, once.
             float fraction=((tags&TowerTag.Ballistic)!=0 ? .08f*Rules.Research[0] : 0)+
-                ((tags&TowerTag.Blast)!=0 ? .06f*Rules.Research[2] : 0);
+                ((tags&TowerTag.Blast)!=0 ? .06f*Rules.Research[2] : 0)+
+                (Rules.Crisis ? 0 : (float)Supply.DamageBonus(Rules.Supply,kind));
             if(fraction>0) {
                 float cardScale=(tags&TowerTag.Ballistic)!=0 ? 1+.15f*Cards[(int)CardKind.Ballistic] : 1;
                 s.Damage+=s.Damage/cardScale*fraction;s.Secondary+=s.Secondary/cardScale*fraction;
                 if(s.Chain!=null)for(int i=0;i<s.Chain.Length;i++)s.Chain[i]+=s.Chain[i]/cardScale*fraction;
             }
-            if((tags&TowerTag.Control)!=0){s.Slow=Math.Min(.75f,s.Slow+.03f*Rules.Research[1]);s.SlowSeconds+=.1f*Rules.Research[1];}
-            if((tags&TowerTag.Blast)!=0)s.Radius+=.1f*Rules.Research[2];
+            if((tags&TowerTag.Control)!=0 && s.Slow>0) {
+                s.Slow=Math.Min(.75f,s.Slow+.03f*Rules.Research[1]);
+                s.SlowSeconds+=.1f*Rules.Research[1];
+            }
+            if((tags&TowerTag.Blast)!=0 && s.Inheritance!=SealInheritance.FanSlow)s.Radius+=.1f*Rules.Research[2];
             if(kind==TowerKind.Barrier)s.Interval*=1-.06f*Rules.Research[3];
         }
         bool ActiveForResonance(Tower t)
-        { return t.Kind!=TowerKind.Marker && t.Commission<=0 && (t.Kind!=TowerKind.Barrier || t.Cooldown<=0) && TowerCatalog.Get(t.Kind).Tier==1; }
+        { return t.Kind!=TowerKind.Marker && t.Kind!=TowerKind.Piercer && t.Commission<=0 && (t.Kind!=TowerKind.Barrier || t.Cooldown<=0) && TowerCatalog.Get(t.Kind).Tier==1; }
         public bool HasResonance(Tower tower)
         {
             if(Rules==null || !Rules.Lab && !Rules.Stage.HasAdjacency || !ActiveForResonance(tower))return false;

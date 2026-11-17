@@ -41,9 +41,13 @@ namespace Gatefall.Tests
             Check("North entrance guards clear wave information without covering resource or speed controls", AvoidWaveHeader);
             Check("Compact wave headers retain150 reference units and deterministic placement", CompactWaveHeader);
             Check("Impossible header clearance preserves a safe fallback", FallbackWaveHeader);
-            Check("Fusion instructions leave every projected pad clear on all implemented boards and four screens", FusionHeader);
-            Check("Core HP avoids tower bodies/pads/rifts on all implemented boards and3 actual safe areas without moving controls", HudStatusChecks.Run);
-            results.Add("PASS: 32 mobile input/layout checks. Hardware touch and Android/iOS binaries are not covered.");
+            Check("Fusion instructions and fit row leave ingredient pads clear across twelve screens", FusionHeader);
+            Check("Core, wave and authored boss HUD geometry preserves tower pads, roads and controls across narrow and wide profiles", HudStatusChecks.Run);
+            Check("Start, wave call, speed and pad menus leave entrances, pads and the selected tower clear on every fixed board and twelve screens", HudOcclusionChecks.Run);
+            Check("Home tabs, right strip, heart dialog and fake rewarded ads",()=>HomeChecks.Run());
+            Check("Shop, supply modal and tower card touch regions on twelve screens",()=>ShopChecks.Run());
+            Check("Daily rewards, pass and victory double on twelve screens",()=>DailyUiChecks.Run());
+            results.Add("PASS: "+results.Count+" mobile input/layout checks. Hardware touch and Android/iOS binaries are not covered.");
             return string.Join(Environment.NewLine, results.ToArray());
         }
         private static MobileLayout Layout() { return new MobileLayout(2400, 1080, new Box2(90, 24, 2220, 1056)); }
@@ -67,13 +71,8 @@ namespace Gatefall.Tests
         }
         private static void FusionHeader()
         {
-            var screens = new[] {
-                new MobileLayout(2400, 1080, new Box2(0, 0, 2400, 929)),
-                new MobileLayout(1280, 720, new Box2(0, 0, 1280, 639)),
-                new MobileLayout(1920, 1080, new Box2(100, 0, 1820, 1080)),
-                new MobileLayout(1280, 800, new Box2(0, 0, 1280, 800))
-            };
-            foreach (var layout in screens) {
+            foreach (var screen in HudOcclusionChecks.Screens) {
+                var layout=new MobileLayout(screen.Width,screen.Height,new Box2(screen.SafeLeft,0,screen.Width-screen.SafeLeft,screen.SafeHeight));
                 Assert(layout.TryFusionHeader(new Box2[0], out Box2 original));
                 Near(original.Center.X, layout.Width / 2); Near(original.Y, 72);
                 float screenWidth = layout.SafeArea.X + layout.SafeArea.Width;
@@ -88,14 +87,26 @@ namespace Gatefall.Tests
                             layout.ScreenHeight / 2 + (p.Y - cameraY) * world));
                         guards.Add(new Box2(center.X - 1.2f * units, center.Y - 2.3f * units, 2.4f * units, 3.2f * units));
                     }
-                    if (!layout.TryFusionHeader(guards, out Box2 panel))
-                        throw new Exception("No fusion panel placement for stage " + (stage.Index + 1) + " at " + screenWidth);
-                    Assert(panel.X >= 0 && panel.Y >= 72 && panel.X + panel.Width <= layout.Width && panel.Y + panel.Height <= layout.Height);
-                    foreach (Box2 guard in guards) Assert(!Hits(panel, guard));
+                    if (stage.Chapter==3 && stage.LocalNumber>1) {
+                        // The live menu reserves its anchor and eligible partner pads.
+                        // Test distributed ingredient sets with one anchor and five partners.
+                        for(int anchor=0;anchor<guards.Count;anchor++) {
+                            var ingredients=new List<Box2>();
+                            for(int j=0;j<6;j++)ingredients.Add(guards[(anchor+j*5)%guards.Count]);
+                            CheckFusionPlacement(layout,ingredients,stage);
+                        }
+                    } else CheckFusionPlacement(layout,guards,stage);
                 }
                 Assert(!layout.TryFusionHeader(new[] { new Box2(0, 0, layout.Width, layout.Height) }, out Box2 fallback));
                 Near(fallback.X, original.X); Near(fallback.Y, original.Y);
             }
+        }
+        private static void CheckFusionPlacement(MobileLayout layout,List<Box2> guards,CampaignStage stage)
+        {
+            if (!layout.TryFusionHeader(guards, out Box2 panel))
+                throw new Exception("No fusion panel placement for "+stage.Id+" at "+layout.Width);
+            Assert(panel.X>=0 && panel.Y>=72 && panel.X+panel.Width<=layout.Width && panel.Y+panel.Height<=layout.Height);
+            foreach(Box2 guard in guards)Assert(!Hits(panel,guard));
         }
         private static MobileInput Input() { MobileInput input = new MobileInput(Layout()); input.SetState(RunState.Running); return input; }
         private static void Check(string name, Action action) { try { action(); results.Add("PASS " + name); } catch (Exception e) { throw new Exception("FAIL " + name + ": " + e.Message, e); } }
@@ -356,6 +367,160 @@ namespace Gatefall.Tests
             input.Pointer(3,PointerPhase.Begin,new V2(190,298));input.Pointer(3,PointerPhase.End,new V2(320,300));
             input.Pointer(4,PointerPhase.Begin,new V2(320,300));input.Pointer(4,PointerPhase.End,new V2(190,298));
             Assert(input.Actions.Count==0);
+        }
+    }
+}
+
+namespace Gatefall.Tests
+{
+    public static class HomeChecks
+    {
+        static void Require(bool value,string message) {if(!value)throw new Exception("Home: "+message);}
+        public static string Run()
+        {
+            int hits=HudOcclusionChecks.HomeGeometry();
+            foreach(var screen in HudOcclusionChecks.Screens) {
+                var layout=new MobileLayout(screen.Width,screen.Height,new Box2(screen.SafeLeft,0,screen.Width-screen.SafeLeft,screen.SafeHeight));
+                var input=new MobileInput(layout);input.SetState(RunState.Ready);input.Modal=true;
+                var regions=new List<TouchRegion>();
+                for(int i=0;i<Gatefall.HomeMenu.Tabs.Length;i++)regions.Add(new TouchRegion(Gatefall.HomeMenu.Tabs[i].Action,layout.HomeNavigation(i,Gatefall.HomeMenu.Tabs.Length)));
+                for(int i=0;i<Gatefall.HomeMenu.Right.Length;i++)regions.Add(new TouchRegion(Gatefall.HomeMenu.Right[i].Action,layout.HomeRight(i,Gatefall.HomeMenu.Right.Length)));
+                regions.Add(new TouchRegion(600,layout.HomePanel()));
+                regions.Add(new TouchRegion(880,layout.HomePass()));
+                int[] topActions={602,0,684,0,0,685,604};
+                for(int i=0;i<topActions.Length;i++)if(topActions[i]!=0)regions.Add(new TouchRegion(topActions[i],layout.HomeTop(i)));
+                foreach(var region in regions) {
+                    input.Reset();input.Modal=true;input.Regions.Clear();input.Regions.AddRange(regions);
+                    input.Pointer(7,PointerPhase.Begin,region.Box.Center);input.Pointer(7,PointerPhase.End,region.Box.Center);
+                    Require(input.Actions.Count==1 && input.Actions[0]==region.Action,"wrong home action");hits++;
+                }
+                // A modal replaces the home regions entirely, including the large map panel.
+                input.Reset();input.Regions.Clear();input.Modal=true;
+                for(int i=0;i<3;i++)input.Regions.Add(new TouchRegion(696+i,layout.HeartDialogButton(i)));
+                for(int i=0;i<3;i++) {
+                    input.Actions.Clear();V2 p=layout.HeartDialogButton(i).Center;
+                    input.Pointer(8,PointerPhase.Begin,p);input.Pointer(8,PointerPhase.End,p);
+                    Require(input.Actions.Count==1 && (int)input.Actions[0]==696+i,"wrong dialog action");hits++;
+                }
+                // Expanded data lists use the same router, including the folded fourth 'more' entry.
+                regions.Clear();
+                for(int i=0;i<7;i++)regions.Add(new TouchRegion(900+i,layout.HomeNavigation(i,7)));
+                for(int i=0;i<5;i++)regions.Add(new TouchRegion(910+i,layout.HomeRight(i,5,true)));
+                foreach(var region in regions) {
+                    input.Reset();input.Regions.Clear();input.Regions.AddRange(regions);input.Modal=true;
+                    input.Pointer(9,PointerPhase.Begin,region.Box.Center);input.Pointer(9,PointerPhase.End,region.Box.Center);
+                    Require(input.Actions.Count==1 && input.Actions[0]==region.Action,"expanded list action");hits++;
+                }
+                for(int first=0;first<=2;first++) {
+                    var boxes=new List<Box2>{layout.HomeTabArrow(false),layout.HomeTabArrow(true)};
+                    for(int i=first;i<first+7;i++)boxes.Add(layout.HomeNavigation(i,9,first));
+                    for(int i=0;i<boxes.Count;i++)for(int j=i+1;j<boxes.Count;j++)
+                        Require(!Intersects(boxes[i],boxes[j]),"scroll arrows overlap tabs");
+                    Require(layout.HomeNavigation(first==0?8:0,9,first).Width==0,"off-page tab exposed");
+                }
+            }
+            Require(Gatefall.HomeMenu.Tabs.Length==5 && Gatefall.HomeMenu.Tabs[2].Action==606,"center launch tab");
+            Require(Gatefall.HomeMenu.Tabs[0].UnlockStage==2 && Gatefall.HomeMenu.Tabs[1].UnlockStage==2,"shop/card unlock gates");
+            int rewarded=0,failed=0;var ads=new Gatefall.FakeRewardedAdService();
+            ads.Show("heart-shortage",()=>rewarded++,()=>failed++);
+            Require(rewarded==1 && failed==0,"default ad success");
+            ads.Succeeds=false;ads.Show("heart-shortage",()=>rewarded++,()=>failed++);
+            ads.IsReady=false;ads.Succeeds=true;ads.Show("heart-shortage",()=>rewarded++,()=>failed++);
+            Require(rewarded==1 && failed==2,"failed/unready ads must not reward");
+            long utc=10000;int writes=0;
+            var profile=new CampaignProfile{Hearts=0,ExtraHearts=0,CrystalsFree=30,HeartAnchorUtc=utc,LastSeenUtc=utc};
+            var service=new CampaignService(profile,p=>writes++,()=>utc,()=>1);
+            string id;Require(!service.Begin(0,false,out id) && service.BeginReason(0,false)=="하트 부족" && writes==0,"empty launch");
+            Require(service.RefillHeartByAd() && service.Begin(0,false,out id) && service.Profile.Hearts==0 && writes==2,"reward then launch");
+            Require(service.Resume(out id) && writes==2,"same run resumes without spending");
+            Require(service.RefillHeartsByCrystals() && service.Begin(0,false,out id) && service.Profile.Hearts==4 && service.Profile.CrystalsFree==0,"crystals then new attempt");
+            return "PASS: home geometry on 12 screens; 5/7 tabs, 3/5 right entries; "+hits+" bounds/touch checks; ad success/failure/unready and refill-to-launch.";
+        }
+        static bool Intersects(Box2 a,Box2 b) {return a.X<b.X+b.Width && b.X<a.X+a.Width && a.Y<b.Y+b.Height && b.Y<a.Y+a.Height;}
+    }
+}
+
+namespace Gatefall.Tests
+{
+    public static class DailyUiChecks
+    {
+        static void Require(bool ok,string message){if(!ok)throw new Exception("Daily UI: "+message);}
+        public static string Run()
+        {
+            int bounds=HudOcclusionChecks.DailyGeometry(),hits=0;
+            foreach(var screen in HudOcclusionChecks.Screens) {
+                var l=new MobileLayout(screen.Width,screen.Height,new Box2(screen.SafeLeft,0,screen.Width-screen.SafeLeft,screen.SafeHeight));
+                var back=new TouchRegion(603,l.DailyBack());
+                var groups=new List<List<TouchRegion>>();
+                groups.Add(new List<TouchRegion>{back,new TouchRegion(881,l.DailyPrimary()),new TouchRegion(882,l.RouletteOdds())});
+                groups.Add(new List<TouchRegion>{back,new TouchRegion(883,l.DailyPrimary())});
+                var missions=new List<TouchRegion>{back};for(int i=0;i<6;i++)missions.Add(new TouchRegion(900+i,l.MissionClaim(i)));groups.Add(missions);
+                for(int first=0;first<30;first++) {
+                    var pass=new List<TouchRegion>{back,new TouchRegion(884,l.PassCap()),new TouchRegion(885,l.DailyScroll(false)),new TouchRegion(886,l.DailyScroll(true))};
+                    for(int i=0;i<l.DailyVisibleRows() && first+i<30;i++) {
+                        pass.Add(new TouchRegion(920+first+i,l.PassClaim(i,false)));pass.Add(new TouchRegion(950+first+i,l.PassClaim(i,true)));
+                    }
+                    groups.Add(pass);
+                }
+                groups.Add(new List<TouchRegion>{back,new TouchRegion(885,l.DailyScroll(false)),new TouchRegion(886,l.DailyScroll(true))});
+                Box2 r=l.VictoryPanel();float by=r.Y+r.Height-82;
+                groups.Add(new List<TouchRegion>{new TouchRegion(887,l.VictoryDouble()),new TouchRegion(600,new Box2(r.X+24,by,150,60)),new TouchRegion((int)MobileAction.Restart,new Box2(r.X+184,by,150,60)),new TouchRegion(607,new Box2(r.X+344,by,232,60))});
+                foreach(var group in groups)foreach(var region in group) {
+                    Box2 b=region.Box;Require(b.Width>=48 && b.Height>=48,"small target");
+                    foreach(var other in group)if(other.Action!=region.Action)Require(!HudOcclusionChecks.Hits(b,other.Box),"overlapping target");
+                    var input=new MobileInput(l);input.Modal=true;input.Regions.AddRange(group);
+                    V2 p=l.FromScreen(l.ToScreen(b.Center));input.Pointer(1,PointerPhase.Begin,p);input.Pointer(1,PointerPhase.End,p);input.Pointer(1,PointerPhase.End,p);
+                    Require(input.Actions.Count==1 && input.Actions[0]==region.Action && input.Movement.Length==0,"wrong or duplicate action");hits++;
+                    input.Reset();input.Pointer(2,PointerPhase.Begin,p);input.Pointer(2,PointerPhase.Cancel,p);Require(input.Actions.Count==0,"canceled claim");
+                }
+            }
+            var d=new DailyState{LocalDay=7,Season=1};
+            for(int today=0;today<7;today++) {
+                d.AttendanceDay=6;d.AttendancePosition=today;
+                for(int i=0;i<7;i++)Require(Gatefall.DailyLabels.AttendanceState(d,i)==(i<today?"수령 완료":i==today?"오늘":"잠김"),"attendance before claim");
+                d.AttendanceDay=7;d.AttendancePosition=(today+1)%7;
+                for(int i=0;i<7;i++)Require(Gatefall.DailyLabels.AttendanceState(d,i)==(i<=today?"수령 완료":"잠김"),"attendance after claim/wrap");
+            }
+            Require(Gatefall.DailyLabels.DaysLeft(d)==21,"season days");
+            decimal sum=0;foreach(var row in DailyCatalog.RouletteDisclosure()){sum+=row.Percent;Require(Gatefall.DailyLabels.Reward(row.Reward)!="","roulette label");}
+            Require(sum==100m && DailyCatalog.Missions().Length==6 && DailyCatalog.PassRewards().Length==30,"catalog rows");
+            return "PASS: daily/attendance/roulette/pass/victory geometry on12 safe-area screens; "+bounds+" bounds and "+hits+" touch checks; all30 pass offsets, cancellation, attendance wrap and exact catalog labels.";
+        }
+    }
+    public static class ShopChecks
+    {
+        static void Require(bool ok,string message) {if(!ok)throw new Exception("Shop: "+message);}
+        public static string Run()
+        {
+            int checks=HudOcclusionChecks.ShopGeometry(),hits=0;
+            foreach(var screen in HudOcclusionChecks.Screens) {
+                var l=new MobileLayout(screen.Width,screen.Height,new Box2(screen.SafeLeft,0,screen.Width-screen.SafeLeft,screen.SafeHeight));
+                var groups=new List<List<TouchRegion>>();var daily=new List<TouchRegion>();
+                for(int i=0;i<5;i++)daily.Add(new TouchRegion(800+i,l.ShopTab(i)));
+                for(int i=0;i<6;i++)daily.Add(new TouchRegion(810+i,l.ShopSlotButton(i)));
+                daily.Add(new TouchRegion(808,l.ShopFooter()));groups.Add(daily);
+                groups.Add(new List<TouchRegion>{new TouchRegion(805,l.ShopProductButton(0)),new TouchRegion(806,l.ShopProductButton(1)),new TouchRegion(807,l.ShopFooter())});
+                groups.Add(new List<TouchRegion>{new TouchRegion(819,l.SupplyClose()),new TouchRegion(820,l.SupplyScroll(false)),new TouchRegion(821,l.SupplyScroll(true)),new TouchRegion(822,l.SupplyKindTab(0)),new TouchRegion(823,l.SupplyKindTab(1))});
+                var cards=new List<TouchRegion>{new TouchRegion(835,l.ShopTab(0,2)),new TouchRegion(836,l.ShopTab(1,2)),new TouchRegion(837,l.TowerCardPage(false)),new TouchRegion(838,l.TowerCardPage(true))};
+                for(int i=0;i<6;i++)cards.Add(new TouchRegion(860+i,l.TowerGradeButton(i)));groups.Add(cards);
+                groups.Add(new List<TouchRegion>{new TouchRegion(809,new Box2(48, l.ShopProduct(0).Y+l.ShopProduct(0).Height-76,l.Width-96,52))});
+                foreach(var group in groups)foreach(var region in group) {
+                    Require(region.Box.Width>=48 && region.Box.Height>=48,"small target");
+                    var input=new MobileInput(l);input.Modal=true;input.Regions.AddRange(group);
+                    V2 point=l.FromScreen(l.ToScreen(region.Box.Center));
+                    input.Pointer(1,PointerPhase.Begin,point);input.Pointer(1,PointerPhase.End,point);input.Pointer(1,PointerPhase.End,point);
+                    Require(input.Actions.Count==1 && input.Actions[0]==region.Action && input.Movement.Length==0,"wrong action/duplicate/joystick");hits++;
+                    input.Reset();input.Pointer(2,PointerPhase.Begin,point);input.Pointer(2,PointerPhase.Cancel,point);Require(input.Actions.Count==0,"cancel fired");
+                }
+                var modal=new MobileInput(l);modal.Modal=true;
+                modal.Regions.Add(new TouchRegion(820,l.SupplyScroll(false)));modal.Regions.Add(new TouchRegion(821,l.SupplyScroll(true)));
+                modal.Regions.Add(new TouchRegion(819,l.SupplyPanel()));
+                modal.Pointer(3,PointerPhase.Begin,l.SupplyScroll(true).Center);modal.Pointer(3,PointerPhase.End,l.SupplyScroll(true).Center);
+                Require(modal.Actions.Count==1 && (int)modal.Actions[0]==821,"result background stole scroll");
+                modal.Reset();modal.Pointer(3,PointerPhase.Begin,l.SupplyRow(0,false).Center);modal.Pointer(3,PointerPhase.End,l.SupplyRow(0,false).Center);
+                Require(modal.Actions.Count==1 && (int)modal.Actions[0]==819,"second tap did not close");
+            }
+            return "PASS: shop/cards/results/odds on 12 safe-area screens; "+checks+" geometry checks and "+hits+" touch targets, cancellation and modal priority.";
         }
     }
 }

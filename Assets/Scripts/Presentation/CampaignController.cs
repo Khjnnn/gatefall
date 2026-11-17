@@ -7,10 +7,11 @@ namespace Gatefall
 {
     // v0.5 flow: City (operation map + briefing in one) -> Battle (preparation, defence, result) -> City.
     // Growth merges hunters and workshop research; Settings holds sound, records and the developer lab.
-    public enum CampaignScreen { Battle, City, Growth, Settings, Loadout, Home }
+    public enum CampaignScreen { Battle, City, Growth, Settings, Loadout, Home, Shop, Roulette, Missions, Attendance, Pass }
     public sealed partial class GatefallGame
     {
         internal const int OperationsPerPage = 6;
+        internal const int ChapterActionBase = 660;
         public int CurrentChapter => CampaignCatalog.Stages[SelectedStage].Chapter;
         internal int MapPageCount => (CampaignCatalog.ChapterCount(CurrentChapter)+OperationsPerPage-1)/OperationsPerPage;
         public CampaignScreen ScreenPage { get; private set; } = CampaignScreen.Home;
@@ -24,6 +25,18 @@ namespace Gatefall
         public string CampaignError { get; private set; } = "";
         public bool SaveBlocked { get; private set; }
         public string CurrentRunId { get; private set; } = "";
+        public IRewardedAdService RewardedAds { get; set; } = new FakeRewardedAdService();
+        internal bool HeartShortage { get; private set; }
+        internal bool HeartAdPending { get; private set; }
+        internal string HomePlaceholder { get; private set; } = "";
+        internal bool HomeRightExpanded { get; private set; }
+        internal int HomeTabFirst { get; private set; }
+        readonly System.Collections.Generic.HashSet<int> homeRead=new System.Collections.Generic.HashSet<int>();
+        int shortageStage;
+        bool shortageCrisis;
+        float nextHeartRefresh;
+        internal bool HomeUnread(int action) { return HomeNotice(action); }
+        internal int HeartWaitSeconds { get { return HeartRules.NextRegenSeconds(Profile,DateTimeOffset.UtcNow.ToUnixTimeSeconds(),(int)(DateTime.Today-new DateTime(1970,1,1)).TotalDays); } }
         CampaignBattle activeBattle = new CampaignBattle();
         public bool IsCampaign { get { return Simulation != null && Simulation.Rules != null && !Simulation.Rules.Lab; } }
         public bool ShowLesson { get { return Profile.ShouldShowLesson(SelectedStage); } }
@@ -39,6 +52,7 @@ namespace Gatefall
             });
             sound.Muted = Profile.Muted;
             SelectFrontier();
+            RefreshHomeHearts();
         }
         // The most advanced open operation that is not yet cleared (or the last one).
         void SelectFrontier()
@@ -62,14 +76,48 @@ namespace Gatefall
             return -1;
         }
         internal bool CanMoveMapPage(int direction) { return LatestOpenOnPage(MapPage + direction) >= 0; }
-        void SetPage(CampaignScreen page) { ScreenPage = page; Menu = GameMenu.None; TouchInput.Reset(); }
-        public void BeginPreparation()
+        void SetPage(CampaignScreen page) {
+            ScreenPage=page;Menu=GameMenu.None;TouchInput.Reset();HomePlaceholder="";
+            if(page==CampaignScreen.Home)RefreshHomeHearts();
+        }
+        void RefreshHomeHearts()
         {
+            nextHeartRefresh=Time.unscaledTime+1;
+            if(!Campaign.RefreshHearts())CampaignError=Campaign.Error;
+        }
+        void TickHomeHearts()
+        { if((ScreenPage==CampaignScreen.Home || ScreenPage==CampaignScreen.Shop || DailyPage || HeartShortage) && Time.unscaledTime>=nextHeartRefresh)RefreshHomeHearts(); }
+        public void BeginPreparation()
+        { BeginAttempt(SelectedStage,CrisisSelection); }
+        void BeginAttempt(int stage,bool crisis)
+        {
+            if(HeartAdPending || DailyAdPending)return;
             string id;
-            if (!Campaign.Begin(SelectedStage, CrisisSelection, out id)) { CampaignError = Campaign.Error; return; }
+            if (!Campaign.Begin(stage,crisis,out id)) {
+                CampaignError=Campaign.Error;
+                if(Campaign.Error=="하트 부족") {
+                    shortageStage=stage;shortageCrisis=crisis;HeartShortage=true;
+                    TouchInput.Reset();RefreshHomeHearts();
+                }
+                return;
+            }
+            HeartShortage=false;
+            SelectMapStage(stage);CrisisSelection=crisis;
             CurrentRunId = id; activeBattle = Campaign.Battle(SelectedStage, CrisisSelection);
             ResultReward = 0; ResultSaved = false; CampaignError = ""; NewRun(false); SetPage(CampaignScreen.Battle);
             ShowNotice("배치 준비 · 시간이 멈춰 있습니다", 2.4f);
+        }
+        void LaunchAfterRefill()
+        { BeginAttempt(shortageStage,shortageCrisis); }
+        void RefillHeartAd()
+        {
+            if(!HeartShortage || HeartAdPending || RewardedAds==null || !RewardedAds.IsReady || Profile.DailyLimits.HeartAdsUsed>=HeartRules.DailyAdLimit)return;
+            HeartAdPending=true;bool completed=false;
+            RewardedAds.Show("heart-shortage",()=> {
+                if(completed)return;completed=true;HeartAdPending=false;
+                if(Campaign.RefillHeartByAd()){CampaignError="";LaunchAfterRefill();}
+                else CampaignError=Campaign.Error;
+            },()=> { if(completed)return;completed=true;HeartAdPending=false;CampaignError="광고를 완료하지 못했습니다. 다시 시도해 주세요."; });
         }
         void BeginLab()
         {
@@ -103,16 +151,42 @@ namespace Gatefall
         bool CampaignAction(int action)
         {
             if (action < 600) return false;
+            if(HeartShortage) {
+                if(action==696)RefillHeartAd();
+                if(action==697 && !HeartAdPending) {
+                    if(Campaign.RefillHeartsByCrystals()){CampaignError="";LaunchAfterRefill();}else CampaignError=Campaign.Error;
+                }
+                if(action==698 && !HeartAdPending) {HeartShortage=false;CampaignError="";TouchInput.Reset();}
+                return true;
+            }
+            if(HomePlaceholder!="") { if(action==686){HomePlaceholder="";TouchInput.Reset();}return true; }
+            if(SupplyModal || ShopAdPending)return ShopAction(action);
+            if(DailyAction(action))return true;
+            if(ShopAction(action))return true;
+            if(action==680 && !Profile.FirstCleared[2])return true;
+            if(action>=680 && action<=685) {
+                HomePlaceholder=action==680?"상점":action==681?"광고 룰렛":action==682?"일일 임무":action==683?"출석":action==684?"하트 상점":"결정 상점";
+                homeRead.Add(action);TouchInput.Reset();return true;
+            }
+            if(action==695){HomeRightExpanded=!HomeRightExpanded;TouchInput.Reset();return true;}
+            if(action==693 || action==694) {
+                HomeTabFirst=Math.Max(0,Math.Min(Math.Max(0,HomeMenu.Tabs.Length-7),HomeTabFirst+(action==693?-1:1)));
+                TouchInput.Reset();return true;
+            }
             if (action == 600) { ReturnCity(); return true; }
             if (action == 601) { BeginLab(); return true; }
             if (action == 602) { SetPage(CampaignScreen.Growth); return true; }
             if (action == 603) { ReturnCity(); if(ScreenPage==CampaignScreen.City)SetPage(CampaignScreen.Home); return true; }
             if (action == 604) { SetPage(CampaignScreen.Settings); return true; }
             if (action == 605 && Profile.FirstSealComplete) { CrisisSelection = !CrisisSelection; return true; }
-            if(action==660 || action==661){int chapter=action==660?1:2;int start=CampaignCatalog.ChapterStart(chapter);if(Profile.IsStageOpen(start))SelectMapStage(start);return true;}
+            if(action>=ChapterActionBase && action<ChapterActionBase+CampaignCatalog.PlayableChapterCount) {
+                int start=CampaignCatalog.ChapterStart(action-ChapterActionBase+1);
+                if(Profile.IsStageOpen(start))SelectMapStage(start);
+                return true;
+            }
             if (action == 606) { BeginPreparation(); return true; }
             if (action == 607 && IsCampaign && ResultSaved && SelectedStage < CampaignCatalog.Stages.Length-1 && Profile.IsStageOpen(SelectedStage + 1)) {
-                SelectMapStage(SelectedStage + 1); ReturnCity(); return true;
+                BeginAttempt(SelectedStage+1,false);return true;
             }
             if (action >= 610 && action < 616 && Profile.IsStageOpen(action - 610)) { SelectMapStage(action - 610); return true; }
             if(action==652 && Profile.FirstCleared[9]) { SetPage(CampaignScreen.Loadout);return true; }
@@ -122,7 +196,7 @@ namespace Gatefall
                 return true;
             }
             if(action>=710 && action<710+CampaignCatalog.Stages.Length) { int stage=action-710;if(Profile.IsStageOpen(stage))SelectMapStage(stage);return true; }
-            if(action>=700 && action<=705) { int[] kinds={0,1,2,7,8,11};int bit=1<<kinds[action-700];if(!Campaign.SetLoadout(Profile.Loadout^bit))CampaignError=Campaign.Error;else CampaignError="";return true; }
+            if(action>=700 && action<700+TowerCatalog.Buildable.Length) { int bit=1<<(int)TowerCatalog.Buildable[action-700];if(!Campaign.SetLoadout(Profile.Loadout^bit))CampaignError=Campaign.Error;else CampaignError="";return true; }
             if (action >= 620 && action < 623) { if (!Campaign.SelectHunter(action - 620)) CampaignError = Campaign.Error; return true; }
             if (action == 623) {
                 for (int k = 1; k <= 3; k++) {

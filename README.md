@@ -1,6 +1,8 @@
-# Gatefall — 라온시 · v0.30.3
+# Gatefall — 라온시 · v0.33.1
 
-귀환자 강윤과 제7방위대가 검은 탑의 범람을 막는 모바일 디펜스입니다. 각성자를 직접 움직이며 자동 공격하고, 결계주를 건설·강화·조합해 도시 결계를 지킵니다. 현재 일반 캠페인은 **종현동1-1~1-14와 다솜동2-1~2-6, 총20작전**입니다. v0.30.3은 최신 챕터2의 밸런스·가변 웨이브·v3 저장에 도시 결계 홈, 공통 버튼·카드·자원·창 아트·FX를 통합한 버전입니다. 7개 월드/240스테이지는 [장기 기획](Docs/Design/GATEFALL_240_STAGE_CAMPAIGN_PLAN.md)이며 구현 완료 수가 아닙니다.
+귀환자 강윤과 제7방위대가 검은 탑의 범람을 막는 모바일 디펜스입니다. 각성자를 직접 움직이며 자동 공격하고, 결계주를 건설·강화·조합해 도시 결계를 지킵니다. 현재 일반 캠페인은 **종현동 1-1~1-14, 다솜동 2-1~2-22, 라온역 3-1~3-8, 총 44작전**입니다. v0.32.1은 라온역 3-2~3-8에 좁은 화면 가림 수정, 조합 카드의 재료 표시, 3-3~3-8 난이도 조정을 더한 버전입니다. 7개 월드/240스테이지는 [장기 기획](Docs/Design/GATEFALL_240_STAGE_CAMPAIGN_PLAN.md)이며 구현 완료 수가 아닙니다.
+
+"조작과 승리" 이하의 상세 절은 v0.30.3 시점의 1장 기준 설명입니다. 2장 후반과 3장의 작전·결계주(관통, 쇄도 등)·조합식은 아래 표의 0.31.0~0.32.1 기록 문서를 우선합니다.
 
 Android 우선입니다. iOS·실제 사람의 재미 평가·실기기 성능과 청감은 보류 상태이며 새 PC 배포물은 만들지 않습니다.
 
@@ -16,8 +18,8 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 ## 설치와 현재 전달본
 
-- [Gatefall-v0.30.3.apk](Builds/Android/Gatefall-v0.30.3.apk), 동일 내용의 [Gatefall.apk](Builds/Android/Gatefall.apk).
-- code143 /108,673,607바이트 /SHA256 `e537974b7b8aadbba047acde011d6110a97950e6a1146eaac3f93b5c5f13a1fc`.
+- [Gatefall-v0.33.1.apk](Builds/Android/Gatefall-v0.33.1.apk), 동일 내용의 [Gatefall.apk](Builds/Android/Gatefall.apk).
+- code153 / 113,692,857바이트 / SHA256 `8ba103bcc414eaffd735cf1fd58cd121e332cce4ac7e2775729efa6e03a58154`.
 - Android9(API28) 이상 /ARM64 /가로 화면. Unity6000.6.7f1 /IL2CPP /target API36.
 - 개발용 Debug 서명·debuggable 테스트 APK입니다. 스토어용 서명/AAB·실기기 검증을 마친 파일은 아닙니다. v2서명·ZIP16KB 정렬과 세ARM64 ELF의LOAD16KB 정렬을 확인했습니다.
 - 같은 패키지·서명으로 `adb install -r Builds/Android/Gatefall.apk`를 사용해 업데이트합니다. 저장을 지우는 초기화·삭제 명령은 사용하지 않습니다.
@@ -26,6 +28,12 @@ Unity Hub에서 복제한 `gatefall` 폴더를 추가하고 Unity `6000.6.7f1`�
 
 | 범위 | 실제 결과 | 기록 |
 |---|---|---|
+| v0.33.1 계승 종결 조정·조합 미리보기 | 관측·쇄도 종결 보강, 탄막 종결은 기존 동작으로 복귀(같은 비용 기존 대비 약했음). 재료 선택 중 실제 공격 모양과 선로 겹침 표시, 조합 카드 상황 문구. Android 3-6 완주 | [계승 종결 기록](Docs/Design/GATEFALL_SEAL_INHERITANCE_EXPANDED_2026-11-15.md) |
+| v0.33.0 하트·상점·보급 상자 | 하트(15분 충전, 여분 999), 홈 탭 줄, 일일 상점, 보급 상자와 결계주 등급(+10% 한도), 광고 룰렛·임무·출석·패스, 저장 v4, 클라우드 저장 병합 규칙. 광고는 가짜 서비스이고 결제·Play 게임즈·AdMob SDK는 미연결. Android 에뮬레이터에서 v3 → v4 업데이트, 하트 0 → 광고 → 출전, 상점·상자·등급, 3-8 한 판과 보상 2배 확인 | [기획과 전달 기록](Docs/Design/GATEFALL_HEARTS_SHOP_GACHA_PLAN_2026-11-14.md) · [검증](TestResults/hearts-shop-20261114/verify-ui.json) |
+| v0.32.2~0.32.4 전투 화면·라온역 그림 | 입구 방향 표지 등 전투 화면 읽기 쉬움 개선, 라온역 바닥·장식 | [전달 기록](Docs/Design/GATEFALL_BATTLE_READABILITY_DELIVERY_2026-11-14.md) · [그림 비교](Docs/Design/GATEFALL_RAON_ART_COMPARISON_2026-11-14.md) |
+| v0.32.1 라온역 후속 정리 | 시작·호출·배속 버튼과 메뉴가 입구·지점을 가리지 않게 배치(43작전×12화면 감사), 조합 카드 재료 표시, 3-3~3-8 정예·속공 배율 조정과 위기 게이트. Android 에뮬레이터 3-3~3-8 전멸 완주(3-6은 1~2별, 나머지 3별)·해금·보상·재실행 저장 | [정리 기록](Docs/Design/GATEFALL_RAIL_POLISH_2026-11-12.md) · [검증](TestResults/rail-polish-20261112/verification-through-8.json) |
+| v0.32.0 라온역 3-2~3-8 | 일곱 작전, 관통 결계주와 쇄도·종결 경로 해금. code147 | [적용 기록](Docs/Design/GATEFALL_RAIL_LAUNCH_2026-11-11.md) |
+| v0.31.0~0.31.2 다솜동 완성·라온역 3-1 | 2-7~2-22와 3-1. code144~146 | [다솜동 완성](Docs/Design/GATEFALL_MARKET_COMPLETION_2026-11-10.md) · [3~5장 대표 전투](Docs/Design/GATEFALL_CHAPTER3_TO_5_PROTOTYPE_2026-11-10.md) |
 | v0.30.3 챕터2 디자인 전체 통합 | 홈·탐색·공통 버튼·카드·자원·창 Lv1/Lv2·FX. Core8개 유지, 실제 Android2-6 탄막 Lv2·8웨이브·3별·보상/콜드 저장 | [통합 기록](Docs/Design/GATEFALL_CHAPTER2_DESIGN_INTEGRATION_2026-11-07.md) · [홈](Docs/QA/v050/chapter2-design-home-final-2400.png) · [탄막 메뉴](Docs/QA/v050/chapter2-design-barrage-price-2400.png) |
 | v0.30.2 챕터2 통합 기준 | 다솜동6작전·산탄/탄막·챕터 전환·장갑/조합 대상수·세 자리 가격 폭. 이 버전의 코어와 전장 자산을0.30.3에 보존 | 기준 커밋 `5db6ecc7fc54c1234fd1e0dfc5fc057c16aca936` |
 | v0.27.36 방벽·봉인·표식 | 충격파, 옥색 사슬과 자주색 연계 타격. 독립 Android 전투·작은 메뉴·합성 저장 확인 | [외형](Docs/QA/v050/v02736-defense-lineup.png) · [검증](TestResults/runtime-v02736.md) |

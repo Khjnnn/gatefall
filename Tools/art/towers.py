@@ -276,6 +276,31 @@ def core():
     return s.finish(outline=3.0, shadow=(12, 9))
 
 
+def rail_tower(level, surge=False):
+    """Paired rail launchers with a taller confinement coil for the fusion."""
+    s = Sprite(W, H)
+    accent = hexc('B69AF6' if surge else '85EAF4')
+    ty = plinth(s, accent, level, wide=1.12)
+    pedestal = [(82, ty - 4), (128, ty - 27), (174, ty - 5), (128, ty + 13)]
+    s.prism(pedestal, 50 + 10 * (level - 1), IRON_TOP, IRON)
+    y = ty - 57 - 10 * (level - 1)
+    for dx in (-16, 20):
+        rail = [(56 + dx, y - 52), (70 + dx, y - 63), (172 + dx, y + 1), (156 + dx, y + 12)]
+        s.prism(rail, 13, STEEL, IRON)
+        s.line([(63 + dx, y - 69), (165 + dx, y - 5)], 4, accent)
+        for step in (.25, .58) if level == 2 else (.58,):
+            x = 63 + dx + 102 * step
+            v = y - 69 + 64 * step
+            s.line([(x - 7, v + 4), (x + 8, v - 6)], 5, hexc('C1955C'))
+    if surge:
+        s.ring(119, y - 39, 33, 35, 8, hexc('596272'))
+        s.arc(119, y - 39, 29, 31, 155, 336, 4, accent)
+        crystal(s, 119, y - 52, 12, 33, accent)
+    else:
+        s.ellipse(124, y - 29, 11, 6, accent)
+    return s.finish(outline=2.6, shadow=(10, 7))
+
+
 def all_towers():
     return {
         'tower-spear-1': spear(1), 'tower-spear-2': spear(2),

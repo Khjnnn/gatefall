@@ -20,7 +20,7 @@ namespace Gatefall
             { "hunter-0", new Spec(65, .47f, .085f) }, { "hunter-1", new Spec(65, .47f, .085f) }, { "hunter-2", new Spec(65, .47f, .085f) },
             { "fx-rift", new Spec(58, .5f, .47f) }, { "fx-select", new Spec(84, .5f, .5f) }, { "fx-range", new Spec(100, .5f, .5f) },
         };
-        public static readonly string[] TowerKeys = { "spear", "tether", "rupture", "arc", "shatter", "gravity", "seal", "shockgate", "searchlight", "observer", "marker", "scatter", "barrage" };
+        public static readonly string[] TowerKeys = { "spear", "tether", "rupture", "arc", "shatter", "gravity", "seal", "shockgate", "searchlight", "observer", "marker", "scatter", "barrage", "piercer", "surge" };
         public static readonly Color Ally = GatefallUiStyle.ColorAlly, Threat = GatefallUiStyle.ColorThreat, Amber = GatefallUiStyle.ColorActionUpgrade, Ink = GatefallUiStyle.ColorTextInk;
         public static readonly Color Paper = GatefallUiStyle.ColorTextPrimary, Muted = GatefallUiStyle.ColorTextSecondary, Slate = Hex("19212B");
 
@@ -106,6 +106,19 @@ namespace Gatefall
             sprites[key] = sprite; return sprite;
         }
 
+        public Sprite RailProp(int index)
+        {
+            string key = "rail-prop-" + index;
+            if (sprites.TryGetValue(key, out Sprite sprite)) return sprite;
+            Texture2D texture = Texture("rail-props-painted") ?? Texture("rail-props");
+            if (texture == null) return null;
+            float width = texture.width / 3f, height = texture.height / 2f;
+            sprite = UnityEngine.Sprite.Create(texture, new Rect(index % 3 * width, (1 - index / 3) * height, width, height),
+                new Vector2(.5f,.5f), 100);
+            sprites[key] = sprite;
+            return sprite;
+        }
+
         public Sprite Tower(TowerKind kind, int level)
         {
             int shown = kind == TowerKind.Seal ? 1 : Mathf.Clamp(level, 1, 2);
@@ -134,6 +147,8 @@ namespace Gatefall
                 case TowerKind.Beacon: return GatefallUiStyle.ColorRoleBeacon;
                 case TowerKind.Scatter: return GatefallUiStyle.ColorRoleScatter;
                 case TowerKind.Barrage: return GatefallUiStyle.ColorRoleBarrage;
+                case TowerKind.Piercer: return GatefallUiStyle.ColorRoleObserve;
+                case TowerKind.Surge: return GatefallUiStyle.ColorRoleBeacon;
                 default: return GatefallUiStyle.ColorRoleFinal;
             }
         }

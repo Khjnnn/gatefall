@@ -27,7 +27,9 @@ namespace Gatefall.Tests
         public static string Run(string directory)
         {
             var report=new List<string>();string why;
-            A(CampaignCatalog.Stages.Length==20 && CampaignCatalog.StageId(14)=="2-1" && CampaignCatalog.StageId(19)=="2-6","stage identity");
+            CheckResultLabels();
+            A(CampaignCatalog.StageId(14)=="2-1" && CampaignCatalog.StageId(19)=="2-6" &&
+                CampaignCatalog.ChapterCount(2)==22 && CampaignCatalog.StageId(35)=="2-22" && CampaignCatalog.ChapterStart(3)==36,"stage identity");
             var maps=new HashSet<string>();
             for(int i=14;i<20;i++){
                 var s=CampaignCatalog.Stages[i];var g=new DefenseSimulation(new GameBalance(),7,new CampaignBattle{Stage=s});
@@ -58,7 +60,7 @@ namespace Gatefall.Tests
             migrated.TutorialSeenIds.Add("C04-S032");migrated.TutorialSeenIds.Add("C07-S064");migrated.StorySeenIds.Add("C10-S240");
             migrated.UnmappedProgress.Add("C10-S240",new StageProgress{Stars=2,CrisisStars=1,Erosion=.2f,FirstCleared=true});
             var rt=CampaignStore.Decode(CampaignStore.Encode(migrated));A(rt.TutorialSeenIds.SetEquals(migrated.TutorialSeenIds) && rt.StorySeenIds.SetEquals(migrated.StorySeenIds) && rt.UnmappedProgress["C10-S240"].Stars==2,"ID boundary/future records");
-            report.Add("PASS32/64/240 IDs and unknown future progress survive deterministic v3 roundtrip");
+            report.Add("PASS32/64/240 IDs and unknown future progress survive deterministic v4 roundtrip");
             byte[] future=(byte[])good.Clone();using(var m=new MemoryStream(future,true)){m.Position=32;using(var r=new BinaryReader(m,Encoding.UTF8,true)){r.ReadString();long at=m.Position;using(var w=new BinaryWriter(m,Encoding.UTF8,true)){m.Position=at;w.Write(99);}}}
             using(var sha=SHA256.Create())Buffer.BlockCopy(sha.ComputeHash(future,32,future.Length-32),0,future,0,32);
             File.WriteAllBytes(save,future);File.WriteAllBytes(save+".bak",good);bool newerRejected=false;try{store.Load();}catch(IOException){newerRejected=true;}
@@ -95,6 +97,24 @@ namespace Gatefall.Tests
             A(calls.Wave==7 && calls.Telemetry.CoresGranted==2 && calls.SuppliesGranted==5 && calls.Telemetry.CardOffers==3,"late-wave calls/supply/card cap");
             report.Add("PASS wave7/8 calls/progress without out-of-range access or extra supplies/cards/catalysts");
             return string.Join("\n",report);
+        }
+        static void CheckResultLabels()
+        {
+            A(CampaignCatalog.ResultCoreStatus(true,300,300)=="결계 최저 100%","three-star result");
+            A(CampaignCatalog.ResultCoreStatus(true,240,300)=="결계 최저 80% · ★★★까지 10%p","two-star result");
+            A(CampaignCatalog.ResultCoreStatus(true,204,300)=="결계 최저 68% · ★★까지 2%p","one-star result");
+            A(CampaignCatalog.ResultCoreStatus(false,0,300)=="결계 최저 0%","defeat result");
+            A(CampaignCatalog.ResultCoreStatus(true,210,300)=="결계 최저 70% · ★★★까지 20%p","exact star boundary");
+            A(CampaignCatalog.ResultDamageDirections(new[]{0f,0f,0f,0f})=="","no damage direction");
+            A(CampaignCatalog.ResultDamageDirections(new[]{0f,0f,72f,0f})=="피해가 컸던 방향 동 72","one damage direction");
+            A(CampaignCatalog.ResultDamageDirections(new[]{0f,24f,72f,0f})=="피해가 컸던 방향 동 72 · 북 24","two damage directions");
+            A(CampaignCatalog.ResultDamageDirections(new[]{12f,48f,72f,30f})=="피해가 컸던 방향 동 72 · 북 48","four damage directions");
+            int index=CampaignCatalog.FindStage("C03-S006");
+            var game=new DefenseSimulation(new GameBalance(),7,new CampaignBattle { Stage=CampaignCatalog.Stages[index] });
+            var preview=game.GetWaveBriefing(3);
+            A(preview.LaneCount(0)==72 && preview.LaneThreat(0)==EnemyKind.Grunt &&
+                preview.LaneCount(1)==2 && preview.LaneThreat(1)==EnemyKind.Siege &&
+                preview.LaneCount(2)==18 && preview.LaneThreat(2)==EnemyKind.Runner,"entrance counts and per-lane threat");
         }
     }
 }

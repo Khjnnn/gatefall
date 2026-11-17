@@ -11,15 +11,19 @@ namespace Gatefall
             int stage = game.Rules != null && game.Rules.Stage != null ? game.Rules.Stage.Index : 0;
             int theme = game.Rules != null && game.Rules.Stage != null ? BattlefieldLayouts.Get(game.Rules.Stage).Theme : 0;
             bool market=game.Rules!=null && game.Rules.Stage!=null && game.Rules.Stage.Chapter==2;
+            bool rail = game.Rules?.Stage?.Chapter == 3;
             Color[] groundTints = { GatefallArt.Hex("E6DFCE"), GatefallArt.Hex("C9D3D6"), GatefallArt.Hex("E7D8BE"), GatefallArt.Hex("C9CFCA") };
             if(market)groundTints=new[]{GatefallArt.Hex("E4D1AE"),GatefallArt.Hex("DBC9AD"),GatefallArt.Hex("BAC7CD"),GatefallArt.Hex("CABBA5")};
-            Texture2D paving = stage == 10 ? art.Texture("district-training-ground") ?? art.Texture("district-ground") : art.Texture("district-ground");
+            Texture2D paving = art.Texture(rail ? "rail-concrete-painted" : stage == 10 ? "district-training-ground" : "district-ground");
+            if (rail && paving == null) paving = art.Texture("rail-concrete");
+            if (paving == null) paving = art.Texture("district-ground");
             if (paving != null) paving.wrapMode = TextureWrapMode.Repeat;
             Mesh plate = new Mesh { name = "Tiled district ground" };
             plate.vertices = new[] { new Vector3(-32,-22,0),new Vector3(32,-22,0),new Vector3(32,22,0),new Vector3(-32,22,0) };
-            float tile = stage == 10 ? 12 : 24;
-            plate.uv = new[] { new Vector2(0,0),new Vector2(64f/tile,0),new Vector2(64f/tile,44f/(tile/2)),new Vector2(0,44f/(tile/2)) };
-            Color groundTint = groundTints[theme];
+            float tile = rail ? 11 : stage == 10 ? 12 : 24;
+            float tileHeight = rail ? tile : tile/2;
+            plate.uv = new[] { new Vector2(0,0),new Vector2(64f/tile,0),new Vector2(64f/tile,44f/tileHeight),new Vector2(0,44f/tileHeight) };
+            Color groundTint = rail ? Color.white : groundTints[theme];
             plate.colors = new[] { groundTint,groundTint,groundTint,groundTint }; plate.triangles = new[] {0,1,2,0,2,3}; plate.RecalculateBounds(); owned.Add(plate);
             Material groundMaterial = new Material(Shader.Find("Sprites/Default")); groundMaterial.mainTexture = paving; owned.Add(groundMaterial);
             GameObject groundObject = new GameObject("District paving"); groundObject.transform.SetParent(root,false);
@@ -34,14 +38,18 @@ namespace Gatefall
                 CourtPaint(new V2(16.5f, 1), 9, 8, GatefallArt.Hex("747B62"));
                 CourtPaint(new V2(-13.5f, 0), 4, 5, GatefallArt.Hex("9F9276"));
             }
-            Rect landmark = DistrictLandmark(game, stage, theme);
-            Texture2D asphalt = art.Texture("asphalt");
+            Rect landmark = DistrictLandmark(game, stage, theme, rail);
+            Texture2D asphalt = rail ? art.Texture("rail-ballast-painted") ?? art.Texture("rail-ballast") : art.Texture("asphalt");
             if (asphalt != null) asphalt.wrapMode = TextureWrapMode.Repeat;
-            RoadSurface(game, 1.42f, GatefallArt.Hex("727675"), -31300, null);
-            RoadSurface(game, 1.25f, GatefallArt.Hex("CBC8B7"), -31200, null);
+            RoadSurface(game, 1.42f, GatefallArt.Hex(rail ? "31383B" : "727675"), -31300, null);
+            RoadSurface(game, 1.25f, GatefallArt.Hex(rail ? "988263" : "CBC8B7"), -31200, null);
             RoadSurface(game, BattlefieldLayouts.RoadHalfWidth, Color.white, -31100, asphalt);
+            var railVertices = rail ? new List<Vector3>() : null;
+            var railColors = rail ? new List<Color>() : null;
+            var railIndices = rail ? new List<int>() : null;
             foreach (int lane in game.OpenLanes) {
                 V2[] road = game.Roads[lane]; float length = BattlefieldLayouts.RoadLength(road);
+                if (rail) DrawRails(road, railVertices, railColors, railIndices);
                 int marking = 0;
                 for (float d = 1.6f; d < length - 3.8f; d += 2.4f, marking++) {
                     int next; V2 p = BattlefieldLayouts.Along(road, d, out next);
@@ -51,13 +59,29 @@ namespace Gatefall
                         V2 side = new V2(-direction.Y, direction.X) * .26f;
                         V2 tip = p + direction * .34f, tail = p - direction * .24f;
                         RoadMark(tail + side, tip); RoadMark(tail - side, tip);
-                    } else RoadMark(p - direction * .31f, p + direction * .31f);
+                    } else if (!rail) RoadMark(p - direction * .31f, p + direction * .31f);
                 }
+            }
+            if (rail) {
+                var tracks = new Mesh { name = "Raon rails and sleepers" };
+                tracks.SetVertices(railVertices);
+                tracks.SetColors(railColors);
+                tracks.SetTriangles(railIndices, 0);
+                tracks.RecalculateBounds();
+                var material = new Material(Shader.Find("Sprites/Default")) { mainTexture = Texture2D.whiteTexture };
+                owned.Add(tracks);
+                owned.Add(material);
+                var trackObject = new GameObject("Raon rails and sleepers");
+                trackObject.transform.SetParent(root, false);
+                trackObject.AddComponent<MeshFilter>().sharedMesh = tracks;
+                var renderer = trackObject.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                renderer.sortingOrder = -31095;
             }
             // A small public square joins all active streets at the barrier.
             Sprite disc = art.Sprite("fx-disc");
-            Make("Barrier plaza edge", disc, Vector3.zero, Vector3.one * (5.8f / DiscDiameter), GatefallArt.Hex("BDBBAB"), -31070);
-            Make("Barrier plaza", disc, Vector3.zero, Vector3.one * (5.3f / DiscDiameter), GatefallArt.Hex("8E968B"), -31060);
+            Make("Barrier plaza edge", disc, Vector3.zero, Vector3.one * (5.8f / DiscDiameter), GatefallArt.Hex(rail ? "8A8980" : "BDBBAB"), -31070);
+            Make("Barrier plaza", disc, Vector3.zero, Vector3.one * (5.3f / DiscDiameter), GatefallArt.Hex(rail ? "656B68" : "8E968B"), -31060);
             Color[] tints = { Color.white, new Color(.91f,.96f,1), new Color(1,.96f,.89f), new Color(.91f,.93f,.97f) };
             // Entire transparent sprite cells must stay clear of every road and tower site.
             for (int x = -5; x <= 5; x++) for (int y = -3; y <= 3; y++) {
@@ -74,9 +98,76 @@ namespace Gatefall
                     foreach (V2 pad in game.BoardSockets) if (V2.Distance(sample, pad) < 1.8f) clear = false;
                 }
                 if (!clear) continue;
-                int index = ((x * 7 + y * 3 + stage * 5) % 4 + 4) % 4;
-                Sprite sprite = art.Scenery(index,market); if (sprite == null) continue;
-                Make("District block " + index, sprite, Point(p), new Vector3(width / sprite.bounds.size.x, height / sprite.bounds.size.y, 1), tints[theme], -30000 + Order(p.Y));
+                int variety = rail ? 6 : 4;
+                int index = ((x * 7 + y * 3 + stage * 5) % variety + variety) % variety;
+                Sprite sprite = rail ? art.RailProp(index) : art.Scenery(index,market); if (sprite == null) continue;
+                Make("District block " + index, sprite, Point(p), new Vector3(width / sprite.bounds.size.x, height / sprite.bounds.size.y, 1), rail ? Color.white : tints[theme], -30000 + Order(p.Y));
+            }
+        }
+
+        private void DrawRails(V2[] road, List<Vector3> vertices, List<Color> colors, List<int> indices)
+        {
+            Color wood = GatefallArt.Hex("685849"), metal = GatefallArt.Hex("7F807A");
+            Sprite portal = art.Sprite("rail-tunnel-painted");
+            V2 outward = (road[0] - road[1]).Normalized;
+            if (portal != null)
+                Make("Tunnel behind rift", portal, Point(road[0]+outward*.65f), new Vector3(5.5f/portal.bounds.size.x,4.1f/portal.bounds.size.y,1), Color.white, 110);
+
+            // Round only the paint. Trim each corner within the existing road surface.
+            var centerline = new List<V2> { road[0] - outward*.18f };
+            for (int i=1; i<road.Length-1; i++) {
+                V2 incoming = road[i]-road[i-1], outgoing = road[i+1]-road[i];
+                float trim = Mathf.Min(.78f, Mathf.Min(incoming.Length, outgoing.Length)*.28f);
+                if (trim < .02f) continue;
+                V2 enter = road[i]-incoming.Normalized*trim, leave = road[i]+outgoing.Normalized*trim;
+                centerline.Add(enter);
+                for (int sample=1; sample<=6; sample++) {
+                    float t=sample/6f, rest=1-t;
+                    centerline.Add(enter*(rest*rest) + road[i]*(2*t*rest) + leave*(t*t));
+                }
+            }
+            centerline.Add(road[road.Length-1]);
+
+            float nextSleeper = .24f;
+            var normals = new V2[centerline.Count];
+            for (int i=0; i<centerline.Count; i++) {
+                V2 tangent = (centerline[Mathf.Min(i+1,centerline.Count-1)]-centerline[Mathf.Max(0,i-1)]).Normalized;
+                normals[i] = new V2(-tangent.Y,tangent.X);
+            }
+            for (int i=1; i<centerline.Count; i++) {
+                V2 start=centerline[i-1], delta=centerline[i]-start;
+                if (delta.Length < .001f) continue;
+                V2 along=delta.Normalized, across=new V2(-along.Y,along.X);
+                while (nextSleeper <= delta.Length) {
+                    V2 point=start+along*nextSleeper;
+                    TrackMark(point-across*.62f, point+across*.62f, .085f, wood);
+                    nextSleeper += .56f;
+                }
+                nextSleeper -= delta.Length;
+            }
+            for (int side=-1; side<=1; side+=2) {
+                for (int i=1; i<centerline.Count; i++) {
+                    V2 a=centerline[i-1], b=centerline[i], na=normals[i-1], nb=normals[i];
+                    float inner=side*.43f-.032f, outer=side*.43f+.032f;
+                    TrackQuad(a+na*outer, a+na*inner, b+nb*inner, b+nb*outer, metal);
+                }
+            }
+
+            void TrackMark(V2 from, V2 to, float thickness, Color tint)
+            {
+                V2 direction = (to-from).Normalized;
+                V2 normal = new V2(-direction.Y,direction.X)*(thickness/2);
+                TrackQuad(from+normal, from-normal, to-normal, to+normal, tint);
+            }
+
+            void TrackQuad(V2 a, V2 b, V2 c, V2 d, Color tint)
+            {
+                int first = vertices.Count;
+                vertices.Add(Point(a)); vertices.Add(Point(b));
+                vertices.Add(Point(c)); vertices.Add(Point(d));
+                colors.Add(tint); colors.Add(tint); colors.Add(tint); colors.Add(tint);
+                indices.Add(first); indices.Add(first+1); indices.Add(first+2);
+                indices.Add(first); indices.Add(first+2); indices.Add(first+3);
             }
         }
 
@@ -90,7 +181,7 @@ namespace Gatefall
                 Make("Worn court boundary", square, Point(new V2(x,center.Y)), new Vector3(.045f,height*.76f,1), line,-31890);
         }
 
-        private Rect DistrictLandmark(DefenseSimulation game, int stage, int theme)
+        private Rect DistrictLandmark(DefenseSimulation game, int stage, int theme, bool rail)
         {
             V2[] anchors = { new V2(0,9),new V2(18.5f,8.5f),new V2(-18.5f,8.5f),new V2(-10,9),new V2(10,9),new V2(18.5f,-8.5f),new V2(-18.5f,-8.5f),new V2(0,-9),new V2(-10,-9),new V2(10,-9) };
             for (int size=0;size<2;size++) for(int i=0;i<anchors.Length;i++) {
@@ -104,7 +195,8 @@ namespace Gatefall
                 if(!clear)continue;
                 // Existing original atlas: homes, warehouse, garden, underpass.
                 int index=stage==10?2:stage==11?1:theme==1?3:theme==2?1:stage%4;
-                Sprite sprite=art.Scenery(index,game.Rules!=null && game.Rules.Stage!=null && game.Rules.Stage.Chapter==2);if(sprite==null)return new Rect();
+                Sprite sprite=rail ? art.RailProp(stage%6) : art.Scenery(index,game.Rules?.Stage?.Chapter==2);
+                if(sprite==null)return new Rect();
                 // Atlas scenery already has a painted footprint; avoid a flat opaque pedestal.
                 Make("District landmark "+stage,sprite,Point(center),new Vector3(width/sprite.bounds.size.x,height/sprite.bounds.size.y,1),Color.white,-30000+Order(center.Y));
                 Debug.Log("GATEFALL LANDMARK stage="+(stage+1)+" x="+center.X+" y="+center.Y+" width="+width+" atlas="+index);

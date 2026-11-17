@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Gatefall.Core;
 using UnityEngine;
@@ -8,16 +9,28 @@ namespace Gatefall
     // every button here registers a TouchRegion with the same box it draws.
     public sealed partial class MobileHud
     {
+        readonly FusionPreview fusionPreview=new FusionPreview();
+        readonly FusionPreview[] recipePreviews=new FusionPreview[TowerCatalog.Recipes.Length];
         public const string SlowResistanceHint = "정예·공성 감속 저항";
         public static string ArmorHint(TowerKind kind)
-        { return kind==TowerKind.Scatter ? "장갑 피해 감소" : kind==TowerKind.Barrage ? "장갑 관통" : ""; }
+        { return kind==TowerKind.Scatter || kind==TowerKind.Piercer ? "장갑 피해 감소" : kind==TowerKind.Barrage ? "장갑 관통" : ""; }
         public static string FusionRole(TowerKind result,int maximumTargets)
         {
             if(result==TowerKind.Beacon)return maximumTargets+"명 표식·감속";
             if(result==TowerKind.Barrage)return maximumTargets+"명 · 장갑 관통";
+            if(result==TowerKind.Surge)return "직선 "+maximumTargets+"명 · 감속";
             if(result==TowerKind.Seal)return maximumTargets+"명 · 범위·감속";
-            return "재료 2개 소비";
+            return "";
         }
+        // The same result can come from different materials (종결 has six recipes). Name both, the tapped tower first.
+        public static string FusionMaterials(FusionRecipe recipe,TowerKind anchor)
+        {
+            TowerKind other=recipe.First==anchor ? recipe.Second : recipe.First;
+            return ShortName(anchor)+" + "+ShortName(other);
+        }
+        public static string ShortName(TowerKind kind) { return TowerCatalog.Get(kind).Name.Replace(" 결계주", ""); }
+        public static string WaveCallCompactTitle(double seconds,int enemies,int supply)
+        { return "호출 "+seconds.ToString("F0")+"초 · 적 "+enemies+" 겹침 · 보급"+supply; }
         public const float ArmoredHealthLabelWidth = 86, PlainHealthLabelWidth = 58;
         public static string EnemyHealthText(float health, bool armored)
         {
@@ -44,13 +57,23 @@ namespace Gatefall
         private readonly List<Box2> fusionTowerGuards = new List<Box2>(24);
         private readonly List<Rect> enemyHealthLabels = new List<Rect>(8);
         private readonly List<Box2> statusWorldGuards = new List<Box2>(32);
+        private readonly List<Box2> riftGuards = new List<Box2>(4);
+        private readonly List<Box2> entranceRoads = new List<Box2>(48);
+        private readonly List<Box2> bossWorldGuards = new List<Box2>(48);
+        private readonly List<Box2> hudReserved = new List<Box2>(18);
+        private readonly List<Box2> lastEntranceObstacles = new List<Box2>(18);
+        private readonly Box2[] entranceLabels = new Box2[4];
+        private bool entranceLayoutCurrent;
+        private Box2 towerCount;
+        private bool HasCatalystChip => game.Rules != null && (game.Rules.Lab || game.Rules.Stage.HasCatalysts);
         private DefenseSimulation statusGame;
         private MobileLayout statusLayout;
-        private Box2 coreStatus;
+        private Box2 coreStatus, fullBoardWave, waveHeader, bossDock;
         private Vector3 statusCameraPosition;
         private float statusCameraSize;
         private const float BossHealthBarY = 84, BossHealthBarHeight = 12;
         private const string BossWarningText = "문지기 공격 예고 · 붉은 원에서 벗어나세요";
+        public const string DockedBossWarningText = "공격 예고 · 붉은 원에서 벗어나세요";
         private static readonly Color Paper = GatefallArt.Paper, Muted = GatefallArt.Muted, Ink = GatefallArt.Ink, Amber = GatefallArt.Amber, Ally = GatefallArt.Ally, Threat = GatefallArt.Threat;
 
         public MobileHud(GatefallGame controller, GatefallArt art) { this.controller = controller; this.art = art; }
@@ -62,23 +85,28 @@ namespace Gatefall
             items.Clear(); controller.TouchInput.Regions.Clear();
             activeTowerPanel=new Box2();
             controller.TouchInput.Modal = controller.Menu != GameMenu.None || game.AwaitingCard || game.State == RunState.Won || game.State == RunState.Lost;
-            if (controller.ScreenPage != CampaignScreen.Battle) { controller.TouchInput.Modal = true; CampaignPage(); return; }
+            if (controller.ScreenPage != CampaignScreen.Battle) { controller.TouchInput.Modal = true; CampaignPage();HomeOverlay();return; }
+            if(controller.HeartShortage) { HomeOverlay();return; }
             ResolveCoreStatus();
+            waveHeader = ResolveWaveHeader();
             bool ended = game.State == RunState.Won || game.State == RunState.Lost;
-            if (!ended && !game.AwaitingCard && controller.Menu == GameMenu.None && game.State == RunState.Running) EnemyHealthLabels();
             Enemy boss = ended ? null : game.Enemies.Find(e => e.Kind == EnemyKind.Boss && e.Health > 0);
             bossPanelGuard = new Rect();
-            // Keep the menu in one place during the final wave, including attack windup and cleanup.
+            // Keep the menu clear of the boss panel from the scheduled wave through the fight.
             CampaignStage stage = game.Rules?.Stage;
-            if (!ended && stage != null && stage.Boss && (boss != null || game.Wave >= stage.Counts.Length - 1)) {
-                Box2 warning = layout.NoticeBox(BossWarningText.Length, false);
-                float width = Mathf.Max(360, warning.Width);
-                bossPanelGuard = new Rect((W - width) / 2, 62, width, warning.Y + warning.Height - 62);
+            if (!ended && stage != null && stage.Boss && (boss != null || game.Wave == game.BossWave || game.BossDefeated && bossDock.Width > 0)) {
+                if (bossDock.Width > 0) bossPanelGuard = new Rect(bossDock.X, bossDock.Y, bossDock.Width, bossDock.Height);
+                else {
+                    Box2 warning = layout.NoticeBox(BossWarningText.Length, false);
+                    float width = Mathf.Max(360, warning.Width);
+                    bossPanelGuard = new Rect((W - width) / 2, 62, width, warning.Y + warning.Height - 62);
+                }
             }
+            if (!ended && !game.AwaitingCard && controller.Menu == GameMenu.None && game.State == RunState.Running) EnemyHealthLabels();
             if (!ended) TopBar(boss);
             if (!ended && game.ExpandedArena && !controller.Overview && controller.Menu == GameMenu.None && !game.AwaitingCard) OffscreenThreats();
             if (ended) { if (controller.IsCampaign) CampaignResult(); else LabResult(); }
-            else if (game.AwaitingCard) Cards(boss != null);
+            else if (game.AwaitingCard) Cards(boss != null && bossDock.Width == 0);
             else if (controller.Menu == GameMenu.Socket) {
                 SocketPanel();
                 if (game.State == RunState.Running) EnemyHealthLabels(
@@ -91,7 +119,10 @@ namespace Gatefall
             else if (controller.Menu == GameMenu.Pause) PauseScreen();
             else { Controls(); Pads(); }
             if (!ended && controller.Menu != GameMenu.Pause && !game.AwaitingCard) {
-                if (boss != null && boss.BossWindup > 0) Toast(BossWarningText, true);
+                EntranceLabels();
+                if (boss != null && boss.BossWindup > 0) {
+                    if (bossDock.Width == 0) Toast(BossWarningText, true);
+                }
                 else if (controller.NoticeUntil > Time.unscaledTime) Toast(controller.Notice);
             }
         }
@@ -100,11 +131,17 @@ namespace Gatefall
         private void ResolveCoreStatus()
         {
             Camera camera=controller.GameCamera;
-            if(statusGame==game && statusLayout==layout && (game.ExpandedArena ||
-                statusCameraPosition==camera.transform.position && Mathf.Approximately(statusCameraSize,camera.orthographicSize)))return;
+            if(statusGame==game && statusLayout==layout &&
+                statusCameraPosition==camera.transform.position && Mathf.Approximately(statusCameraSize,camera.orthographicSize))return;
             statusGame=game;statusLayout=layout;statusCameraPosition=camera.transform.position;statusCameraSize=camera.orthographicSize;statusWorldGuards.Clear();
+            entranceLayoutCurrent = false;
+            bossDock = new Box2();
+            riftGuards.Clear();
+            entranceRoads.Clear();
+            layout.PlaceControls(null,null);
             // The expanded 1-4 tracking camera moves continuously. Keep its existing fixed status.
-            if(!game.ExpandedArena) {
+            if(game.WaveClearVictory) {
+                headerRifts.Clear();
                 float unit=controller.WorldToReferenceScale(1);
                 foreach(V2 socket in game.BoardSockets) {
                     Vector2 p=controller.WorldToReference(socket,0);
@@ -112,10 +149,123 @@ namespace Gatefall
                 }
                 foreach(int lane in game.OpenLanes) {
                     Vector2 p=controller.WorldToReference(game.GatePositions[lane],0);
-                    statusWorldGuards.Add(new Box2(p.x-2.55f*unit,p.y-1.6f*unit,5.1f*unit,3.2f*unit));
+                    Box2 rift = new Box2(p.x-2.55f*unit,p.y-1.6f*unit,5.1f*unit,3.2f*unit);
+                    statusWorldGuards.Add(rift);riftGuards.Add(rift);
+                    if (rift.Y < 62 && rift.Y + rift.Height > 0) headerRifts.Add(rift);
+                    V2[] road = game.Roads[lane];
+                    for (int i = 1; i < road.Length; i++) {
+                        Vector2 a = controller.WorldToReference(road[i-1], 0);
+                        Vector2 b = controller.WorldToReference(road[i], 0);
+                        float margin = BattlefieldLayouts.RoadHalfWidth * unit;
+                        entranceRoads.Add(MobileLayout.RoadGuard(new V2(a.x,a.y), new V2(b.x,b.y), margin, margin, margin));
+                    }
+                }
+                // Start, wave call and speed leave entrances and pads; the wave header then avoids the speed button.
+                if (!game.ExpandedArena) {
+                    layout.PlaceControls(statusWorldGuards,riftGuards);
+                    statusWorldGuards.Add(layout.Button(MobileAction.Speed));
+                    fullBoardWave = layout.WaveHeader(headerRifts, statusWorldGuards);
                 }
             }
-            coreStatus=layout.CoreStatusBox(statusWorldGuards);
+            coreStatus=layout.CoreStatusBox(game.ExpandedArena ? null : statusWorldGuards);
+            towerCount=layout.TowerCountBox(HasCatalystChip, game.ExpandedArena ? layout.WaveHeader(null) : fullBoardWave, statusWorldGuards);
+            if (!game.ExpandedArena && game.Rules?.Stage?.BossEntryDistance.HasValue == true) {
+                int bossLane = -1;
+                foreach (SpawnGroup group in game.Schedule)
+                    if (group.Kind == EnemyKind.Boss) { bossLane = group.Lane; break; }
+                if (bossLane >= 0) {
+                    bossWorldGuards.Clear();
+                    bossWorldGuards.AddRange(statusWorldGuards);
+                    float unit = controller.WorldToReferenceScale(1);
+                    foreach (int lane in game.OpenLanes) {
+                        V2[] road = game.Roads[lane];
+                        bool bossRoad = lane == bossLane;
+                        for (int i = 1; i < road.Length; i++) {
+                            Vector2 a = controller.WorldToReference(road[i-1], 0);
+                            Vector2 b = controller.WorldToReference(road[i], 0);
+                            bossWorldGuards.Add(MobileLayout.RoadGuard(new V2(a.x,a.y), new V2(b.x,b.y),
+                                (bossRoad ? 2.1f : 1.3f)*unit, (bossRoad ? 4f : 1.3f)*unit, (bossRoad ? 1.2f : 1.3f)*unit));
+                        }
+                    }
+                    bossDock = layout.BossStatusDock(bossWorldGuards);
+                }
+            }
+        }
+        private void ReserveBattleHud()
+        {
+            layout.ReadabilityControls(coreStatus, waveHeader, towerCount, HasCatalystChip, hudReserved);
+            if (bossPanelGuard.width > 0) hudReserved.Add(Box(bossPanelGuard));
+            if (game.HunterDown) hudReserved.Add(new Box2(14, 68, 244, 42));
+            if (game.IsPreparing && controller.LessonText != "") hudReserved.Add(Box(LessonBox()));
+            if (activeTowerPanel.Width > 0) hudReserved.Add(activeTowerPanel);
+            if (game.AllWavesSpawned && bossDock.Width == 0) hudReserved.Add(new Box2(W / 2 - 180, 62, 360, 43));
+            if (game.ExpandedArena) {
+                hudReserved.Add(new Box2(W - 176, 78, 160, 46));
+                if (!controller.Overview) {
+                    hudReserved.Add(layout.NorthThreatTag());
+                    hudReserved.Add(new Box2(12, H / 2 - 30, 130, 44));
+                    hudReserved.Add(new Box2(W - 142, H / 2 - 30, 130, 44));
+                    hudReserved.Add(new Box2(W / 2 - 65, H - 165, 130, 44));
+                }
+            }
+        }
+
+        private void EntranceLabels()
+        {
+            if (!game.WaveClearVictory) return;
+            ReserveBattleHud();
+            bool changed = !entranceLayoutCurrent || lastEntranceObstacles.Count != hudReserved.Count;
+            for (int i = 0; !changed && i < hudReserved.Count; i++) {
+                Box2 previous = lastEntranceObstacles[i], current = hudReserved[i];
+                changed = previous.X != current.X || previous.Y != current.Y ||
+                    previous.Width != current.Width || previous.Height != current.Height;
+            }
+            if (changed) {
+                entranceLayoutCurrent = true;
+                lastEntranceObstacles.Clear();
+                lastEntranceObstacles.AddRange(hudReserved);
+                Array.Clear(entranceLabels, 0, entranceLabels.Length);
+            }
+            WaveBriefing preview = controller.EntrancePreview;
+            for (int i = 0; i < game.OpenLanes.Length; i++) {
+                int lane = game.OpenLanes[i];
+                Box2 rift = riftGuards[i];
+                if (game.ExpandedArena && (rift.X + rift.Width < 0 || rift.X > W || rift.Y + rift.Height < 0 || rift.Y > H)) continue;
+                if (changed) {
+                    entranceLabels[lane] = layout.EntranceLabel(rift, statusWorldGuards, entranceRoads, hudReserved);
+                    if (entranceLabels[lane].Width > 0) hudReserved.Add(entranceLabels[lane]);
+                }
+                Box2 label = entranceLabels[lane];
+                if (label.Width == 0) continue;
+                int count = preview?.LaneCount(lane) ?? 0;
+                Color color = count <= 0 ? Muted : preview.LaneThreat(lane) >= EnemyKind.Brute ? Threat : Paper;
+                Rect rect = new Rect(label.X, label.Y, label.Width, label.Height);
+                Skin(rect, "ui-chip");
+                Text(rect, count > 0 ? EntranceDirection(lane) + " " + count : EntranceDirection(lane),
+                    15, color, TextAnchor.MiddleCenter, 2);
+            }
+        }
+        private static string EntranceDirection(int lane) => lane == 0 ? "서" : lane == 1 ? "북" : lane == 2 ? "동" : "남";
+
+        private Rect LessonBox()
+        {
+            float width = Mathf.Min(660, W - 380);
+            return new Rect((W - width) / 2, 70, width, W > 1100 ? 48 : 72);
+        }
+        private Box2 ResolveWaveHeader()
+        {
+            if (!game.WaveClearVictory) return layout.WaveHeader(null);
+            if (!game.ExpandedArena) return fullBoardWave;
+            if (game.IsPreparing || !controller.Overview && controller.Menu != GameMenu.FusionPick) return layout.WaveHeader(null);
+
+            headerRifts.Clear();
+            float halfX = controller.WorldToReferenceScale(2.55f), halfY = controller.WorldToReferenceScale(1.6f);
+            foreach (int lane in game.OpenLanes) {
+                Vector2 p = controller.WorldToReference(game.GatePositions[lane], 0);
+                Box2 rift = new Box2(p.x - halfX, p.y - halfY, halfX * 2, halfY * 2);
+                if (rift.Y < 62 && rift.Y + rift.Height > 0) headerRifts.Add(rift);
+            }
+            return layout.WaveHeader(headerRifts);
         }
         public bool FusionBadgeOverlapsCore(V2 socket)
         {
@@ -127,15 +277,22 @@ namespace Gatefall
         {
             enemyHealthLabels.Clear();
             Rect barrierHud = new Rect(0, 0, 342, 63);
-            Rect waveHud = new Rect(W / 2 - 180, 0, 360, 105);
-            Rect creditsHud = new Rect(W - 350, 0, 350, 83);
+            Rect waveHud = new Rect(waveHeader.X, waveHeader.Y, waveHeader.Width, waveHeader.Height);
+            Rect centerStatus = new Rect(W / 2 - 180, 62, 360, 43);
+            bool hasCenterStatus = game.BossDefeated ? bossDock.Width == 0 : game.AllWavesSpawned;
+            Rect creditsHud = new Rect(W - 350, 0, 350, 63);
+            Rect countHud = new Rect(towerCount.X, towerCount.Y, towerCount.Width, towerCount.Height);
+            Box2 speedBox = layout.Button(MobileAction.Speed);
+            Rect speedHud = new Rect(speedBox.X, speedBox.Y, speedBox.Width, speedBox.Height);
             foreach (Enemy enemy in game.Enemies) {
                 if (enemy.Kind != EnemyKind.Brute && enemy.Kind != EnemyKind.Siege) continue;
                 Vector2 point = controller.EnemyHealthReference(enemy);
                 float width = enemy.Armor > 0 ? ArmoredHealthLabelWidth : PlainHealthLabelWidth;
                 Rect area = new Rect(point.x - width/2, point.y - 8, width, 16);
                 if (area.xMin < 6 || area.xMax > W - 6 || area.yMin < 6 || area.yMax > H - 92) continue;
-                if (area.Overlaps(barrierHud) || area.Overlaps(new Rect(coreStatus.X,coreStatus.Y,coreStatus.Width,coreStatus.Height)) || area.Overlaps(waveHud) || area.Overlaps(creditsHud)) continue;
+                if (area.Overlaps(barrierHud) || area.Overlaps(new Rect(coreStatus.X,coreStatus.Y,coreStatus.Width,coreStatus.Height)) ||
+                    area.Overlaps(waveHud) || hasCenterStatus && area.Overlaps(centerStatus) ||
+                    area.Overlaps(bossPanelGuard) || area.Overlaps(creditsHud) || area.Overlaps(countHud) || area.Overlaps(speedHud)) continue;
                 // Socket menus are drawn after the HUD. Keep their bounds and the movable
                 // wave header clear while preserving enemy labels in the rest of the arena.
                 if (towerPanel.HasValue && (area.yMin < 60 || area.Overlaps(towerPanel.Value))) continue;
@@ -190,39 +347,35 @@ namespace Gatefall
                 Text(new Rect(22, 68, 228, 42), "헌터 부활까지 " + Mathf.CeilToInt(game.HunterRespawnRemaining) + "초", 16, Amber, TextAnchor.MiddleCenter, 2);
             }
 
-            Box2 wave = new Box2(W/2-90.5f,4,181,52);
-            if(game.WaveClearVictory && !game.IsPreparing && (!game.ExpandedArena || controller.Overview || controller.Menu==GameMenu.FusionPick)) {
-                headerRifts.Clear();
-                // Current rift ink at its1.55 maximum warning scale fits a5.1x3.2 world-unit guard.
-                // Reuse this list and fixed guard so a pulsing rift does not move the header every frame.
-                float halfX=controller.WorldToReferenceScale(2.55f),halfY=controller.WorldToReferenceScale(1.6f);
-                foreach(int lane in game.OpenLanes) {
-                    Vector2 p=controller.WorldToReference(game.GatePositions[lane],0);
-                    Box2 r=new Box2(p.x-halfX,p.y-halfY,halfX*2,halfY*2);
-                    if(r.Y<62 && r.Y+r.Height>0)headerRifts.Add(r);
-                }
-                wave=layout.WaveHeader(headerRifts);
-            }
+            Box2 wave = waveHeader;
+            Skin(new Rect(wave.X, wave.Y, wave.Width, wave.Height), "ui-chip");
             float waveWidth=Mathf.Min(180,wave.Width),waveX=wave.Center.X;
             string progress = game.WaveClearVictory ? (game.AllWavesSpawned ? "잔여 적 " + game.Enemies.Count : "웨이브 " + (game.Wave + 1) + "/" + game.WaveCount) : Clock(game.Remaining);
-            Text(new Rect(waveX-waveWidth/2, 4, waveWidth, game.WaveClearVictory ? 32 : 40), progress, game.WaveClearVictory ? 24 : 30, Paper, TextAnchor.MiddleCenter, 2, true);
-            if(game.WaveClearVictory && !game.IsPreparing)Text(new Rect(waveX-waveWidth/2, 34, waveWidth, 14), "경과 " + Clock((float)game.Elapsed), 11, Paper, TextAnchor.MiddleCenter, 1, true);
-            if (game.IsPreparing) Text(new Rect(W / 2 - 150, 44, 300, 22), "배치 준비 · 시간 정지", 14, Amber, TextAnchor.MiddleCenter, 1, true);
-            else {
+            bool compactWave = wave.Height == MobileLayout.CompactWaveHeight;
+            if (compactWave) {
+                Text(new Rect(wave.X+8, wave.Y, 91, 21), progress, 15, Paper, TextAnchor.MiddleLeft, 2);
+                Text(new Rect(wave.X+97, wave.Y, 45, 21), game.IsPreparing ? "준비" : Clock((float)game.Elapsed),
+                    13, game.IsPreparing ? Amber : Paper, TextAnchor.MiddleRight, 1);
+            } else {
+                Text(new Rect(waveX-waveWidth/2, wave.Y+2, waveWidth, game.WaveClearVictory ? 26 : 36), progress, game.WaveClearVictory ? 22 : 28, Paper, TextAnchor.MiddleCenter, 2);
+                if(game.WaveClearVictory && !game.IsPreparing)Text(new Rect(waveX-waveWidth/2, wave.Y+26, waveWidth, 17), "경과 " + Clock((float)game.Elapsed), 13, Paper, TextAnchor.MiddleCenter, 1);
+                if (game.IsPreparing) Text(new Rect(waveX-waveWidth/2, wave.Y+28, waveWidth, 19), "배치 준비 · 시간 정지", 14, Amber, TextAnchor.MiddleCenter, 1);
+            }
+            if (!game.IsPreparing) {
                 int segments=game.WaveCount;
-                float gap = wave.Width<181?4:5, seg = (wave.Width-(segments-1)*gap)/segments, x0 = wave.X;
+                float inset = 8, gap = wave.Width<181?4:5;
+                float seg = (wave.Width-2*inset-(segments-1)*gap)/segments, x0 = wave.X+inset;
                 for (int i = 0; i < segments; i++) {
-                    Rect r = new Rect(x0 + i * (seg + gap), 48, seg, 8);
+                    Rect r = new Rect(x0 + i * (seg + gap), wave.Y+wave.Height-7, seg, 4);
                     Fill(r, GatefallArt.Alpha(Ink, .75f));
                     float f = game.WaveProgressFraction(i);
-                    bool bossWave = game.Rules != null && game.Rules.Stage != null && game.Rules.Stage.Boss && i == segments-1;
+                    bool bossWave = i == game.BossWave;
                     if (f > 0) Fill(new Rect(r.x, r.y, r.width * f, r.height), bossWave ? Threat : Paper);
                     else if (bossWave) Fill(new Rect(r.x + seg / 2 - 2, r.y, 4, r.height), Threat);
                 }
             }
             float right = W - 92;
-            bool catalysts = game.Rules != null && (game.Rules.Lab || game.Rules.Stage.HasCatalysts);
-            if (catalysts) {
+            if (HasCatalystChip) {
                 Skin(new Rect(right - 86, 10, 86, 50), "ui-chip");
                 Icon(new Rect(right - 80, 17, 36, 36), "icon-catalyst", Color.white);
                 Text(new Rect(right - 42, 12, 36, 46), game.Cores.ToString(), 22, Ally, TextAnchor.MiddleCenter, 2);
@@ -232,13 +385,33 @@ namespace Gatefall
             Icon(new Rect(right - 122, 15, 40, 40), "icon-stone", Color.white);
             Text(new Rect(right - 80, 12, 74, 46), game.Credits.ToString(), 24, Amber, TextAnchor.MiddleCenter, 2);
             int towerCapacity = game.TowerLimit > 0 ? game.TowerLimit : game.BoardSockets.Length;
-            Text(new Rect(right - 118, 62, 118, 18), "결계주 " + game.Towers.Count + "/" + towerCapacity, 12,
-                game.TowerLimit > 0 && game.Towers.Count >= game.TowerLimit ? Threat : Paper, TextAnchor.MiddleRight, 1);
+            bool smallCount = towerCount.Height < 50;
+            Rect count = new Rect(towerCount.X, towerCount.Y, towerCount.Width, towerCount.Height);
+            Skin(count, "ui-chip");
+            float icon = smallCount ? 21 : 28;
+            Glyph(new Rect(count.x+6,count.center.y-icon/2,icon,icon), "ui-glyph-loadout", Paper);
+            Text(new Rect(count.x+icon+9,count.y,count.width-icon-13,count.height), game.Towers.Count + "/" + towerCapacity,
+                smallCount ? 17 : 24, game.Towers.Count >= towerCapacity ? Amber : Paper, TextAnchor.MiddleCenter, 2);
             if (controller.Menu != GameMenu.Pause && !game.AwaitingCard && (game.State == RunState.Running || game.IsPreparing))
                 IconButton((int)MobileAction.Pause, layout.Button(MobileAction.Pause), "icon-pause");
 
-            if (boss != null) {
-                Text(new Rect(W / 2 - 170, 62, 340, 20), "잿빛 문지기  " + Mathf.CeilToInt(boss.Health) + " / " + Mathf.CeilToInt(boss.MaxHealth), 14, Threat, TextAnchor.MiddleCenter, 2, true);
+            if (bossDock.Width > 0 && (boss != null || game.BossDefeated)) {
+                Rect dock = new Rect(bossDock.X,bossDock.Y,bossDock.Width,bossDock.Height);
+                Skin(dock, "ui-chip");
+                if (boss != null) {
+                    string hpLabel = Mathf.CeilToInt(boss.Health) + " / " + Mathf.CeilToInt(boss.MaxHealth);
+                    Text(new Rect(dock.x+8,dock.y+1,dock.width-16,16), game.Rules.Stage.BossDisplayName, 13, Paper, TextAnchor.MiddleLeft, 2);
+                    Bar(new Rect(dock.x+8,dock.y+20,dock.width-96,5), boss.Health / boss.MaxHealth, Threat);
+                    Text(new Rect(dock.x+dock.width-88,dock.y+15,80,15), hpLabel, 12, Paper, TextAnchor.MiddleRight, 1);
+                    if (boss.BossWindup > 0)
+                        Text(new Rect(dock.x+6,dock.y+dock.height-16,dock.width-12,15), DockedBossWarningText, 12, Amber, TextAnchor.MiddleCenter, 2);
+                } else {
+                    Text(new Rect(dock.x+8,dock.y+4,dock.width-16,18), "문지기 처치 완료", 13, Ally, TextAnchor.MiddleCenter, 2);
+                    Text(new Rect(dock.x+8,dock.y+23,dock.width-16,18), "남은 적을 모두 처치하세요", 13, Paper, TextAnchor.MiddleCenter, 2);
+                }
+            } else if (boss != null) {
+                string bossName = game.Rules?.Stage?.BossDisplayName ?? "잿빛 문지기";
+                Text(new Rect(W / 2 - 170, 62, 340, 20), bossName + "  " + Mathf.CeilToInt(boss.Health) + " / " + Mathf.CeilToInt(boss.MaxHealth), 14, Threat, TextAnchor.MiddleCenter, 2, true);
                 Bar(new Rect(W / 2 - 170, BossHealthBarY, 340, BossHealthBarHeight), boss.Health / boss.MaxHealth, Threat);
             } else if (game.Rules != null && game.Rules.Stage != null && game.Rules.Stage.Boss && game.BossDefeated) {
                 Skin(new Rect(W / 2 - 180, 62, 360, 38), "ui-chip");
@@ -254,19 +427,25 @@ namespace Gatefall
             if(game.CanCallNextWave()=="") {
                 Box2 b=layout.WaveCallBox();WaveBriefing next=game.GetWaveBriefing(game.NextCallWave);
                 Button(MobileLayout.WaveCallActionBase+game.NextCallWave,b,"",true,Look.Primary);
-                Text(new Rect(b.X+12,b.Y+3,b.Width-24,26),"앞당겨 호출 · "+game.CallAdvanceSeconds.ToString("F0")+"초",18,Ink,TextAnchor.MiddleCenter,1);
-                Text(new Rect(b.X+12,b.Y+30,b.Width-24,23),next.Summary,13,Ink,TextAnchor.MiddleCenter,1);
-                Text(new Rect(b.X+12,b.Y+54,b.Width-24,24),"적 "+game.Enemies.Count+"마리와 겹침 · 보급"+game.WaveSupplyCredits+" 먼저",14,Ink,TextAnchor.MiddleCenter,1);
+                if(b.Height<84) {
+                    // Moved off an entrance or pad row: the same facts on two lines.
+                    Text(new Rect(b.X+8,b.Y+4,b.Width-16,24),WaveCallCompactTitle(game.CallAdvanceSeconds,game.Enemies.Count,game.WaveSupplyCredits),15,Ink,TextAnchor.MiddleCenter,1);
+                    Text(new Rect(b.X+8,b.Y+29,b.Width-16,21),next.Summary,12,Ink,TextAnchor.MiddleCenter,1);
+                } else {
+                    Text(new Rect(b.X+12,b.Y+3,b.Width-24,26),"앞당겨 호출 · "+game.CallAdvanceSeconds.ToString("F0")+"초",18,Ink,TextAnchor.MiddleCenter,1);
+                    Text(new Rect(b.X+12,b.Y+30,b.Width-24,23),next.Summary,13,Ink,TextAnchor.MiddleCenter,1);
+                    Text(new Rect(b.X+12,b.Y+54,b.Width-24,24),"적 "+game.Enemies.Count+"마리와 겹침 · 보급"+game.WaveSupplyCredits+" 먼저",14,Ink,TextAnchor.MiddleCenter,1);
+                }
             }
             if (game.State == RunState.Running)
                 Button((int)MobileAction.Speed, layout.Button(MobileAction.Speed), controller.DoubleSpeed ? "2×" : "1.25×", true, controller.DoubleSpeed ? Look.Primary : Look.Secondary, null, 18);
             if (game.ExpandedArena && (game.State == RunState.Running || game.IsPreparing))
                 Button((int)MobileAction.Map, new Box2(W - 176, 78, 160, 46), controller.Overview ? "추적 보기" : "전체 보기", true, Look.Secondary, null, 15);
             if (game.IsPreparing) {
-                Button((int)MobileAction.Start, layout.Button(MobileAction.Start), "범람 시작", true, Look.Primary, "icon-play", 22);
+                Box2 startBox = layout.Button(MobileAction.Start);
+                Button((int)MobileAction.Start, startBox, "범람 시작", true, Look.Primary, "icon-play", startBox.Width<320 ? 19 : 22);
                 if (controller.LessonText != "") {
-                    float lessonWidth = Mathf.Min(660, W - 380);
-                    Rect r = new Rect((W - lessonWidth) / 2, 70, lessonWidth, W > 1100 ? 48 : 72);
+                    Rect r = LessonBox();
                     Skin(r, "ui-panel-flat");
                     Text(new Rect(r.x + 18, r.y + 4, r.width - 36, r.height - 8), controller.LessonText.Replace(". ", ".\n"), 15, Paper, TextAnchor.MiddleCenter, 0);
                 }
@@ -318,6 +497,7 @@ namespace Gatefall
             switch (k) {
                 case TowerKind.Autocannon: return "단일"; case TowerKind.Binding: return "감속"; case TowerKind.Rupture: return "범위";
                 case TowerKind.Scatter: return "산탄"; case TowerKind.Barrage: return "탄막"; case TowerKind.Barrier: return "저지"; case TowerKind.Arc: return "연쇄"; case TowerKind.Shatter: return "집중";
+                case TowerKind.Piercer: return "직선"; case TowerKind.Surge: return "쇄도";
                 case TowerKind.Gravity: return "흡인"; case TowerKind.Marker: return "표식"; case TowerKind.Observer: return "집중"; case TowerKind.Beacon: return "표식·감속"; default: return "종결";
             }
         }
@@ -325,11 +505,13 @@ namespace Gatefall
         private Rect PlacePanel(int socket, float w, float h)
         {
             Vector2 p = controller.WorldToReference(game.BoardSockets[socket], 0);
-            float x = Mathf.Clamp(p.x - w / 2, 12, W - w - 12);
-            float y = p.y > H * .5f ? p.y - h - controller.WorldToReferenceScale(2.9f) : p.y + controller.WorldToReferenceScale(.9f);
-            y = Mathf.Clamp(y, 70, H - h - 10);
-            if (bossPanelGuard.width > 0 && bossPanelGuard.Overlaps(new Rect(x, y, w, h)))
-                y = Mathf.Min(bossPanelGuard.yMax + 6, H - h - 10);
+            Box2 placed = layout.PanelBox(new V2(p.x, p.y), controller.WorldToReferenceScale(1), w, h);
+            float x = placed.X, y = placed.Y;
+            if (bossPanelGuard.width > 0 && bossPanelGuard.Overlaps(new Rect(x, y, w, h))) {
+                float below = bossPanelGuard.yMax + 6, above = bossPanelGuard.yMin - h - 6;
+                if (below <= H - h - 10) y = below;
+                else if (above >= 70) y = above;
+            }
             activeTowerPanel=new Box2(x,y,w,h);
             return new Rect(x, y, w, h);
         }
@@ -340,7 +522,7 @@ namespace Gatefall
             Tower tower = game.TowerAt(socket);
             if (tower == null) {
                 List<TowerKind> kinds = new List<TowerKind>();
-                foreach (TowerKind k in new[] { TowerKind.Autocannon, TowerKind.Binding, TowerKind.Rupture, TowerKind.Barrier, TowerKind.Marker,TowerKind.Scatter }) if (game.Allows(k)) kinds.Add(k);
+                foreach (TowerKind k in TowerCatalog.Buildable) if (game.Allows(k)) kinds.Add(k);
                 float w = 28 + kinds.Count * 124 + (kinds.Count - 1) * 8;
                 Rect r = PlacePanel(socket, Mathf.Max(w, 160), 196);
                 Skin(r, "ui-panel");
@@ -350,7 +532,7 @@ namespace Gatefall
                     TowerKind k = kinds[i]; TowerDefinition d = TowerCatalog.Get(k);
                     string reason = game.CanBuild(socket, k);
                     Rect t = new Rect(r.x + 14 + i * 132, r.y + 40, 124, 144);
-                    Button(k==TowerKind.Scatter ? 260 : 200 + (int)k, Box(t), "", reason == "", Look.Secondary, null, 18, GatefallArt.RoleColor(k));
+                    Button(k==TowerKind.Piercer ? 261 : k==TowerKind.Scatter ? 260 : 200 + (int)k, Box(t), "", reason == "", Look.Secondary, null, 18, GatefallArt.RoleColor(k));
                     Tex(new Rect(t.x + 24, t.y + 28, 76, 74), art.TowerIcon(k, 1), reason == "" || reason.StartsWith("마석") ? Color.white : new Color(1, 1, 1, .4f));
                     RoleBadge(new Rect(t.x + 6, t.y + 6, 48, 22),ShortRole(k),GatefallArt.RoleColor(k));
                     StateBadge(new Rect(t.x + 78, t.y + 6, 40, 22),reason==""?"":atLimit?"상한":reason.StartsWith("마석")?"부족":"불가");
@@ -375,7 +557,7 @@ namespace Gatefall
             TowerStats next = canLevel ? game.Stats(tower, tower.Level + 1) : null;
             bool hasSlow = now.Slow > 0 || tower.Kind == TowerKind.Barrier;
             string headerHint=hasSlow ? SlowResistanceHint : ArmorHint(tower.Kind);
-            Text(new Rect(r.x + 76, r.y + 10, headerHint!="" ? 170 : 330, 28), d.Name + "  Lv" + tower.Level, GatefallUiStyle.FontSizeSection, Paper, TextAnchor.MiddleLeft, 2);
+            Text(new Rect(r.x + 76, r.y + 10, headerHint!="" ? 170 : 330, 28), tower.DisplayName + "  Lv" + tower.Level, GatefallUiStyle.FontSizeSection, Paper, TextAnchor.MiddleLeft, 2);
             if (headerHint!="") Text(new Rect(r.x + 250, r.y + 10, 158, 28), headerHint, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
             Button(100, new Box2(r.x + r.width - 44, r.y + 8, 32, 30), "", true, Look.Ghost);
             Glyph(new Rect(r.x+r.width-40,r.y+11,26,26),"ui-glyph-close",Muted);
@@ -387,6 +569,7 @@ namespace Gatefall
             if (tower.Kind == TowerKind.Barrier && tower.Cooldown <= 0) field += " · 파괴 시 감속 " + DefenseSimulation.WardBurstSlowPercent + "%";
             if (tower.Kind == TowerKind.Marker || tower.Kind == TowerKind.Observer || tower.Kind == TowerKind.Beacon) field += " · 표식 연계";
             if (game.HasResonance(tower)) field += " · 공명 +5%";
+            if (tower.Inheritance != SealInheritance.None) field = TowerCatalog.InheritedRole(tower.Inheritance) + " · " + field;
             Text(new Rect(r.x + 76, r.y + 62, r.width - 90, 18), field, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 1);
             Fill(new Rect(r.x+14,r.y+84,r.width-28,1),GatefallUiStyle.ColorCardRim);
             float x = r.x + 14, y = r.y + 94;
@@ -441,13 +624,20 @@ namespace Gatefall
                 Color tint = GatefallArt.TowerTint(recipe.Result, 1);
                 if (o.Reason != "") tint.a = .5f;
                 Tex(new Rect(t.x + 6, t.y + 4, 44, 55), art.TowerIcon(recipe.Result, 1), tint);
-                Text(new Rect(t.x + 54, t.y + 10, 150, 25), TowerCatalog.Get(recipe.Result).Name.Replace(" 결계주", ""), GatefallUiStyle.FontSizeAction, Paper, TextAnchor.MiddleLeft, 2);
+                Text(new Rect(t.x + 54, t.y + 6, 150, 24), recipe.ResultName.Replace(" 결계주", ""), GatefallUiStyle.FontSizeAction, Paper, TextAnchor.MiddleLeft, 2);
+                // Materials sit directly under the name so two cards with the same result never read alike.
+                TowerKind partner = recipe.First == tower.Kind ? recipe.Second : recipe.First;
+                Text(new Rect(t.x + 54, t.y + 30, 150, 19), FusionMaterials(recipe, tower.Kind), GatefallUiStyle.FontSizeLabel,
+                    o.Reason == "" ? GatefallArt.RoleColor(partner) : Muted, TextAnchor.MiddleLeft, 2);
                 if (o.Reason == "") {
-                    bool counted=recipe.Result==TowerKind.Beacon || recipe.Result==TowerKind.Barrage || recipe.Result==TowerKind.Seal;
-                    string description=FusionRole(recipe.Result,counted ? game.Stats(recipe.Result,1).MaxTargets : 0);
-                    Text(new Rect(t.x + 54, t.y + 36, 150, 20), description, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 1);
-                    Cost(new Rect(t.x + 32, t.y + 70, 148, 26), recipe.Credits, 1);
-                } else Text(new Rect(t.x + 54, t.y + 36, 150, 58), o.Reason, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
+                    bool counted=recipe.Result==TowerKind.Beacon || recipe.Result==TowerKind.Barrage || recipe.Result==TowerKind.Surge || recipe.Result==TowerKind.Seal;
+                    if(recipePreviews[o.Recipe]==null)recipePreviews[o.Recipe]=new FusionPreview();
+                    TowerStats resultStats=recipePreviews[o.Recipe].Stats(game,recipe);
+                    string description=FusionPreview.Situation(resultStats);
+                    if(description=="")description=FusionRole(recipe.Result,counted ? resultStats.MaxTargets : 0);
+                    if (description != "") Text(new Rect(t.x + 54, t.y + 50, 150, 18), description, GatefallUiStyle.FontSizeCaption, Muted, TextAnchor.MiddleLeft, 1);
+                } else Text(new Rect(t.x + 54, t.y + 50, 150, 19), o.Reason, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
+                Cost(new Rect(t.x + 32, t.y + 72, 148, 26), recipe.Credits, 1, o.Reason != "");
             }
         }
 
@@ -460,7 +650,18 @@ namespace Gatefall
 
         private static string StatLine(TowerKind kind, TowerStats s, TowerStats next)
         {
+            switch (s.Inheritance) {
+                case SealInheritance.ChainBurst: return "연쇄 "+s.Chain.Length+"명 · 끝 폭발 "+s.Secondary.ToString("0");
+                case SealInheritance.ShatterSlow: return "직격 "+s.Damage.ToString("0")+" · 주변 감속 "+(s.Slow*100).ToString("0")+"%";
+                case SealInheritance.GravitySpear: return "범위 최대 "+s.MaxTargets+"명 · 빛창 "+s.Secondary.ToString("0");
+                case SealInheritance.MarkedBlast: return "직격 "+s.Damage.ToString("0")+" · 표식 ×"+s.MarkedDamageMultiplier.ToString("0.#");
+                case SealInheritance.FanSlow: return "부채꼴 "+s.MaxTargets+"명 · 선두 "+s.ConeSlowTargets+"명 감속";
+                case SealInheritance.LineBurst: return "직선 "+s.MaxTargets+"명 · 감속 "+(s.Slow*100).ToString("0")+"%";
+            }
             if (s.ConeCos>0) return "피해 "+s.Damage.ToString("0")+(next==null?"":"→"+next.Damage.ToString("0"))+" · 부채꼴 최대 "+s.MaxTargets+"명";
+            if (s.LineHalfWidth>0) return "피해 "+s.Damage.ToString("0")+(next==null?"":"→"+next.Damage.ToString("0"))+
+                " · 직선 "+s.MaxTargets+(next!=null && next.MaxTargets!=s.MaxTargets?"→"+next.MaxTargets:"")+"명"+
+                (s.Slow>0?" · 감속 "+(s.Slow*100).ToString("0")+"%":"");
             if (kind == TowerKind.Marker) return "표식 3초 · 추가 피해 " + s.MarkBonus.ToString("0") + (next == null ? "" : "→" + next.MarkBonus.ToString("0"));
             if(kind==TowerKind.Observer)return "피해 " + s.Damage.ToString("0") + (next==null ? "" : "→" + next.Damage.ToString("0"));
             if (kind == TowerKind.Barrier) return "저지 2명 · 재충전 " + s.Interval.ToString("0.#") + (next != null ? "→" + next.Interval.ToString("0.#") : "") + "초";
@@ -482,15 +683,16 @@ namespace Gatefall
             return (s.Chain != null ? "연쇄 " : "피해 ") + dmg + extra;
         }
 
-        private void Cost(Rect r, int credits, int catalysts)
+        private void Cost(Rect r, int credits, int catalysts, bool locked = false)
         {
             float numberWidth = credits >= 100 ? 48 : 30, extra = numberWidth - 30;
             float total = 52 + extra + (catalysts > 0 ? 44 : 0), x = r.x + (r.width - total) / 2;
-            Icon(new Rect(x, r.y + 2, 22, 22), "icon-stone", Color.white);
-            Text(new Rect(x + 24, r.y, numberWidth, r.height), credits.ToString(), GatefallUiStyle.FontSizeAction, game.Credits >= credits ? Amber : Paper, TextAnchor.MiddleLeft, 2);
+            Color tint = locked ? GatefallArt.Alpha(Color.white, .55f) : Color.white;
+            Icon(new Rect(x, r.y + 2, 22, 22), "icon-stone", tint);
+            Text(new Rect(x + 24, r.y, numberWidth, r.height), credits.ToString(), GatefallUiStyle.FontSizeAction, locked ? Muted : game.Credits >= credits ? Amber : Paper, TextAnchor.MiddleLeft, 2);
             if (catalysts > 0) {
-                Icon(new Rect(x + 58 + extra, r.y + 2, 22, 22), "icon-catalyst", Color.white);
-                Text(new Rect(x + 82 + extra, r.y, 20, r.height), catalysts.ToString(), GatefallUiStyle.FontSizeAction, game.Cores >= catalysts ? Paper : Muted, TextAnchor.MiddleLeft, 2);
+                Icon(new Rect(x + 58 + extra, r.y + 2, 22, 22), "icon-catalyst", tint);
+                Text(new Rect(x + 82 + extra, r.y, 20, r.height), catalysts.ToString(), GatefallUiStyle.FontSizeAction, !locked && game.Cores >= catalysts ? Paper : Muted, TextAnchor.MiddleLeft, 2);
             }
         }
 
@@ -499,7 +701,8 @@ namespace Gatefall
             FusionRecipe recipe = TowerCatalog.Recipes[controller.PickRecipe];
             Tower anchor = game.TowerAt(controller.SelectedSocket);
             TowerKind other = anchor != null && anchor.Kind == recipe.First ? recipe.Second : recipe.First;
-            float range = game.Stats(recipe.Result, 1).Range;
+            TowerStats resultStats=fusionPreview.Stats(game,recipe);
+            float range = resultStats.Range;
             fusionTowerGuards.Clear();
             if (anchor != null) fusionTowerGuards.Add(PadBox(anchor.Position));
             foreach (int socket in controller.PickPartners) fusionTowerGuards.Add(PadBox(game.BoardSockets[socket]));
@@ -508,12 +711,23 @@ namespace Gatefall
             Rect r = new Rect(activeTowerPanel.X, activeTowerPanel.Y, activeTowerPanel.Width, activeTowerPanel.Height);
             Skin(r, "ui-panel");
             Tex(new Rect(r.x + 12, r.y + 6, 42, 52), art.TowerIcon(recipe.Result, 1), GatefallArt.TowerTint(recipe.Result, 1));
-            Text(new Rect(r.x + 62, r.y + 6, 420, 26), "빛나는 " + TowerCatalog.Get(other).Name.Replace(" 결계주", "") + " Lv2 이상을 탭하세요", 18, Paper, TextAnchor.MiddleLeft, 2);
-            Text(new Rect(r.x + 62, r.y + 34, 420, 22), "주황색 자리에 " + TowerCatalog.Get(recipe.Result).Name.Replace(" 결계주", "") + " 생성 · 사거리 " + range.ToString("0.#"), 14, Amber, TextAnchor.MiddleLeft, 0);
+            float copyWidth=Mathf.Min(420,r.width-184);
+            Text(new Rect(r.x + 62, r.y + 6, copyWidth, 26), TowerCatalog.Get(other).Name.Replace(" 결계주", "") + " Lv2+ 재료를 탭하세요", 18, Paper, TextAnchor.MiddleLeft, 2);
+            Text(new Rect(r.x + 62, r.y + 34, copyWidth, 20), "주황 자리: " + recipe.ResultName.Replace(" 결계주", "") + " · 사거리 " + range.ToString("0.#"), 14, Amber, TextAnchor.MiddleLeft, 0);
+            V2 origin=anchor==null ? game.BoardSockets[controller.SelectedSocket] : anchor.Position;
+            V2 impact, aim=FusionPreview.Aim(game,resultStats,origin,out impact);
+            string fit;
+            if(resultStats.LineHalfWidth>0 || resultStats.ConeCos>0) {
+                float overlap=fusionPreview.Overlap(game,resultStats,origin,aim);
+                fit=FusionPreview.Fit(overlap);
+            } else if(FusionPreview.Marked(resultStats))fit=FusionPreview.HasMarker(game,resultStats,origin,controller.SelectedSocket,
+                controller.PickPartners.Count==1 ? controller.PickPartners[0] : -1) ? FusionPreview.MarkFit : FusionPreview.NoMarkFit;
+            else fit=resultStats.Radius>0 ? "적중 지점의 폭발 범위 표시" : "선택한 자리의 사거리 표시";
+            Box2 fitBox=MobileLayout.FusionFitBox(activeTowerPanel);
+            Text(new Rect(fitBox.X,fitBox.Y,fitBox.Width,fitBox.Height),fit,GatefallUiStyle.FontSizeLabel,Muted,TextAnchor.MiddleLeft,0);
             const string vacancy = "상대 재료 자리가 빕니다";
-            string field = game.IsPreparing ? vacancy + " · 다른 길은 취소 후 재선택"
-                : "범위 내 적 " + (anchor == null ? 0 : EnemiesInRange(anchor.Position, range)) + " · " + vacancy + " · 취소 후 재선택 가능";
-            Text(new Rect(r.x + 62, r.y + 60, 420, 22), field, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
+            string field = vacancy + " · 취소 후 재선택";
+            Text(new Rect(r.x + 62, r.y + r.height - 24, Mathf.Min(420,r.width-74), 18), field, GatefallUiStyle.FontSizeLabel, Muted, TextAnchor.MiddleLeft, 0);
             Button(100, new Box2(r.x + r.width - 112, r.y + 8, 100, 48), "취소", true, Look.Secondary, null, 16);
             // On a fallback layout, keep any partner behind the panel selectable.
             if (clear) controller.TouchInput.Regions.Add(new TouchRegion(0, activeTowerPanel));
@@ -603,7 +817,13 @@ namespace Gatefall
         private void Toast(string text, bool bossWarning = false)
         {
             if (string.IsNullOrEmpty(text)) return;
-            Box2 b = layout.NoticeBox(text.Length, game.IsPreparing, activeTowerPanel, bossWarning);
+            ReserveBattleHud();
+            if (game.WaveClearVictory)
+                foreach (Box2 entrance in entranceLabels)
+                    if (entrance.Width > 0) hudReserved.Add(entrance);
+            Box2 b = bossWarning ? layout.NoticeBox(text.Length, false, activeTowerPanel, true)
+                : layout.BattleNoticeBox(text.Length, waveHeader, statusWorldGuards, hudReserved);
+            if (b.Width == 0) return;
             Rect r = new Rect(b.X, b.Y, b.Width, b.Height);
             Skin(r, "ui-chip");
             Text(r, text, 16, Paper, TextAnchor.MiddleCenter, 1);

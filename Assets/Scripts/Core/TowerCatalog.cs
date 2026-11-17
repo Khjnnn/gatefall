@@ -2,16 +2,20 @@ using System;
 
 namespace Gatefall.Core
 {
-    public enum TowerKind { Autocannon, Binding, Rupture, Arc, Shatter, Gravity, Seal, Barrier, Marker, Observer, Beacon, Scatter, Barrage }
+    public enum TowerKind { Autocannon, Binding, Rupture, Arc, Shatter, Gravity, Seal, Barrier, Marker, Observer, Beacon, Scatter, Barrage, Piercer, Surge }
     [Flags] public enum TowerTag { None = 0, Ballistic = 1, Control = 2, Blast = 4, Ward = 8 }
     public enum CardKind { Ballistic, Control, Blast, Range, Credits, Hunter }
+    public enum SealInheritance { None, ChainBurst, ShatterSlow, GravitySpear, MarkedBlast, FanSlow, LineBurst }
 
     // Values are Gatefall's approved v2 prototype design, independently implemented.
     public sealed class TowerStats
     {
         public float Damage, Secondary, Interval, Range, Radius, Slow, SlowSeconds, ChainRange, MarkBonus;
-        public float ConeCos;
+        public float ConeCos, LineHalfWidth;
         public int MaxTargets;
+        public int TailBurstTargets, ConeSlowTargets;
+        public float MarkedDamageMultiplier;
+        public SealInheritance Inheritance;
         public float[] Chain;
         public TowerStats Copy()
         {
@@ -43,6 +47,9 @@ namespace Gatefall.Core
     {
         public int Id, Credits;
         public TowerKind First, Second, Result;
+        public SealInheritance Inheritance;
+        public string ResultName => TowerCatalog.DisplayName(Result, Inheritance);
+        public string InheritedRole => TowerCatalog.InheritedRole(Inheritance);
         public string Ingredients { get { return TowerCatalog.Get(First).Name + " Lv2+ / " + TowerCatalog.Get(Second).Name + " Lv2+"; } }
         public bool Matches(Tower a, Tower b)
         { return a != null && b != null && a.Id != b.Id && a.Level >= 2 && b.Level >= 2 &&
@@ -51,9 +58,9 @@ namespace Gatefall.Core
     public static class TowerCatalog
     {
         private static TowerStats S(float damage, float interval, float range, int max = 1, float radius = 0,
-            float slow = 0, float seconds = 0, float secondary = 0, float[] chain = null, float mark = 0, float cone = 0)
+            float slow = 0, float seconds = 0, float secondary = 0, float[] chain = null, float mark = 0, float cone = 0, float line = 0)
         { return new TowerStats { Damage = damage, Interval = interval, Range = range, MaxTargets = max, Radius = radius,
-            Slow = slow, SlowSeconds = seconds, Secondary = secondary, Chain = chain, ChainRange = chain == null ? 0 : 2.5f, MarkBonus = mark, ConeCos=cone }; }
+            Slow = slow, SlowSeconds = seconds, Secondary = secondary, Chain = chain, ChainRange = chain == null ? 0 : 2.5f, MarkBonus = mark, ConeCos=cone, LineHalfWidth=line }; }
         private static TowerDefinition D(TowerKind kind, string name, string role, int tier, int build, int upgrade, TowerTag tags, params TowerStats[] levels)
         { return new TowerDefinition { Kind = kind, Name = name, Role = role, Tier = tier, BuildCost = build, UpgradeCost = upgrade, Tags = tags, Levels = levels }; }
         public static readonly TowerDefinition[] All = {
@@ -77,23 +84,83 @@ namespace Gatefall.Core
             D(TowerKind.Scatter,"산탄 결계주","가까운 부채꼴 · 장갑에 약함",1,50,45,TowerTag.Ballistic,
                 S(9,.65f,3.7f,4,cone:.8660254f),S(14,.60f,3.9f,5,cone:.8660254f),S(19,.55f,4.1f,6,cone:.8660254f)),
             D(TowerKind.Barrage,"탄막 결계주","넓은 부채꼴 · 장갑 관통",2,0,65,TowerTag.Ballistic,
-                S(26,.65f,4.8f,7,cone:.7660444f),S(36,.60f,5f,8,cone:.7660444f),S(46,.55f,5.2f,9,cone:.7660444f))
+                S(26,.65f,4.8f,7,cone:.7660444f),S(36,.60f,5f,8,cone:.7660444f),S(46,.55f,5.2f,9,cone:.7660444f)),
+            D(TowerKind.Piercer,"관통 결계주","직선 관통 · 장갑에 약함",1,55,45,TowerTag.Ballistic,
+                S(15,.95f,5.8f,3,line:.45f),S(22,.90f,6.1f,4,line:.5f),S(30,.85f,6.4f,4,line:.55f)),
+            D(TowerKind.Surge,"쇄도 결계주","직선 피해와 감속",2,0,65,TowerTag.Ballistic|TowerTag.Control,
+                S(28,1.05f,6.2f,4,slow:.20f,seconds:.8f,line:.55f),S(39,1f,6.5f,5,slow:.24f,seconds:.8f,line:.60f),
+                S(49,.95f,6.8f,5,slow:.28f,seconds:.8f,line:.65f))
         };
+        public static readonly TowerKind[] Buildable = { TowerKind.Autocannon,TowerKind.Binding,TowerKind.Rupture,
+            TowerKind.Barrier,TowerKind.Marker,TowerKind.Scatter,TowerKind.Piercer };
         public static readonly FusionRecipe[] Recipes = {
             R(0,TowerKind.Autocannon,TowerKind.Binding,TowerKind.Arc,40),
             R(1,TowerKind.Autocannon,TowerKind.Rupture,TowerKind.Shatter,45),
             R(2,TowerKind.Binding,TowerKind.Rupture,TowerKind.Gravity,45),
-            R(3,TowerKind.Arc,TowerKind.Rupture,TowerKind.Seal,80),
-            R(4,TowerKind.Shatter,TowerKind.Binding,TowerKind.Seal,75),
-            R(5,TowerKind.Gravity,TowerKind.Autocannon,TowerKind.Seal,75),
+            R(3,TowerKind.Arc,TowerKind.Rupture,TowerKind.Seal,80,SealInheritance.ChainBurst),
+            R(4,TowerKind.Shatter,TowerKind.Binding,TowerKind.Seal,75,SealInheritance.ShatterSlow),
+            R(5,TowerKind.Gravity,TowerKind.Autocannon,TowerKind.Seal,75,SealInheritance.GravitySpear),
             R(6,TowerKind.Marker,TowerKind.Autocannon,TowerKind.Observer,40),
             R(7,TowerKind.Marker,TowerKind.Binding,TowerKind.Beacon,50),
-            R(8,TowerKind.Observer,TowerKind.Rupture,TowerKind.Seal,80),
+            R(8,TowerKind.Observer,TowerKind.Rupture,TowerKind.Seal,80,SealInheritance.MarkedBlast),
             R(9,TowerKind.Scatter,TowerKind.Rupture,TowerKind.Barrage,50),
-            R(10,TowerKind.Barrage,TowerKind.Binding,TowerKind.Seal,80)
+            R(10,TowerKind.Barrage,TowerKind.Binding,TowerKind.Seal,80,SealInheritance.None),
+            R(11,TowerKind.Piercer,TowerKind.Binding,TowerKind.Surge,50),
+            R(12,TowerKind.Surge,TowerKind.Rupture,TowerKind.Seal,80,SealInheritance.LineBurst)
         };
-        private static FusionRecipe R(int id, TowerKind a, TowerKind b, TowerKind result, int cost)
-        { return new FusionRecipe { Id = id, First = a, Second = b, Result = result, Credits = cost }; }
+        private static FusionRecipe R(int id, TowerKind a, TowerKind b, TowerKind result, int cost, SealInheritance inheritance = SealInheritance.None)
+        { return new FusionRecipe { Id = id, First = a, Second = b, Result = result, Credits = cost, Inheritance = inheritance }; }
+
+        static readonly TowerStats[] InheritedSealStats = {
+            null,
+            S(102,1.13f,6.4f,3,1.65f,secondary:48,chain:new[]{102f,80f,62f}),
+            S(158,1f,6.4f,4,1.75f,.38f,1.05f,48),
+            S(56,1.15f,6.4f,6,2.25f,.47f,1.35f,72),
+            S(120,1f,6.4f,4,2f,.35f,1.5f,60,mark:5),
+            S(57,1.02f,6f,7,slow:.32f,seconds:1.1f,cone:.7071068f),
+            S(110,1.05f,7f,5,1.5f,.48f,.95f,60,line:.75f)
+        };
+
+        internal static TowerStats CopyInheritedSealStats(SealInheritance inheritance)
+        {
+            TowerStats stats = InheritedSealStats[(int)inheritance].Copy();
+            stats.Inheritance = inheritance;
+            if (inheritance == SealInheritance.ChainBurst) {
+                stats.ChainRange = 3.2f;
+                stats.TailBurstTargets = 3;
+            }
+            if (inheritance == SealInheritance.LineBurst) stats.TailBurstTargets = 3;
+            if (inheritance == SealInheritance.FanSlow) stats.ConeSlowTargets = 2;
+            if (inheritance == SealInheritance.MarkedBlast) stats.MarkedDamageMultiplier = 1.4f;
+            return stats;
+        }
+
+        public static string DisplayName(TowerKind kind, SealInheritance inheritance)
+        {
+            switch (inheritance) {
+                case SealInheritance.ChainBurst: return "연쇄 종결";
+                case SealInheritance.ShatterSlow: return "파쇄 종결";
+                case SealInheritance.GravitySpear: return "중력 종결";
+                case SealInheritance.MarkedBlast: return "관측 종결";
+                case SealInheritance.FanSlow: return "탄막 종결";
+                case SealInheritance.LineBurst: return "쇄도 종결";
+                default: return Get(kind).Name;
+            }
+        }
+
+        public static string InheritedRole(SealInheritance inheritance)
+        {
+            switch (inheritance) {
+                case SealInheritance.ChainBurst: return "연쇄 끝 폭발";
+                case SealInheritance.ShatterSlow: return "정예 직격 · 주변 감속";
+                case SealInheritance.GravitySpear: return "범위 감속 · 선두 빛창";
+                case SealInheritance.MarkedBlast: return "표식 집중 · 대상 폭발";
+                case SealInheritance.FanSlow: return "부채꼴 · 선두 감속";
+                case SealInheritance.LineBurst: return "직선 감속 · 끝 폭발";
+                default: return "";
+            }
+        }
+
         public static TowerDefinition Get(TowerKind kind) { return All[(int)kind]; }
         public static TowerTag CardTag(CardKind kind)
         {

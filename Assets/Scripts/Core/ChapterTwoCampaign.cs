@@ -10,7 +10,7 @@ namespace Gatefall.Core
         public SpawnGroup[] Groups;
     }
 
-    public static class ChapterTwoCampaign
+    public static partial class ChapterTwoCampaign
     {
         static V2[] P(params float[] xy)
         { var p=new V2[xy.Length/2];for(int i=0;i<p.Length;i++)p[i]=new V2(xy[i*2],xy[i*2+1]);return p; }
@@ -41,6 +41,12 @@ namespace Gatefall.Core
                 Story="유채린: 시장의 불을 다시 켜요. "+briefing.Split('\n')[0],ClearStory=clear};
         }
         public static CampaignStage[] Create()
+        {
+            var stages = new List<CampaignStage>(Opening());
+            stages.AddRange(Later());
+            return stages.ToArray();
+        }
+        static CampaignStage[] Opening()
         {
             return new[]{
                 S(1,"다솜 남문",24,new[]{0,3},
@@ -82,7 +88,7 @@ namespace Gatefall.Core
                 S(6,"시장 시계광장",28,new[]{0,1,2},
                     Map("market-clock-forward-rear-courts",P(-23,5,-17,5,-17,-4,-9,-4,-9,2,-3,2,0,0),P(8,11,8,7,-5,7,-5,2,-3,2,0,0),P(23,-4,17,-4,17,5,10,5,10,-3,4,-3,4,2,-3,2,0,0),None),
                     "전방 화력과 후방 합류목을 나눠 지키세요.\n8웨이브 · 보스 없는 조합 점검전.","120초 이후 북쪽 합류목에 종결을 시도하세요. 다른 전선의 빈자리를 먼저 보충하세요.",
-                    "시장 시계광장을 되찾았습니다. 2-7 이후 작전은 다음 업데이트에서 이어집니다.",
+                    "시장 시계광장을 되찾았습니다. 새벽 배송길로 시장 안쪽 보급선을 이으세요.",
                     W(5,Pack(0,80)),W(35,Pack(1,72),Fast(2,16,5)),W(65,Pack(2,88),Armor(0,3,6)),
                     W(95,Pack(0,64),Pack(1,64,6)),W(125,Armor(2,3,0,true),Pack(2,88,5)),
                     W(155,Fast(1,24),Pack(0,80,4)),W(185,Pack(1,80),Pack(2,72,5)),

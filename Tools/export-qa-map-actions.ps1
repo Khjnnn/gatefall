@@ -4,10 +4,11 @@ param([int]$Stage,[string]$Tag,[double]$SafeLeft=136,[ValidateRange(640,4096)][i
 $ErrorActionPreference='Stop'
 $taskProject=Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $taskProject
-if($Stage -lt 4 -or $Stage -gt 20 -or $Tag -notmatch '^[a-zA-Z0-9_-]+$'){throw 'Explicit expanded stage/plain tag required'}
+if($Stage -lt 4 -or $Tag -notmatch '^[a-zA-Z0-9_-]+$'){throw 'Explicit expanded stage/plain tag required'}
 if($SafeWidth -eq 0){$SafeWidth=$Width-$SafeLeft};if($SafeHeight -eq 0){$SafeHeight=$Height-$SafeBottom}
 if($Width -le $Height -or $SafeLeft -lt 0 -or $SafeBottom -lt 0 -or $SafeWidth -le 0 -or $SafeHeight -le 0 -or $SafeLeft+$SafeWidth -gt $Width -or $SafeBottom+$SafeHeight -gt $Height){throw 'Current landscape dimensions and complete valid safe area required'}
-Add-Type -Path (Get-ChildItem Assets/Scripts/Core -Filter '*.cs').FullName
+Add-Type -Path @((Get-ChildItem Assets/Scripts/Core -Filter '*.cs').FullName + (Join-Path $taskProject 'Assets/Scripts/Presentation/HomeMenu.cs'))
+if($Stage -gt [Gatefall.Core.CampaignCatalog]::Stages.Length){throw 'Stage is not in the current catalog'}
 $taskProfileSource=$null
 if($ProfilePath){
     foreach($flag in @('Loadout','MarkerUnlocked','ObserverUnlocked')){
@@ -22,10 +23,11 @@ if($ProfilePath){
 }
 $scatterUnlocked=if($taskProfileSource){$taskProfile.FirstCleared[15]}else{$false}
 $barrageUnlocked=if($taskProfileSource){$taskProfile.FirstCleared[17]}else{$false}
-$taskG=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]::new(),7,[Gatefall.Core.CampaignBattle]@{Stage=[Gatefall.Core.CampaignCatalog]::Stages[$Stage-1];Loadout=$Loadout;MarkerUnlocked=[bool]$MarkerUnlocked;ObserverUnlocked=[bool]$ObserverUnlocked;ScatterUnlocked=$scatterUnlocked;BarrageUnlocked=$barrageUnlocked})
+$taskRules=if($taskProfileSource){$taskProfileRules}else{[Gatefall.Core.CampaignBattle]@{Stage=[Gatefall.Core.CampaignCatalog]::Stages[$Stage-1];Loadout=$Loadout;MarkerUnlocked=[bool]$MarkerUnlocked;ObserverUnlocked=[bool]$ObserverUnlocked;ScatterUnlocked=$scatterUnlocked;BarrageUnlocked=$barrageUnlocked}}
+$taskG=[Gatefall.Core.DefenseSimulation]::new([Gatefall.Core.GameBalance]::new(),7,$taskRules)
 # Panel width follows the same available families and unlock flags as the observed profile.
 # Since v0.27.21 recipe order follows the catalog, filtered by stage and loadout.
-$taskBuildKinds=@([Gatefall.Core.TowerKind]::Autocannon,[Gatefall.Core.TowerKind]::Binding,[Gatefall.Core.TowerKind]::Rupture,[Gatefall.Core.TowerKind]::Barrier,[Gatefall.Core.TowerKind]::Marker,[Gatefall.Core.TowerKind]::Scatter)|Where-Object {$taskG.Allows($_)}
+$taskBuildKinds=[Gatefall.Core.TowerCatalog]::Buildable|Where-Object {$taskG.Allows($_)}
 $taskReachable=$taskG.ReachableTowerFamilies()
 function RecipeCount([Gatefall.Core.TowerKind]$kind){
     return @([Gatefall.Core.TowerCatalog]::Recipes|Where-Object {
@@ -44,12 +46,28 @@ $taskScale=[double]$taskLayout.Scale;$taskOrigin=[double]$taskLayout.Origin.X;$t
 $taskWidth=[double]$taskLayout.Width;$taskRefHeight=[double]$taskLayout.Height
 $taskHalfHeight=[Math]::Max(12.6,24.8/($Width/[double]$Height));$taskWorldScale=$Height/(2*$taskHalfHeight)
 $taskCameraY=if($taskG.ExpandedArena){0}else{.35}
+# Same placement as the game: MobileLayout.PanelBox keeps the usual above/below rule and moves beside a pad
+# only when the menu would otherwise cover the selected tower.
 function Panel([double]$screenX,[double]$screenY,[double]$width,[double]$height){
-    $taskX=[math]::Max(12,[math]::Min($taskWidth-$width-12,($screenX-$taskOrigin)/$taskScale-$width/2))
-    $taskReferenceY=($screenY-$taskOriginY)/$taskScale
-    $taskY=if($taskReferenceY -gt $taskRefHeight*.5){$taskReferenceY-$height-2.9*$taskWorldScale/$taskScale}else{$taskReferenceY+.9*$taskWorldScale/$taskScale}
-    $taskY=[math]::Max(70,[math]::Min($taskRefHeight-$height-10,$taskY))
-    return @(($taskOrigin+$taskX*$taskScale),($taskOriginY+$taskY*$taskScale))
+    $taskBox=$taskLayout.PanelBox([Gatefall.Core.V2]::new(($screenX-$taskOrigin)/$taskScale,($screenY-$taskOriginY)/$taskScale),$taskWorldScale/$taskScale,$width,$height)
+    return @(($taskOrigin+$taskBox.X*$taskScale),($taskOriginY+$taskBox.Y*$taskScale))
+}
+# Start, wave call and speed leave entrances and pads exactly as MobileHud.ResolveCoreStatus places them.
+if(-not $taskG.ExpandedArena){
+    $taskUnit=$taskWorldScale/$taskScale
+    $taskGuards=[System.Collections.Generic.List[Gatefall.Core.Box2]]::new()
+    $taskRifts=[System.Collections.Generic.List[Gatefall.Core.Box2]]::new()
+    foreach($taskP in $taskG.BoardSockets){
+        $taskX=($Width/2.0+$taskP.X*$taskWorldScale-$taskOrigin)/$taskScale;$taskY=($Height/2.0-($taskP.Y-$taskCameraY)*$taskWorldScale-$taskOriginY)/$taskScale
+        $taskGuards.Add([Gatefall.Core.Box2]::new($taskX-1.2*$taskUnit,$taskY-2.3*$taskUnit,2.4*$taskUnit,3.2*$taskUnit))
+    }
+    foreach($taskLane in $taskG.OpenLanes){
+        $taskP=$taskG.GatePositions[$taskLane]
+        $taskX=($Width/2.0+$taskP.X*$taskWorldScale-$taskOrigin)/$taskScale;$taskY=($Height/2.0-($taskP.Y-$taskCameraY)*$taskWorldScale-$taskOriginY)/$taskScale
+        $taskRift=[Gatefall.Core.Box2]::new($taskX-2.55*$taskUnit,$taskY-1.6*$taskUnit,5.1*$taskUnit,3.2*$taskUnit)
+        $taskGuards.Add($taskRift);$taskRifts.Add($taskRift)
+    }
+    $taskLayout.PlaceControls($taskGuards,$taskRifts)
 }
 $taskPanels=[System.Collections.Generic.List[object]]::new()
 $taskRows=@(for($taskI=0;$taskI -lt $taskG.BoardSockets.Length;$taskI++){
@@ -75,7 +93,50 @@ $taskControls=@(foreach($taskAction in @([Gatefall.Core.MobileAction]::Start,[Ga
     $taskBox=$taskLayout.Button($taskAction)
     [pscustomobject]@{action=$taskAction.ToString();x=[math]::Round($taskOrigin+($taskBox.X+$taskBox.Width/2)*$taskScale);y=[math]::Round($taskOriginY+($taskBox.Y+$taskBox.Height/2)*$taskScale)}
 })
-[ordered]@{stage=$Stage;screenWidth=$Width;screenHeight=$Height;safe=@{left=$SafeLeft;bottom=$SafeBottom;width=$SafeWidth;height=$SafeHeight};scale=$taskScale;originX=$taskOrigin;originY=$taskOriginY;referenceWidth=$taskWidth;referenceHeight=$taskRefHeight;controls=$taskControls;sourceProfile=$taskProfileSource;profile=@{loadout=$Loadout;markerUnlocked=[bool]$MarkerUnlocked;observerUnlocked=[bool]$ObserverUnlocked;buildOrder=@($taskBuildKinds|ForEach-Object{$_.ToString()})};menuTiles=@{build=$taskBuildKinds.Count;spearLevel1=3;spearLevel2=3;arcLevel1=3;recipeOptions=$taskSpearRecipes};projectedPanels=$taskPanels;reviewProtocol='No universal empty point. For a long review use qa-android -Shot NAME -BackgroundAfterShot; after foreground wait2s and inspect actual Pause/card. Explicit Pause remains visible in LIVE tower/recipe menus. Projection does not identify the current screen.';assumptions='Stage4 overview camera or other stage full camera. Use an extracted ProfilePath snapshot to derive actual loadout/unlocks,or explicitly supply all manual flags. v0.25:Tower menu has3 actions; fusionX opens recipes. Recipe cell coordinates are Spear options only, identity/order must be inspected. Actual partner readiness/sorting/card/current menu must still be inspected.'}|ConvertTo-Json -Depth 5|Set-Content ("TestResults/"+$Tag+'-projection.json')
+$taskHomeControls=@(
+    $taskBox=$taskLayout.HomePass()
+    [pscustomobject]@{action=880;name='방어 기록 패스';x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+    foreach($taskIndex in 0..([Gatefall.HomeMenu]::Tabs.Length-1)){
+        $taskBox=$taskLayout.HomeNavigation($taskIndex,[Gatefall.HomeMenu]::Tabs.Length,0)
+        [pscustomobject]@{action=[Gatefall.HomeMenu]::Tabs[$taskIndex].Action;name=[Gatefall.HomeMenu]::Tabs[$taskIndex].Name;x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+    }
+    foreach($taskSpec in @(@{action=684;index=2},@{action=685;index=5},@{action=604;index=6})){
+        $taskBox=$taskLayout.HomeTop($taskSpec.index)
+        [pscustomobject]@{action=$taskSpec.action;x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+    }
+    foreach($taskIndex in 0..([Gatefall.HomeMenu]::Right.Length-1)){
+        $taskBox=$taskLayout.HomeRight($taskIndex,[Gatefall.HomeMenu]::Right.Length,$false)
+        [pscustomobject]@{action=[Gatefall.HomeMenu]::Right[$taskIndex].Action;name=[Gatefall.HomeMenu]::Right[$taskIndex].Name;x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+    }
+)
+$taskDailyControls=@(
+    foreach($taskSpec in @(
+        @{page='daily';action=603;box=$taskLayout.DailyBack()},
+        @{page='roulette';action=881;box=$taskLayout.DailyPrimary()},
+        @{page='roulette';action=882;box=$taskLayout.RouletteOdds()},
+        @{page='attendance';action=883;box=$taskLayout.DailyPrimary()},
+        @{page='pass';action=884;box=$taskLayout.PassCap()},
+        @{page='pass-or-odds';action=885;box=$taskLayout.DailyScroll($false)},
+        @{page='pass-or-odds';action=886;box=$taskLayout.DailyScroll($true)},
+        @{page='victory';action=887;box=$taskLayout.VictoryDouble()}
+    )){
+        $taskBox=$taskSpec.box
+        [pscustomobject]@{page=$taskSpec.page;action=$taskSpec.action;x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+    }
+    foreach($taskIndex in 0..5){
+        $taskBox=$taskLayout.MissionClaim($taskIndex)
+        [pscustomobject]@{page='missions';action=900+$taskIndex;x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+    }
+    foreach($taskIndex in 0..($taskLayout.DailyVisibleRows()-1)){
+        foreach($taskPaid in @($false,$true)){
+            $taskBox=$taskLayout.PassClaim($taskIndex,$taskPaid)
+            [pscustomobject]@{page='pass';visibleRow=$taskIndex;paid=$taskPaid;actionBase=$(if($taskPaid){950}else{920});actionRule='actionBase + firstTierIndex + visibleRow';x=[math]::Round($taskOrigin+$taskBox.Center.X*$taskScale);y=[math]::Round($taskOriginY+$taskBox.Center.Y*$taskScale)}
+        }
+    }
+)
+$taskCall=$taskLayout.WaveCallBox()
+$taskControls+=[pscustomobject]@{action='WaveCall';x=[math]::Round($taskOrigin+($taskCall.X+$taskCall.Width/2)*$taskScale);y=[math]::Round($taskOriginY+($taskCall.Y+$taskCall.Height/2)*$taskScale)}
+[ordered]@{stage=$Stage;screenWidth=$Width;screenHeight=$Height;safe=@{left=$SafeLeft;bottom=$SafeBottom;width=$SafeWidth;height=$SafeHeight};scale=$taskScale;originX=$taskOrigin;originY=$taskOriginY;referenceWidth=$taskWidth;referenceHeight=$taskRefHeight;controls=$taskControls;homeControls=$taskHomeControls;sourceProfile=$taskProfileSource;profile=@{loadout=$Loadout;markerUnlocked=[bool]$MarkerUnlocked;observerUnlocked=[bool]$ObserverUnlocked;buildOrder=@($taskBuildKinds|ForEach-Object{$_.ToString()})};menuTiles=@{build=$taskBuildKinds.Count;spearLevel1=3;spearLevel2=3;arcLevel1=3;recipeOptions=$taskSpearRecipes};projectedPanels=$taskPanels;reviewProtocol='No universal empty point. For a long review use qa-android -Shot NAME -BackgroundAfterShot; after foreground wait2s and inspect actual Pause/card. Explicit Pause remains visible in LIVE tower/recipe menus. Projection does not identify the current screen.';assumptions='Stage4 overview camera or other stage full camera. Use an extracted ProfilePath snapshot to derive actual loadout/unlocks,or explicitly supply all manual flags. v0.25:Tower menu has3 actions; fusionX opens recipes. Recipe cell coordinates are Spear options only, identity/order must be inspected. Actual partner readiness/sorting/card/current menu must still be inspected.'}|ConvertTo-Json -Depth 5|Set-Content ("TestResults/"+$Tag+'-projection.json')
 $taskRows|Select-Object -First 6|Format-Table
 "Assumed build tiles=$($taskBuildKinds.Count), loadout=$Loadout, marker=$([bool]$MarkerUnlocked), observer=$([bool]$ObserverUnlocked). Build order: $($taskBuildKinds -join ', '). Compare with the actual menu before sending taps."
 "Coordinate projection only: $Width x $Height /safe $SafeLeft,$SafeBottom,$SafeWidth,$SafeHeight /origin $taskOrigin,$taskOriginY /camera-half-height $taskHalfHeight. Confirm current screen, card and actual menu tile count."

@@ -14,13 +14,17 @@ namespace Gatefall
             if (controller.ScreenPage == CampaignScreen.Home) Home();
             else if (controller.ScreenPage == CampaignScreen.City) City();
             else if (controller.ScreenPage == CampaignScreen.Growth) Growth();
+            else if (controller.ScreenPage == CampaignScreen.Shop) Shop();
             else if (controller.ScreenPage == CampaignScreen.Loadout) Loadout();
+            else if (controller.DailyPage) DailyPage();
             else Settings();
-            if (controller.CampaignError != "") {
-                Rect r = controller.ScreenPage==CampaignScreen.Home ? new Rect(W-548,116,516,92) : new Rect(W / 2 - 330, H - 52, 660, 40);
+            if (controller.CampaignError != "" && !controller.SupplyModal && !controller.DailyPage) {
+                Rect r = controller.ScreenPage==CampaignScreen.Home ? new Rect(380,H-176,W-596,48) : new Rect(W / 2 - 330, H - 52, 660, 40);
+                if(controller.ScreenPage==CampaignScreen.Shop || controller.ScreenPage==CampaignScreen.Loadout && controller.TowerCards)r=new Rect(24,H-30,W-48,26);
                 Skin(r, "ui-chip");
                 Text(r, controller.CampaignError, 15, Threat, TextAnchor.MiddleCenter, 1);
             }
+            SupplyOverlay();
         }
 
         // Whole physical screen in reference units, including notch insets outside the safe area.
@@ -53,7 +57,7 @@ namespace Gatefall
             Fill(full, GatefallArt.Hex("1A222C"));
             Tex(map, art.Texture("district-map"), Color.white);
             Fill(new Rect(W - 420, full.y, full.xMax - (W - 420), full.height), new Color(.06f, .08f, .11f, .55f));
-            Header(controller.CurrentChapter==1 ? "종현동 · 1챕터" : "다솜동 · 2챕터", true);
+            Header(CampaignCatalog.ChapterMapNames[controller.CurrentChapter-1]+" · "+controller.CurrentChapter+"챕터", true);
             bool crisis = controller.CrisisSelection;
             string starsLabel = crisis ? "위기 ★ " + profile.CrisisStarsTotal : "★ " + profile.StarsTotal;
             Text(new Rect(340, 14, 176, 40), starsLabel + " / " + (CampaignCatalog.Stages.Length * 3), 17, Amber, TextAnchor.MiddleLeft, 2);
@@ -94,14 +98,24 @@ namespace Gatefall
             Button(655,new Box2(map.x+12,map.yMax-52,100,44),"이전",controller.CanMoveMapPage(-1),Look.Secondary,null,14);
             Button(656,new Box2(map.x+120,map.yMax-52,100,44),"다음",controller.CanMoveMapPage(1),Look.Secondary,null,14);
             Text(new Rect(map.x+230,map.yMax-52,150,44),"목록 "+(controller.MapPage+1)+" / "+controller.MapPageCount,14,Paper,TextAnchor.MiddleLeft,1);
-            Button(660,new Box2(map.x+12,map.y+8,132,38),"1 · 종현동",true,controller.CurrentChapter==1?Look.Primary:Look.Secondary,null,13);
-            Button(661,new Box2(map.x+154,map.y+8,164,38),profile.IsStageOpen(14)?"2 · 다솜동":"2 · 1-14 클리어",profile.IsStageOpen(14),controller.CurrentChapter==2?Look.Primary:Look.Secondary,null,13);
+            int chapters=CampaignCatalog.PlayableChapterCount;
+            float tabWidth=Mathf.Min(152,(map.width-24-(chapters-1)*8)/chapters);
+            for(int chapter=1;chapter<=chapters;chapter++) {
+                int start=CampaignCatalog.ChapterStart(chapter);
+                bool open=profile.IsStageOpen(start);
+                string label=chapter+" · "+(open ? CampaignCatalog.ChapterMapNames[chapter-1] : CampaignCatalog.StageId(start-1)+" 일반 승리");
+                Button(GatefallGame.ChapterActionBase+chapter-1,new Box2(map.x+12+(chapter-1)*(tabWidth+8),map.y+8,tabWidth,38),
+                    label,open,controller.CurrentChapter==chapter?Look.Primary:Look.Secondary,null,13);
+            }
             Briefing(new Rect(W - 404, 78, 388, H - 92));
         }
 
         void Loadout()
         {
+            if(controller.TowerCards){TowerCardShop();return;}
             Fill(Full(),GatefallArt.Hex("1A222C")); Header("결계주 편성",true);
+            Button(835,new Box2(560,8,100,48),"카드",true,Look.Secondary,null,16);
+            Button(836,new Box2(668,8,100,48),"편성",true,Look.Primary,null,16);
             CampaignProfile profile = controller.Profile;
             int count = profile.LoadoutCount;
             bool full = count >= CampaignProfile.MaximumLoadoutCount;
@@ -112,8 +126,8 @@ namespace Gatefall
             var results=profile.LoadoutResults();
             string names="";foreach(TowerKind kind in results)names+=(names==""?"":" · ")+TowerCatalog.Get(kind).Name.Replace(" 결계주","");
             Text(new Rect(30,106,W-60,28),"조합 가능: "+(names==""?"없음":names)+"  ·  전투 중 강화와 촉매 필요",14,Ally,TextAnchor.MiddleLeft,0);
-            TowerKind[] kinds={TowerKind.Autocannon,TowerKind.Binding,TowerKind.Rupture,TowerKind.Barrier,TowerKind.Marker,TowerKind.Scatter};
-            float width=(W-110)/6;
+            TowerKind[] kinds=TowerCatalog.Buildable;
+            float width=(W-60-(kinds.Length-1)*10)/kinds.Length;
             for(int i=0;i<kinds.Length;i++) {
                 TowerKind kind=kinds[i];bool chosen=(profile.Loadout&(1<<(int)kind))!=0;
                 Rect r=new Rect(30+i*(width+10),140,width,H-210);Skin(r,chosen?"ui-selected":"ui-panel");
@@ -123,7 +137,8 @@ namespace Gatefall
                 Text(new Rect(r.x+8,r.y+166,r.width-16,70),TowerCatalog.Get(kind).Role,13,Muted,TextAnchor.UpperCenter,0);
                 bool unlocked=profile.IsTowerUnlocked(kind);
                 bool enabled = unlocked && (chosen ? !last : !full);
-                string action = !unlocked ? (kind==TowerKind.Scatter?"2-2 클리어":"1-10 클리어") : chosen ? (last ? "1개 필수" : "해제") : (full ? "편성 가득 참" : "선택");
+                string unlock = kind==TowerKind.Piercer?"3-2 승리":kind==TowerKind.Scatter?"2-2 클리어":"1-10 클리어";
+                string action = !unlocked ? unlock : chosen ? (last ? "1개 필수" : "해제") : (full ? "편성 가득 참" : "선택");
                 Button(700+i,new Box2(r.x+8,r.yMax-55,r.width-16,46),action,enabled,chosen?Look.Primary:Look.Secondary,null,14);
             }
         }
@@ -199,7 +214,8 @@ namespace Gatefall
                 Tex(new Rect(c.x + 8, c.center.y - portrait / 2, portrait, portrait), art.Texture("hunter-" + i), open ? Color.white : new Color(.3f, .3f, .35f, 1));
                 float tx = c.x + portrait + 20, textWidth = c.xMax - 174 - tx;
                 Text(new Rect(tx, c.y + 6, textWidth, 28), CampaignCatalog.Hunters[i], 19, open ? Paper : Muted, TextAnchor.MiddleLeft, 2);
-                Text(new Rect(tx, c.y + 34, open ? textWidth : c.xMax - tx - 12, 64), open ? profile.Grade(i) + "\n" + CampaignCatalog.HunterRoles[i].Split('·')[1].Trim()+
+                string growthStatus=i==0 ? profile.Grade(i) : (i==1?"C급":"B급")+" · 성장 "+profile.Growth[i];
+                Text(new Rect(tx, c.y + 34, open ? textWidth : c.xMax - tx - 12, 64), open ? growthStatus + "\n" + CampaignCatalog.HunterRoles[i].Split('·')[1].Trim()+
                     "\n생명 +"+(profile.Growth[i]*8)+"% · 피해 +"+(profile.Growth[i]*5)+"%" : i == 1 ? "1-3 종현 배급소 클리어" : "1-6 잿빛 탑 봉인", 13, Muted, TextAnchor.UpperLeft, 0);
                 if (!open) continue;
                 if (!chosen) Button(620 + i, new Box2(c.xMax - 162, c.y + 8, 150, 48), "출전 선택", true, Look.Secondary, null, 15);
@@ -222,9 +238,12 @@ namespace Gatefall
                 float tx = row.x + 66;
                 Text(new Rect(tx, row.y + 4, row.xMax - 84 - tx, 26), CampaignCatalog.ResearchNames[i], 17, Paper, TextAnchor.MiddleLeft, 2);
                 Text(new Rect(tx, row.y + 30, row.xMax - 162 - tx, 40), CampaignCatalog.ResearchEffects[i], 13, Muted, TextAnchor.UpperLeft, 0);
-                for (int k = 0; k < 3; k++) Fill(new Rect(row.xMax - 76 + k * 20, row.y + 6, 14, 14), k < rank ? Ally : new Color(1, 1, 1, .15f));
+                int maximum=CampaignCatalog.ResearchCosts.Length;
+                for (int k = 0; k < maximum; k++) Fill(new Rect(row.xMax - 16 - (maximum-k)*20, row.y + 6, 14, 14), k < rank ? Ally : new Color(1, 1, 1, .15f));
                 string reason = controller.Campaign.ResearchReason(i);
-                Button(640 + i, new Box2(row.xMax - 150, row.yMax - 50, 140, 48), reason == "" ? "연구 · " + CampaignCatalog.ResearchCosts[rank] : rank >= 3 ? "최대" : "잠김", reason == "", Look.Upgrade, reason == "" ? "icon-core" : null, 14);
+                string label=reason=="" ? "연구 · "+CampaignCatalog.ResearchCosts[rank] : rank>=maximum ? "최대" :
+                    reason.StartsWith("2-8") ? "2-8 클리어 후" : reason=="마핵 부족" ? reason : "잠김";
+                Button(640 + i, new Box2(row.xMax - 150, row.yMax - 50, 140, 48),label,reason=="",Look.Upgrade,reason==""?"icon-core":null,14);
             }
             int invested = controller.Campaign.ResearchInvestment();
             Button(645, new Box2(right.x + 14, right.yMax - 70, right.width - 28, 52), "연구 초기화 · 마핵 " + invested + " 반환", invested > 0, Look.Ghost, "icon-back", 15);
@@ -254,35 +273,47 @@ namespace Gatefall
         {
             bool won = game.State == RunState.Won;
             Fill(Full(), new Color(0, 0, 0, .52f));
-            Rect r = new Rect(W / 2 - 300, H / 2 - 200, 600, 400);
+            Rect r = HomeRect(layout.VictoryPanel());
             Skin(r, "ui-panel");
-            string title = won ? (game.Rules.Stage.Boss ? "잿빛 탑 봉인" : "범람 저지") : "방어 실패";
+            string title = won ? (game.Rules.Stage.Boss ? game.Rules.Stage.BossVictoryTitle ?? "잿빛 탑 봉인" : "범람 저지") : "방어 실패";
             if (game.Rules.Crisis) title = won ? "위기 작전 성공" : "위기 작전 실패";
             Text(new Rect(r.x, r.y + 18, r.width, 46), title, 32, won ? Amber : Threat, TextAnchor.MiddleCenter, 2);
             int stars = CampaignCatalog.Stars(won, game.MinimumCoreHealth, game.Balance.CoreHealth);
             for (int i = 0; i < 3; i++) Icon(new Rect(r.center.x - 108 + i * 76, r.y + 72, i == 1 ? 72 : 64, i == 1 ? 72 : 64), i < stars ? "icon-star" : "icon-star-empty", Color.white);
-            Text(new Rect(r.x, r.y + 148, r.width, 22), "가장 크게 깎인 결계 " + (game.PeakErosion * 100).ToString("0") + "%  ·  처치 " + game.Kills + (game.Telemetry.Fusions > 0 ? "  ·  조합 " + game.Telemetry.Fusions : ""), 14, Muted, TextAnchor.MiddleCenter, 0);
+            Text(new Rect(r.x, r.y + 146, r.width, 23), CampaignCatalog.ResultCoreStatus(won, game.MinimumCoreHealth, game.Balance.CoreHealth), 16, Paper, TextAnchor.MiddleCenter, 1);
+            Text(new Rect(r.x, r.y + 170, r.width, 20), "처치 " + game.Kills + " · 조합 " + game.Telemetry.Fusions, 14, Muted, TextAnchor.MiddleCenter, 0);
             string story = won ? game.Rules.VictorySummary() : game.DefeatReason + "  " + (game.CoreHealth <= 0 ? "뚫린 진입로 쪽에 결계주를 나눠 세우세요." : "문지기 전에 화력을 모으세요.");
             if (!won && game.CoreHealth <= 0 && game.Telemetry.MostDamagingLane >= 0)
                 story = game.DefeatReason + "\n다음에는 피해가 컸던 " + GateName(game.Telemetry.MostDamagingLane) + " 진입로를 보강하세요.";
-            Text(new Rect(r.x + 34, r.y + 180, r.width - 68, 58), story, 16, Paper, TextAnchor.MiddleCenter, 0);
+            string directions = won && stars < 3 ? CampaignCatalog.ResultDamageDirections(game.Telemetry.CoreDamageByLane) : "";
+            if (directions != "") {
+                Text(new Rect(r.x + 34, r.y + 193, r.width - 68, 22), directions, 15, Amber, TextAnchor.MiddleCenter, 1);
+                Text(new Rect(r.x + 34, r.y + 215, r.width - 68, 30), story, 14, Paper, TextAnchor.MiddleCenter, 0);
+            } else Text(new Rect(r.x + 34, r.y + 190, r.width - 68, 55), story, 16, Paper, TextAnchor.MiddleCenter, 0);
             if (controller.ResultSaved) {
                 if (controller.ResultReward > 0) {
                     Skin(new Rect(r.center.x - 90, r.y + 246, 180, 44), "ui-chip");
                     Icon(new Rect(r.center.x - 78, r.y + 250, 36, 36), "icon-core", Color.white);
-                    Text(new Rect(r.center.x - 36, r.y + 246, 120, 44), "+" + controller.ResultReward, 22, Paper, TextAnchor.MiddleLeft, 2);
+                    Text(new Rect(r.center.x - 36, r.y + 246, 120, 44), "+" + controller.DisplayResultReward, 22, Paper, TextAnchor.MiddleLeft, 2);
                 }
             } else Text(new Rect(r.x + 20, r.y + 246, r.width - 40, 44), "결과를 저장하지 못했습니다 · " + controller.CampaignError, 14, Threat, TextAnchor.MiddleCenter, 1);
             float by = r.yMax - 82;
+            if(controller.CanDoubleReward) {
+                bool ready=controller.RewardedAds!=null && controller.RewardedAds.IsReady;
+                string label=controller.DailyAdPending?"광고 확인 중":ready?"광고 보고 2배":"광고 준비 중";
+                Button(887,layout.VictoryDouble(),label+" · 남은 "+(DailyCatalog.DoubleDailyLimit-controller.Campaign.DailyStatus().RewardDoubles)+"/5",ready && !controller.DailyAdPending,Look.Primary,null,18);
+            }
+            if(controller.ResultSaved && controller.CampaignError!="")Text(new Rect(r.x+24,r.y+364,r.width-48,40),controller.CampaignError,14,Threat,TextAnchor.MiddleCenter,1);
+            if(controller.DailyAdPending){controller.TouchInput.Regions.Clear();return;}
             if (!controller.ResultSaved) { Button(690, new Box2(r.center.x - 150, by, 300, 60), "저장 다시 시도", true, Look.Primary, null, 18); return; }
             bool next = won && controller.SelectedStage < CampaignCatalog.Stages.Length-1 && controller.Profile.IsStageOpen(controller.SelectedStage + 1) && !game.Rules.Crisis;
             if (next) {
                 Button(600, new Box2(r.x + 24, by, 150, 60), "지도", true, Look.Secondary, null, 17);
-                Button((int)MobileAction.Restart, new Box2(r.x + 184, by, 150, 60), "다시", true, Look.Secondary, null, 17);
-                Button(607, new Box2(r.x + 344, by, 232, 60), "다음 작전", true, Look.Primary, "icon-play", 19);
+                Button((int)MobileAction.Restart, new Box2(r.x + 184, by, 150, 60), "다시 ♥1", true, Look.Secondary, null, 17);
+                Button(607, new Box2(r.x + 344, by, 232, 60), "다음 작전 ♥1", true, controller.Profile.Hearts+controller.Profile.ExtraHearts==0?Look.Danger:Look.Primary, null, 19);
             } else {
                 Button(600, new Box2(r.x + 24, by, 200, 60), "지도", true, Look.Secondary, null, 17);
-                Button((int)MobileAction.Restart, new Box2(r.x + 236, by, 340, 60), won ? "다시 도전" : "다시 도전", true, Look.Primary, null, 19);
+                Button((int)MobileAction.Restart, new Box2(r.x + 236, by, 340, 60), "다시 도전 ♥1", true, controller.Profile.Hearts+controller.Profile.ExtraHearts==0?Look.Danger:Look.Primary, null, 19);
             }
         }
     }

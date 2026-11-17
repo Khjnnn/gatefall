@@ -102,14 +102,22 @@ namespace Gatefall
             TowerKind kind = (TowerKind)Mathf.Clamp(e.Source, 0, TowerCatalog.All.Length - 1);
             bool hunterShot = e.Source < 0;
             Color tint = hunterShot ? GatefallArt.Ally : GatefallArt.RoleColor(kind);
+            if (!hunterShot && (kind==TowerKind.Piercer || kind==TowerKind.Surge || e.Inheritance==SealInheritance.LineBurst)) {
+                // Both endpoints use the same ground offset; perspective must not skew
+                // the visible firing axis away from the simulation's line.
+                Vector3 lift=Vector3.up*.26f;
+                Color lineTint=e.Inheritance==SealInheritance.LineBurst ? GatefallArt.RoleColor(TowerKind.Surge) : tint;
+                Line(Point(e.Position)+lift,Point(e.Target)+lift,.12f,.18f,lineTint);
+                return;
+            }
             Vector3 muzzle = Point(e.Position) + Vector3.up * (hunterShot ? .9f : 1.05f);
             Vector3 direction = (Point(e.Target) + Vector3.up * .38f - muzzle).normalized;
             if (direction.sqrMagnitude < .01f) direction = Vector3.right;
             float length = hunterShot ? .92f : kind == TowerKind.Rupture ? .67f : .50f;
             Line(muzzle, muzzle + direction * length, .085f, hunterShot ? .15f : .12f, tint);
-            if(!hunterShot && (kind==TowerKind.Scatter || kind==TowerKind.Barrage) && effects.Count<96){
+            if(!hunterShot && (kind==TowerKind.Scatter || kind==TowerKind.Barrage || e.Inheritance==SealInheritance.FanSlow) && effects.Count<96){
                 Vector3 side=new Vector3(-direction.y,direction.x,0);
-                float spread=kind==TowerKind.Barrage?.50f:.34f;
+                float spread=e.Inheritance==SealInheritance.FanSlow ? .85f : kind==TowerKind.Barrage ? .50f : .34f;
                 Line(muzzle,muzzle+direction*.85f+side*spread,.07f,.10f,tint);
                 Line(muzzle,muzzle+direction*.85f-side*spread,.07f,.10f,tint);
             }
@@ -160,8 +168,14 @@ namespace Gatefall
                 if(effects.Count<112)Line(p-direction*.20f,p+direction*.35f,.09f,.045f,Color.white);
                 return;
             }
-            if (kind == TowerKind.Arc && e.Source >= 0)
+            if ((kind == TowerKind.Arc || e.Inheritance == SealInheritance.ChainBurst) && e.Source >= 0)
                 Lightning(Point(e.Target) + Vector3.up * .38f, p);
+            if ((e.Inheritance == SealInheritance.ShatterSlow || e.Inheritance == SealInheritance.FanSlow) && effects.Count < 96)
+                Pulse(p - Vector3.up * .23f, .82f, .18f, GatefallArt.RoleColor(TowerKind.Binding), true);
+            if (e.Inheritance == SealInheritance.GravitySpear && effects.Count < 96)
+                Line(p + Vector3.up * 1.2f, p, .15f, .12f, GatefallArt.RoleColor(TowerKind.Autocannon));
+            if (e.Inheritance == SealInheritance.MarkedBlast && effects.Count < 96)
+                Pulse(p, .85f, .18f, GatefallArt.RoleColor(TowerKind.Marker), false);
             if (kind == TowerKind.Binding && e.Source >= 0) {
                 Pulse(p - Vector3.up * .23f, 1.15f, .22f, tint, true);
                 if (effects.Count >= 96) return;
@@ -240,7 +254,8 @@ namespace Gatefall
             float diameter = Mathf.Max(1, e.Value * 2);
             TowerKind kind = (TowerKind)Mathf.Clamp(e.Source, 0, TowerCatalog.All.Length - 1);
             Color tint = GatefallArt.RoleColor(kind);
-            if (kind == TowerKind.Gravity) {
+            if (kind == TowerKind.Gravity || e.Inheritance == SealInheritance.GravitySpear) {
+                if (e.Inheritance == SealInheritance.GravitySpear) tint = GatefallArt.RoleColor(TowerKind.Gravity);
                 Fx vortex = Neutral("fx-vortex", p + Vector3.up * .15f, Vector3.zero, .32f, diameter * .65f, diameter * .16f, GatefallArt.Alpha(tint, .8f)); vortex.Spin = -420;
                 Pulse(p, diameter, .23f, tint, true);
             } else if (kind == TowerKind.Seal) {

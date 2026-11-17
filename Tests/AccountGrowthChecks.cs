@@ -16,7 +16,7 @@ namespace Gatefall.Tests {
             return service.Profile.Copy();
         }
         public static string Run(){
-            Assert(CampaignCatalog.ResearchCosts.SequenceEqual(new[]{2,4,6}) && CampaignCatalog.GrowthCosts.SequenceEqual(new[]{4,6,8,12,18,26}),"Historical prices changed");
+            Assert(CampaignCatalog.ResearchCosts.Take(3).SequenceEqual(new[]{2,4,6}) && CampaignCatalog.GrowthCosts.SequenceEqual(new[]{4,6,8,12,18,26}),"Historical prices changed");
             int hintCases=0;int[] familyBits={1,2,4,1<<7};
             for(int stage=6;stage<14;stage++)for(int families=0;families<32;families++)for(int ranks=0;ranks<256;ranks++){
                 int loadout=(families&16)!=0 ? 1<<8 : 0;for(int line=0;line<4;line++)if((families&(1<<line))!=0)loadout|=familyBits[line];

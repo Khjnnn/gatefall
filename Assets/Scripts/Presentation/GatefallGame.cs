@@ -102,6 +102,7 @@ namespace Gatefall
             selection.EnsureCapacity(Simulation.BoardSockets.Length); Overview = Simulation.ExpandedArena; DoubleSpeed = false;
             view = new ArenaView(transform, Simulation, art);
             visualTime = 0; Notice = ""; NoticeUntil = 0; noticedCatalysts = 0; pendingCardSupply = null; lastWaveBriefing = -1;
+            entrancePreview = IsCampaign ? Simulation.GetWaveBriefing(0) : null;
             cardInputUnlockTime = 0;
             TutorialRun = IsCampaign && ShowLesson;
             TouchInput.Reset();
@@ -114,7 +115,7 @@ namespace Gatefall
 
         public void StartRun()
         {
-            if (ScreenPage != CampaignScreen.Battle || Menu != GameMenu.None || Simulation.State != RunState.Ready) return;
+            if (ScreenPage != CampaignScreen.Battle || HeartShortage || Menu != GameMenu.None || Simulation.State != RunState.Ready) return;
             if (IsCampaign && ShowLesson) Campaign.MarkTutorial(SelectedStage);
             Simulation.Start();
             if (!IsCampaign || !AnnounceWave(0, false)) ShowNotice("범람 시작 · " + MobileHud.GateName(Simulation.ActiveGate) + "에서 접근합니다", 2.4f);
@@ -122,6 +123,11 @@ namespace Gatefall
         public void Restart() { if (IsCampaign) BeginPreparation(); else BeginLab(); }
         public void Pause()
         {
+            if(DailyAdPending)return;
+            if(HeartShortage) {CampaignAction(698);return;}
+            if(HomePlaceholder!="") {CampaignAction(686);return;}
+            if(SupplyModal){CampaignAction(819);return;}
+            if(ShopAdPending)return;
             if (ScreenPage != CampaignScreen.Battle) { if(ScreenPage!=CampaignScreen.Home)CampaignAction(603); return; }
             if (Simulation.AwaitingCard) return;
             if (Menu == GameMenu.Pause) {
@@ -166,20 +172,21 @@ namespace Gatefall
                 TowerKind other = r.First == tower.Kind ? r.Second : r.First;
                 if (!Simulation.Allows(other)) continue;
                 if ((reachable & (1 << (int)other)) == 0) continue;
-                List<int> partners = new List<int>(); bool lowPartner = false;
+                List<int> partners = new List<int>();
                 foreach (Tower t in Simulation.Towers) {
                     if (t.Id == tower.Id || t.Kind != other) continue;
-                    if (t.Level >= 2) partners.Add(t.Socket); else lowPartner = true;
+                    if (t.Level >= 2) partners.Add(t.Socket);
                 }
                 string otherName = TowerCatalog.Get(other).Name.Replace(" 결계주", "");
                 string reason;
-                if (tower.Level < 2) reason = "이 결계주를\nLv2로 강화";
-                else if (partners.Count == 0) reason = otherName + (lowPartner ? " Lv2로\n강화 필요" : " Lv2\n필요");
+                if (tower.Level < 2) reason = "현재 결계주 Lv2 필요";
+                else if (partners.Count == 0) reason = otherName + " Lv2 필요";
                 else {
                     Tower partner = Simulation.TowerAt(partners[0]);
                     reason = Simulation.CanFuse(r.Id, tower.Id, partner.Id, tower.Socket);
-                    if (reason.StartsWith("공명 촉매")) reason = Simulation.WaveCallsEnabled ? "촉매 필요\n(3·5웨이브)" : "촉매 필요\n(60·120초)";
+                    if (reason.StartsWith("공명 촉매")) reason = "촉매 필요";
                     else if (reason.StartsWith("마석")) reason = "마석 부족";
+                    else if (reason.EndsWith("상위 경로가 열립니다.")) reason = reason.Substring(0, 3) + " 클리어 필요";
                 }
                 list.Add(new FusionOption { Recipe = r.Id, Partners = partners, Reason = reason });
             }
@@ -189,6 +196,7 @@ namespace Gatefall
         private void Update()
         {
             FitCamera();
+            TickHomeHearts();
             TouchInput.SetState(Simulation.State);
             // A wave call can open a card during input, before the simulation tick.
             bool hadCard = Simulation.AwaitingCard;
@@ -212,7 +220,7 @@ namespace Gatefall
             TouchInput.AllowPreparation = Simulation.IsPreparing && ScreenPage == CampaignScreen.Battle && Menu == GameMenu.None;
             if (Menu != GameMenu.None) movement = new V2();
             float combatDt = Simulation.State == RunState.Running ? dt * (DoubleSpeed ? 2f : 1.25f) : dt;
-            if (ScreenPage == CampaignScreen.Battle) Simulation.Tick(combatDt, movement);
+            if (ScreenPage == CampaignScreen.Battle && !HeartShortage) Simulation.Tick(combatDt, movement);
             if (!hadCard && Simulation.AwaitingCard)
                 cardInputUnlockTime = Time.unscaledTime + GrowthCardInputDelay;
             if (activityGame != Simulation) { activityGame = Simulation; towerShotCounts.Clear(); }
@@ -257,11 +265,15 @@ namespace Gatefall
         }
         private int noticedCatalysts;
         private int lastWaveBriefing = -1;
+        private WaveBriefing entrancePreview;
+        public WaveBriefing EntrancePreview => entrancePreview != null &&
+            (Simulation.IsPreparing || Simulation.Elapsed < entrancePreview.FirstSpawn) ? entrancePreview : null;
         private bool AnnounceWave(int wave, bool preview, bool called=false)
         {
             WaveBriefing briefing = Simulation.GetWaveBriefing(wave);
             if (briefing == null) return false;
             lastWaveBriefing = wave;
+            entrancePreview = briefing;
             if(!called)ShowNotice((preview ? "예고 · " : "") + briefing.Summary, 2.4f);
             Debug.Log("GATEFALL WAVE BRIEFING index=" + wave + " total=" + briefing.Total + " source=" + (called ? "call" : "schedule") + " " + briefing.Summary);
             return true;
@@ -276,7 +288,7 @@ namespace Gatefall
             if (Menu == GameMenu.Socket || Menu == GameMenu.FusionPick) { selection.Selected = SelectedSocket; selection.ShowRange = true; }
             if (Menu == GameMenu.FusionPick) {
                 selection.Partners.AddRange(PickPartners);
-                selection.PreviewKind = (int)TowerCatalog.Recipes[PickRecipe].Result;
+                selection.PreviewRecipe = TowerCatalog.Recipes[PickRecipe];
             }
             bool live = Simulation.State == RunState.Running || Simulation.IsPreparing;
             int readySocket = -1;
@@ -324,6 +336,7 @@ namespace Gatefall
         private void HandleAction(MobileAction action)
         {
             int id=(int)action;
+            if(HeartShortage || HomePlaceholder!="" || SupplyModal || ShopAdPending || DailyAdPending) {CampaignAction(id);return;}
             if(id>=MobileLayout.WaveCallActionBase && id<MobileLayout.WaveCallActionBase+Simulation.WaveCount) { CallWave(id-MobileLayout.WaveCallActionBase);return; }
             switch (action) {
                 case MobileAction.Start: StartRun(); break;
@@ -370,9 +383,9 @@ namespace Gatefall
             if ((action == 212 || action == 213) && Menu == GameMenu.Socket && tower != null) {
                 TowerRecipesExpanded = action == 212; SellArmed = false; TouchInput.Reset(); return;
             }
-            if ((action >= 200 && action < 210 || action==260) && Menu == GameMenu.Socket) {
-                TowerKind kind = action==260 ? TowerKind.Scatter : (TowerKind)(action - 200);
-                if (Simulation.TryBuild(SelectedSocket, kind, CommandId(), out reason)) { CloseMenu(); ShowNotice(TowerCatalog.Get(kind).Name + " 건설", 1.5f); }
+            if ((action >= 200 && action < 210 || action==260 || action==261) && Menu == GameMenu.Socket) {
+                TowerKind kind = action==261 ? TowerKind.Piercer : action==260 ? TowerKind.Scatter : (TowerKind)(action - 200);
+                if (Simulation.TryBuild(SelectedSocket, kind, CommandId(), out reason)) { CloseMenu(); ShowNotice(TowerCatalog.Get(kind).Name + " 건설", 1.2f); }
                 else ShowNotice(reason, 2.4f);
                 return;
             }
@@ -424,7 +437,7 @@ namespace Gatefall
             string reason; Tower partner = Simulation.TowerAt(partnerSocket);
             if (partner == null) return;
             if (Simulation.TryFuse(recipe, anchor.Id, partner.Id, anchor.Socket, CommandId(), out reason)) {
-                ShowNotice(TowerCatalog.Get(TowerCatalog.Recipes[recipe].Result).Name + " 완성 · 빈 자리에 다시 건설 가능", 3.5f);
+                ShowNotice(Simulation.TowerAt(anchor.Socket).DisplayName + " 완성 · 빈 자리에 다시 건설 가능", 3.5f);
                 CloseMenu();
             } else ShowNotice(reason, 2.4f);
         }

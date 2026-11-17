@@ -13,6 +13,10 @@ namespace Gatefall.Core
         public string StableId;
         public string PredecessorId;
         public bool BossRequired;
+        // Distance along the authored boss group's road. Null keeps the original near-core entry.
+        public float? BossEntryDistance;
+        public string BossName, BossVictoryTitle;
+        public string BossDisplayName => BossName ?? "잿빛 문지기";
         public float HealthScale;
         public BattlefieldLayout Layout;
         public CampaignWave[] Waves;
@@ -55,7 +59,7 @@ namespace Gatefall.Core
         }
         public bool Allows(TowerKind kind)
         {
-            if(kind==TowerKind.Scatter || kind==TowerKind.Barrage)return Index>=6;
+            if(kind==TowerKind.Scatter || kind==TowerKind.Barrage || kind==TowerKind.Piercer || kind==TowerKind.Surge)return Index>=6;
             return kind == TowerKind.Autocannon || (kind == TowerKind.Binding && Index >= 1) ||
                 (kind == TowerKind.Rupture && Index >= 3) || (kind == TowerKind.Barrier && Index >= 4) ||
                 (kind == TowerKind.Arc && Index >= 2) ||
@@ -71,9 +75,11 @@ namespace Gatefall.Core
         public int Hunter;
         public int EarnedGrowth;
         public int[] Research = new int[4];
+        public SupplyState Supply=new SupplyState();
         public int Loadout = 135;
         public bool MarkerUnlocked, ObserverUnlocked;
         public bool ScatterUnlocked, BarrageUnlocked, BarrageSealUnlocked;
+        public bool PiercerUnlocked, SurgeUnlocked, SurgeSealUnlocked;
         public bool Crisis;
         public bool MobileWaveCalls { get { return Stage!=null && Stage.Index>=3 && !Crisis; } }
         public bool Lab { get { return Stage == null; } }
@@ -87,7 +93,7 @@ namespace Gatefall.Core
             return Stage.ClearStory.Split('\n')[0];
         }
         public CampaignBattle Copy()
-        { return new CampaignBattle { Stage = Stage, Hunter = Hunter, EarnedGrowth = EarnedGrowth, Research = (int[])Research.Clone(), Crisis = Crisis, Loadout=Loadout, MarkerUnlocked=MarkerUnlocked, ObserverUnlocked=ObserverUnlocked, ScatterUnlocked=ScatterUnlocked,BarrageUnlocked=BarrageUnlocked,BarrageSealUnlocked=BarrageSealUnlocked }; }
+        { var copy=(CampaignBattle)MemberwiseClone();copy.Research=(int[])Research.Clone();copy.Supply=Supply.Copy();return copy; }
     }
     public static class CampaignCatalog
     {
@@ -101,21 +107,28 @@ namespace Gatefall.Core
         public const float GrowthHealthPerRank = .08f, GrowthDamagePerRank = .05f;
         // Legacy long-campaign reference; current purchases use implemented operation milestones.
         public static readonly int[] GradeChapter = { 1, 1, 1, 2, 3, 5, 7 };
-        public static readonly int[] ResearchCosts = { 2, 4, 6 };
+        public static readonly int[] ResearchCosts = { 2, 4, 6, 12 };
+        public const int MarketGrowthCost = 26;
+        public const int RailGrowthCost = 28;
+        public const string PiercerGate = "C03-S002", SurgeGate = "C03-S004", SurgeSealGate = "C03-S005", RailGrowthGate = "C03-S008";
+        public const string MarketResearchGate = "C02-S008", MarketGrowthGate = "C02-S012";
+        public static readonly string[] ChapterMapNames = { "종현동", "다솜동", "라온역" };
         public static readonly string[] ResearchNames = { "창 · 피해", "봉인 · 감속 지속", "붕괴 · 폭발 반경", "방벽 · 재충전" };
-        public static readonly string[] ResearchEffects = { "+8 / 16 / 24% 피해", "감속 +3%p · 지속 +0.1초 / 단계", "피해 +6% · 반경 +0.1 / 단계", "내구 +10% · 재충전 -6% / 단계" };
+        public static readonly string[] ResearchEffects = { "피해 +8% / 단계", "감속 +3%p · 지속 +0.1초 / 단계", "피해 +6% · 반경 +0.1 / 단계", "내구 +10% · 재충전 -6% / 단계" };
         public static int RecommendedHunterGrowth(int stage,int hunter)
         {
             if(hunter==0)return Stages[stage].RecommendedGrowth;
+            if(Stages[stage].Chapter>=2 && Stages[stage].RecommendedGrowth>=6)return hunter==1 ? 4 : 3;
             int rank=0;foreach(int gate in GrowthUnlocks[hunter]){if(gate>stage)break;rank++;}return rank;
         }
         public static int ResearchFocus(int loadout)
-        { return (loadout&1)!=0 ? 0 : (loadout&4)!=0 ? 2 : (loadout&2)!=0 ? 1 : (loadout&(1<<7))!=0 ? 3 : -1; }
+        { return (loadout&PrimaryBallisticResearch)!=0 ? 0 : (loadout&4)!=0 ? 2 : (loadout&2)!=0 ? 1 : (loadout&(1<<7))!=0 ? 3 : -1; }
+        const int PrimaryBallisticResearch=1 | (1<<(int)TowerKind.Piercer);
         public static int ResearchFocus(int loadout,int[] current,int[] recommended)
         {
             if(current==null || recommended==null || current.Length!=4 || recommended.Length!=4)throw new ArgumentException("Research hints require four ranks");
             // Keep one hint, advancing to another selected family after the main recommendation is met.
-            if((loadout&1)!=0 && current[0]<recommended[0])return 0;
+            if((loadout&PrimaryBallisticResearch)!=0 && current[0]<recommended[0])return 0;
             if((loadout&4)!=0 && current[2]<recommended[2])return 2;
             if((loadout&2)!=0 && current[1]<recommended[1])return 1;
             if((loadout&(1<<7))!=0 && current[3]<recommended[3])return 3;
@@ -165,11 +178,27 @@ namespace Gatefall.Core
         };
         public static readonly CampaignStage[] Stages=AllStages();
         static CampaignStage[] AllStages()
-        {var list=new List<CampaignStage>(LegacyStages);list.AddRange(ChapterTwoCampaign.Create());return list.ToArray();}
+        {
+            var list=new List<CampaignStage>(LegacyStages);
+            list.AddRange(ChapterTwoCampaign.Create());
+            list.Add(ChapterTwoCampaign.RailEntry(list.Count));
+            list.AddRange(ChapterTwoCampaign.RailContinuation(list.Count));
+            return list.ToArray();
+        }
         public static int FindStage(string id)
         {for(int i=0;i<Stages.Length;i++)if(Stages[i].Id==id)return i;return -1;}
-        public static int ChapterStart(int chapter) => chapter==2 ? LegacyStages.Length : 0;
-        public static int ChapterCount(int chapter) => chapter==2 ? Stages.Length-LegacyStages.Length : LegacyStages.Length;
+        public static int PlayableChapterCount => Stages[Stages.Length-1].Chapter;
+        public static int ChapterStart(int chapter)
+        { for(int i=0;i<Stages.Length;i++)if(Stages[i].Chapter==chapter)return i;return -1; }
+        public static int ChapterCount(int chapter)
+        {
+            int first=ChapterStart(chapter),end=first;
+            if(first<0)return 0;
+            while(end<Stages.Length && Stages[end].Chapter==chapter)end++;
+            return end-first;
+        }
+        public static int MarketGrowthCap(int hunter) => GrowthCosts.Length-HunterStart[hunter]+(hunter==0 ? 0 : 1);
+        public static int GrowthCap(int hunter) => MarketGrowthCap(hunter)+1;
         // Twelve towers on 1-7~1-9, fourteen from 1-10. Keep room for multiple fronts and fusion refills without
         // requiring every socket to be filled. Later followers cross additional spear damage breakpoints.
         // Calibrated with the progression review and both degenerate/competent plan gates; see the growth/role report.
@@ -189,14 +218,55 @@ namespace Gatefall.Core
         public static int Stars(bool won, float minimumHealth, float maximumHealth)
         {
             if(!won || maximumHealth<=0 || float.IsNaN(minimumHealth))return 0;
-            if(minimumHealth+0.0001f>=maximumHealth*.9f)return 3;
-            return minimumHealth+0.0001f>=maximumHealth*.7f ? 2 : 1;
+            if(minimumHealth+0.0001f>=maximumHealth*StarHealthRatio(3))return 3;
+            return minimumHealth+0.0001f>=maximumHealth*StarHealthRatio(2) ? 2 : 1;
+        }
+        public static float StarHealthRatio(int stars) => stars == 3 ? .9f : stars == 2 ? .7f : 0;
+
+        public static string ResultCoreStatus(bool won, float minimumHealth, float maximumHealth)
+        {
+            float ratio = maximumHealth > 0 && !float.IsNaN(minimumHealth)
+                ? Math.Max(0, Math.Min(1, minimumHealth / maximumHealth)) : 0;
+            int percent = (int)Math.Floor(ratio * 100 + .00001f);
+            string text = "결계 최저 " + percent + "%";
+            int stars = Stars(won, minimumHealth, maximumHealth);
+            if (stars == 0 || stars == 3) return text;
+            int next = stars + 1;
+            int gap = Math.Max(1, (int)Math.Ceiling((StarHealthRatio(next) - ratio) * 100 - .00001f));
+            return text + " · " + new string('★', next) + "까지 " + gap + "%p";
+        }
+
+        public static string ResultDamageDirections(float[] damage)
+        {
+            string[] names = { "서", "북", "동", "남" };
+            int first = -1, second = -1;
+            for (int lane = 0; lane < names.Length; lane++) {
+                if (!(damage[lane] > 0)) continue;
+                if (first < 0 || damage[lane] > damage[first]) {
+                    second = first;
+                    first = lane;
+                } else if (second < 0 || damage[lane] > damage[second]) second = lane;
+            }
+            if (first < 0) return "";
+            string Format(int lane) => names[lane] + " " + Math.Max(1, (int)Math.Round(damage[lane]));
+            return "피해가 컸던 방향 " + Format(first) + (second < 0 ? "" : " · " + Format(second));
         }
         public static string StageId(int stage) { return Stages[stage].Chapter+"-"+Stages[stage].LocalNumber; }
     }
     public sealed class CampaignProfile
     {
         public int MagicCores, SelectedHunter, StoryMask, TutorialMask;
+        public int Hearts=5, ExtraHearts, CrystalsPaid, CrystalsFree;
+        public long HeartAnchorUtc, LastSeenUtc, SaveSerial;
+        public const int AncestorLimit=32;
+        public string CommitHash=SaveLineage.Hash(Guid.NewGuid().ToByteArray());
+        public List<string> AncestorHashes=new List<string>();
+        public bool HeartRewardsBackfilled;
+        public HeartDailyLimits DailyLimits=new HeartDailyLimits();
+        public SupplyState Supply=new SupplyState();
+        public int ShopSeed=Guid.NewGuid().GetHashCode()&int.MaxValue;
+        public DailyShopState Shop=new DailyShopState();
+        public DailyState Daily=new DailyState();
         // Indexed views are runtime conveniences; persistence uses stable stage IDs, never array order.
         public int[] BestStars = new int[CampaignCatalog.Stages.Length], CrisisStars = new int[CampaignCatalog.Stages.Length], Research = new int[4], Growth = new int[3];
         public float[] BestErosion = InitialErosion();
@@ -209,21 +279,40 @@ namespace Gatefall.Core
         public int PendingStage = -1, LastReward;
         public bool PendingCrisis, Muted;
         public bool IsStageOpen(int i) {if(i<0 || i>=CampaignCatalog.Stages.Length)return false;string required=CampaignCatalog.Stages[i].PredecessorId;if(required==null)return true;int previous=CampaignCatalog.FindStage(required);return previous>=0 && BestStars[previous]>0;}
+        public bool HasCleared(string stageId)
+        { int i=CampaignCatalog.FindStage(stageId);return i>=0 && FirstCleared[i]; }
         // A failed first attempt should not permanently hide its learning cues.
         public bool ShouldShowLesson(int i) { return i>=0 && i<FirstCleared.Length && (!FirstCleared[i] || (i<14 ? (TutorialMask & (1 << i))==0 : !TutorialSeenIds.Contains(CampaignCatalog.Stages[i].Id))); }
         public bool HasSeenStory(int i) => i<14 ? (StoryMask & (1<<i))!=0 : StorySeenIds.Contains(CampaignCatalog.Stages[i].Id);
         public bool IsTowerUnlocked(TowerKind kind)
-        {return kind==TowerKind.Scatter ? FirstCleared[15] : kind==TowerKind.Barrage ? FirstCleared[17] : kind==TowerKind.Marker ? FirstCleared[9] : true;}
+        {
+            switch(kind){
+                case TowerKind.Autocannon:return true;
+                case TowerKind.Binding:return FirstCleared[0];
+                case TowerKind.Arc:return FirstCleared[1];
+                case TowerKind.Rupture:case TowerKind.Shatter:case TowerKind.Gravity:return FirstCleared[2];
+                case TowerKind.Barrier:case TowerKind.Seal:return FirstCleared[3];
+                case TowerKind.Marker:case TowerKind.Beacon:return FirstCleared[9];
+                case TowerKind.Observer:return FirstCleared[13];
+                case TowerKind.Scatter:return FirstCleared[15];
+                case TowerKind.Barrage:return FirstCleared[17];
+                case TowerKind.Piercer:return HasCleared(CampaignCatalog.PiercerGate);
+                case TowerKind.Surge:return HasCleared(CampaignCatalog.SurgeGate);
+                default:return false;
+            }
+        }
         public bool AllowsRecipe(FusionRecipe r)
         {return (r.Result!=TowerKind.Observer || FirstCleared[13]) && (r.Result!=TowerKind.Beacon || FirstCleared[9]) &&
-            (r.Result!=TowerKind.Barrage || FirstCleared[17]) && (r.First!=TowerKind.Barrage && r.Second!=TowerKind.Barrage || FirstCleared[18]);}
+            (r.Result!=TowerKind.Barrage || FirstCleared[17]) && (r.First!=TowerKind.Barrage && r.Second!=TowerKind.Barrage || FirstCleared[18]) &&
+            (r.Result!=TowerKind.Surge || HasCleared(CampaignCatalog.SurgeGate)) &&
+            (r.First!=TowerKind.Surge && r.Second!=TowerKind.Surge || HasCleared(CampaignCatalog.SurgeSealGate));}
         public bool FirstSealComplete { get { return BestStars[5]>0; } }
         public int VictoryReward(int stage, bool crisis)
         { return crisis || FirstCleared[stage] ? 2 : CampaignCatalog.Stages[stage].FirstReward; }
         public bool IsHunterOpen(int i) { return i==0 || i==1 && BestStars[2]>0 || i==2 && FirstSealComplete; }
         // Compatibility accessors for older tools. They do not imply a playable second world.
         public bool ChapterCleared { get { return FirstSealComplete; } }
-        public int ChapterReached { get { return FirstSealComplete ? 2 : 1; } }
+        public int ChapterReached { get { for(int chapter=CampaignCatalog.PlayableChapterCount;chapter>1;chapter--)if(IsStageOpen(CampaignCatalog.ChapterStart(chapter)))return chapter;return 1; } }
         public int StarsTotal => CountStars(BestStars);
         public int CrisisStarsTotal => CountStars(CrisisStars);
         public const int MinimumLoadoutCount = 1, MaximumLoadoutCount = 4;
@@ -243,7 +332,7 @@ namespace Gatefall.Core
             return total;
         }
         public string Grade(int hunter)
-        { return hunter==0 ? "미분류 · 안정화 "+(Growth[0]+1) : CampaignCatalog.Grades[CampaignCatalog.HunterStart[hunter]+Growth[hunter]]+"급"; }
+        { return hunter==0 ? "미분류 · 안정화 "+(Growth[0]+1) : CampaignCatalog.Grades[Math.Min(CampaignCatalog.Grades.Length-1,CampaignCatalog.HunterStart[hunter]+Growth[hunter])]+"급"; }
         // Results reachable from the selected families, independently of a battle's resources.
         public List<TowerKind> LoadoutResults()
         {
@@ -262,14 +351,20 @@ namespace Gatefall.Core
         public CampaignProfile Copy()
         {
             CampaignProfile p=(CampaignProfile)MemberwiseClone();
+            p.AncestorHashes=new List<string>(AncestorHashes);
             p.BestStars=(int[])BestStars.Clone(); p.CrisisStars=(int[])CrisisStars.Clone();
             p.Research=(int[])Research.Clone(); p.Growth=(int[])Growth.Clone();
             p.BestErosion=(float[])BestErosion.Clone(); p.FirstCleared=(bool[])FirstCleared.Clone();
             p.StorySeenIds=new HashSet<string>(StorySeenIds);p.TutorialSeenIds=new HashSet<string>(TutorialSeenIds);
+            p.DailyLimits=DailyLimits.Copy();
+            p.Supply=Supply.Copy();p.Shop=Shop.Copy();p.Daily=Daily.Copy();
             p.UnmappedProgress=new Dictionary<string,StageProgress>();foreach(var x in UnmappedProgress)p.UnmappedProgress.Add(x.Key,x.Value.Copy());return p;
         }
         public bool Valid()
         {
+            if(Hearts<0 || Hearts>5 || ExtraHearts<0 || ExtraHearts>999 || CrystalsPaid<0 || CrystalsFree<0 ||
+                HeartAnchorUtc<0 || LastSeenUtc<0 || SaveSerial<0 || DailyLimits==null || !DailyLimits.Valid() ||
+                Supply==null || !Supply.Valid() || ShopSeed<0 || Shop==null || !Shop.Valid() || Daily==null || !Daily.Valid() || !SaveLineage.Valid(this))return false;
             if(MagicCores<0 || MagicCores>100000000 || SelectedHunter<0 || SelectedHunter>2 || PendingStage< -1 || PendingStage>=CampaignCatalog.Stages.Length)return false;
             if(BestStars==null || CrisisStars==null || Research==null || Growth==null || BestErosion==null || FirstCleared==null || StorySeenIds==null || TutorialSeenIds==null || UnmappedProgress==null)return false;
             if(BestStars.Length!=CampaignCatalog.Stages.Length || CrisisStars.Length!=BestStars.Length || Research.Length!=4 || Growth.Length!=3 || BestErosion.Length!=BestStars.Length || FirstCleared.Length!=BestStars.Length)return false;
@@ -279,8 +374,8 @@ namespace Gatefall.Core
             for(int i=0;i<BestStars.Length;i++)if(BestStars[i]<0 || BestStars[i]>3 || CrisisStars[i]<0 || CrisisStars[i]>3 ||
                 float.IsNaN(BestErosion[i]) || BestErosion[i]<0 || BestErosion[i]>1 ||
                 FirstCleared[i]!=(BestStars[i]>0))return false;
-            for(int i=0;i<4;i++)if(Research[i]<0 || Research[i]>3)return false;
-            for(int i=0;i<3;i++)if(Growth[i]<0 || Growth[i]+CampaignCatalog.HunterStart[i]>6)return false;
+            for(int i=0;i<4;i++)if(Research[i]<0 || Research[i]>CampaignCatalog.ResearchCosts.Length)return false;
+            for(int i=0;i<3;i++)if(Growth[i]<0 || Growth[i]>CampaignCatalog.GrowthCap(i))return false;
             // Storage integrity is separate from current unlock rules. Rule updates must not brick an old account.
             foreach(var x in UnmappedProgress)if(!StageProgress.ValidId(x.Key) || CampaignCatalog.FindStage(x.Key)>=0 || x.Value==null || !x.Value.Valid())return false;
             foreach(var id in StorySeenIds)if(!StageProgress.ValidId(id))return false;
@@ -288,24 +383,51 @@ namespace Gatefall.Core
             return PendingRun!=null && LastRewardRun!=null && PendingRun.Length<=64 && LastRewardRun.Length<=64 && StorySeenIds.Count<=4096 && TutorialSeenIds.Count<=4096 && UnmappedProgress.Count+CampaignCatalog.Stages.Length<=4096;
         }
     }
-    public sealed class CampaignService
+    public sealed partial class CampaignService
     {
         readonly Action<CampaignProfile> persist;
+        readonly Func<long> utcClock;
+        readonly Func<int> localDayClock;
         public CampaignProfile Profile { get; private set; }
         public string Error { get; private set; }
         public CampaignService(CampaignProfile profile,Action<CampaignProfile> persist)
-        { if(profile==null || !profile.Valid())throw new ArgumentException("Invalid profile"); Profile=profile.Copy();this.persist=persist; }
+            :this(profile,persist,()=>DateTimeOffset.UtcNow.ToUnixTimeSeconds(),()=> (int)(DateTime.Today-new DateTime(1970,1,1)).TotalDays) { }
+        public CampaignService(CampaignProfile profile,Action<CampaignProfile> persist,Func<long> utcClock,Func<int> localDayClock)
+        { if(profile==null || !profile.Valid() || utcClock==null || localDayClock==null)throw new ArgumentException("Invalid profile/clock"); Profile=profile.Copy();this.persist=persist;this.utcClock=utcClock;this.localDayClock=localDayClock; }
         bool Commit(CampaignProfile p)
         {
-            try { if(persist!=null)persist(p); Profile=p; Error="";return true; }
+            try { p.SaveSerial=checked(Profile.SaveSerial+1);SaveLineage.Advance(p);if(persist!=null)persist(p); Profile=p; Error="";return true; }
             catch(Exception e) { Error="저장 실패: "+e.Message;return false; }
+        }
+        public string BeginReason(int stage,bool crisis)
+        {
+            if(!Profile.IsStageOpen(stage) || crisis && !Profile.FirstSealComplete)return "아직 해금되지 않은 작전입니다.";
+            var p=Profile.Copy();HeartRules.Refresh(p,utcClock(),localDayClock());
+            return p.Hearts+p.ExtraHearts==0 ? "하트 부족" : "";
         }
         public bool Begin(int stage,bool crisis,out string id)
         {
+            // Always a new attempt. Resume returns the saved attempt without spending again.
             id=""; if(!Profile.IsStageOpen(stage) || crisis && !Profile.FirstSealComplete) { Error="아직 해금되지 않은 작전입니다.";return false; }
-            var p=Profile.Copy();p.PendingRun=Guid.NewGuid().ToString("N");p.PendingStage=stage;p.PendingCrisis=crisis;
+            var p=Profile.Copy();if(!HeartRules.Spend(p,utcClock(),localDayClock())) {Error="하트 부족";return false;}
+            p.PendingRun=Guid.NewGuid().ToString("N");p.PendingStage=stage;p.PendingCrisis=crisis;
             if(!Commit(p))return false;id=p.PendingRun;return true;
         }
+        public bool Resume(out string id)
+        { id=Profile.PendingRun;if(string.IsNullOrEmpty(id)){Error="진행 중인 작전이 없습니다.";return false;}Error="";return true; }
+        public bool RefreshHearts()
+        {
+            // Called every second while the home screen is open: only write when something a player can see changed
+            // (a heart arrived, the day or season rolled over, the clock went backwards) or five minutes have passed.
+            var p=Profile.Copy();long now=utcClock();HeartRules.Refresh(p,now,localDayClock());
+            if(now>=Profile.LastSeenUtc && now-Profile.LastSeenUtc<HeartRules.IdleSaveSeconds && p.Hearts==Profile.Hearts &&
+                p.DailyLimits.LocalDay==Profile.DailyLimits.LocalDay && p.Daily.LocalDay==Profile.Daily.LocalDay && p.Daily.Season==Profile.Daily.Season)return true;
+            return Commit(p);
+        }
+        public bool RefillHeartByAd()
+        { var p=Profile.Copy();if(!HeartRules.AdRefill(p,utcClock(),localDayClock())){Error="하트 광고 한도 또는 보관 한도";return false;}DailyRules.Progress(p,DailyMission.Ad,1);return Commit(p); }
+        public bool RefillHeartsByCrystals()
+        { var p=Profile.Copy();if(!HeartRules.CrystalRefill(p,utcClock(),localDayClock())){Error="결정 부족 또는 하트 보관 한도";return false;}return Commit(p); }
         public bool Complete(string id,DefenseSimulation game,out int reward)
         {
             reward=0;
@@ -317,16 +439,23 @@ namespace Gatefall.Core
             int stars=CampaignCatalog.Stars(won,game.MinimumCoreHealth,game.Balance.CoreHealth);
             var p=Profile.Copy();
             if(won) {
+                HeartRules.Refresh(p,utcClock(),localDayClock());
                 reward=p.VictoryReward(stage,p.PendingCrisis);
                 if(p.PendingCrisis) p.CrisisStars[stage]=Math.Max(p.CrisisStars[stage],stars);
                 else {
+                    HeartRules.Grant(p,HeartRules.ClearReward(stage,!p.FirstCleared[stage],stars==3 && p.BestStars[stage]<3));
                     p.BestStars[stage]=Math.Max(p.BestStars[stage],stars);p.FirstCleared[stage]=true;
                     p.BestErosion[stage]=Math.Min(p.BestErosion[stage],game.PeakErosion);
                 }
                 p.MagicCores+=reward;
+                DailyRules.Progress(p,DailyMission.Wins,1);
+                if(stars==3)DailyRules.Progress(p,DailyMission.ThreeStars,1);
+                DailyRules.Progress(p,DailyMission.Fusions,game.Telemetry.Fusions);
+                if(p.PendingCrisis)DailyRules.Progress(p,DailyMission.Crisis,1);
+                DailyRules.Points(p,DailyCatalog.VictoryPoints);
             }
             p.LastReward=reward;p.LastRewardRun=id;p.PendingRun="";p.PendingStage=-1;p.PendingCrisis=false;
-            if(!Commit(p)) { reward=0;return false; } return true;
+            if(!DailyCommit(p)) { reward=0;return false; } return true;
         }
         public bool Abandon(string id)
         {
@@ -339,15 +468,26 @@ namespace Gatefall.Core
         public string GrowthReason(int hunter)
         {
             if(hunter<0 || hunter>2 || !Profile.IsHunterOpen(hunter))return "작전 클리어로 해금하세요.";
-            int index=CampaignCatalog.HunterStart[hunter]+Profile.Growth[hunter];
-            if(index>=6)return "최대 성장 단계";
             int growth=Profile.Growth[hunter];
-            int milestone=CampaignCatalog.GrowthUnlocks[hunter][growth];
-            if(milestone>0 && !Profile.FirstCleared[milestone-1])return "1-"+milestone+" 클리어 후 성장";
-            return Profile.MagicCores<CampaignCatalog.GrowthCosts[index] ? "마핵 부족" : "";
+            if(growth>=CampaignCatalog.GrowthCap(hunter))return "최대 성장 단계";
+            var unlocks=CampaignCatalog.GrowthUnlocks[hunter];
+            if(growth==CampaignCatalog.MarketGrowthCap(hunter)) {
+                if(!Profile.HasCleared(CampaignCatalog.RailGrowthGate))return "3-8 클리어 후 성장";
+            } else if(growth>=unlocks.Length) {
+                if(!Profile.HasCleared(CampaignCatalog.MarketGrowthGate))return "2-12 클리어 후 성장";
+            } else {
+                int milestone=unlocks[growth];
+                if(milestone>0 && !Profile.FirstCleared[milestone-1])return "1-"+milestone+" 클리어 후 성장";
+            }
+            return Profile.MagicCores<GrowthPrice(hunter) ? "마핵 부족" : "";
         }
         public int GrowthPrice(int hunter)
-        { int index=CampaignCatalog.HunterStart[hunter]+Profile.Growth[hunter];return index<6 ? CampaignCatalog.GrowthCosts[index] : 0; }
+        {
+            int rank=Profile.Growth[hunter],index=CampaignCatalog.HunterStart[hunter]+rank;
+            if(rank>=CampaignCatalog.GrowthCap(hunter))return 0;
+            if(rank==CampaignCatalog.MarketGrowthCap(hunter))return CampaignCatalog.RailGrowthCost;
+            return index<CampaignCatalog.GrowthCosts.Length ? CampaignCatalog.GrowthCosts[index] : CampaignCatalog.MarketGrowthCost;
+        }
         public bool Grow(int hunter)
         {
             Error=GrowthReason(hunter);if(Error!="")return false;
@@ -358,9 +498,10 @@ namespace Gatefall.Core
             if(line<0 || line>3)return "없는 연구입니다.";
             if(Profile.BestStars[0]==0)return "1-1 클리어 후 공방 해금";
             if(line==2 && Profile.BestStars[2]==0 || line==3 && Profile.BestStars[3]==0)return "해당 결계주를 먼저 해금하세요.";
-            int rank=Profile.Research[line];if(rank>=3)return "최대 연구 단계";
+            int rank=Profile.Research[line];if(rank>=CampaignCatalog.ResearchCosts.Length)return "최대 연구 단계";
             if(rank==1 && Profile.BestStars[4]==0)return "1-5 클리어 후 연구2단계";
             if(rank==2 && !Profile.FirstCleared[9])return "1-10 클리어 후 연구3단계";
+            if(rank==3 && !Profile.HasCleared(CampaignCatalog.MarketResearchGate))return "2-8 클리어 후 연구4단계";
             return Profile.MagicCores<CampaignCatalog.ResearchCosts[rank] ? "마핵 부족" : "";
         }
         public bool Research(int line)
@@ -379,7 +520,8 @@ namespace Gatefall.Core
         public bool SetMuted(bool muted) {var p=Profile.Copy();p.Muted=muted;return Commit(p);}
         public bool SetLoadout(int mask) { var p=Profile.Copy();p.Loadout=mask;if(!p.Valid()) {Error="결계주를 1~4개 선택하세요.";return false;}foreach(var d in TowerCatalog.All)if((mask&(1<<(int)d.Kind))!=0 && !p.IsTowerUnlocked(d.Kind)){Error="작전 클리어로 먼저 해금하세요.";return false;}return Commit(p); }
         public CampaignBattle Battle(int stage,bool crisis)
-        { return new CampaignBattle {Stage=CampaignCatalog.Stages[stage],Crisis=crisis,Hunter=Profile.SelectedHunter,EarnedGrowth=Profile.Growth[Profile.SelectedHunter],Research=(int[])Profile.Research.Clone(), Loadout=Profile.Loadout, MarkerUnlocked=Profile.FirstCleared[9], ObserverUnlocked=Profile.FirstCleared[13],ScatterUnlocked=Profile.FirstCleared[15],BarrageUnlocked=Profile.FirstCleared[17],BarrageSealUnlocked=Profile.FirstCleared[18]}; }
+        { return new CampaignBattle {Stage=CampaignCatalog.Stages[stage],Crisis=crisis,Hunter=Profile.SelectedHunter,EarnedGrowth=Profile.Growth[Profile.SelectedHunter],Research=(int[])Profile.Research.Clone(),Supply=Profile.Supply.Copy(), Loadout=Profile.Loadout, MarkerUnlocked=Profile.FirstCleared[9], ObserverUnlocked=Profile.FirstCleared[13],ScatterUnlocked=Profile.FirstCleared[15],BarrageUnlocked=Profile.FirstCleared[17],BarrageSealUnlocked=Profile.FirstCleared[18],
+            PiercerUnlocked=Profile.HasCleared(CampaignCatalog.PiercerGate),SurgeUnlocked=Profile.HasCleared(CampaignCatalog.SurgeGate),SurgeSealUnlocked=Profile.HasCleared(CampaignCatalog.SurgeSealGate)}; }
     }
 }
 

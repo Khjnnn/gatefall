@@ -1,3 +1,19 @@
+# 현재 전달 — 2026-11-17 v0.33.1/code153
+
+계승 종결 세 경로 재검토: 관측·쇄도 보강, 탄막은 기존 종결로 복귀. 조합 재료 선택 중 공격 모양·선로 겹침 미리보기(`FusionPreview.cs`, `ArenaView.FusionPreview.cs`). 113,692,857바이트/SHA256 8ba103bcc414eaffd735cf1fd58cd121e332cce4ac7e2775729efa6e03a58154. [기록](Docs/Design/GATEFALL_SEAL_INHERITANCE_EXPANDED_2026-11-15.md) · [APK](Builds/Android/Gatefall-v0.33.1.apk)
+
+# 현재 전달 — 2026-11-14 v0.33.0/code152
+
+하트·상점·보급 상자·일일 콘텐츠와 저장 v4. 기획과 전달 기록은 [GATEFALL_HEARTS_SHOP_GACHA_PLAN_2026-11-14.md](Docs/Design/GATEFALL_HEARTS_SHOP_GACHA_PLAN_2026-11-14.md)의 끝 절. 새 Core 파일: `Hearts.cs`, `Supply.cs`, `CampaignSupply.cs`, `DailyShop.cs`, `Daily.cs`, `CampaignDaily.cs`, `CloudSave.cs`, `SaveLineage.cs`. 새 화면 파일: `HomeMenu.cs`, `MobileHud.Shop.cs`, `MobileHud.Daily.cs`, `CampaignController.Shop.cs`, `CampaignController.Daily.cs`. 광고는 `FakeRewardedAdService`(바로 성공), 클라우드 저장은 인터페이스와 병합 규칙만 있다. 113,669,095바이트/SHA256 e2cb96241f032361457fe6a4496c28b65247ef2c4eb268e11cfeaa3dc65b0016. [검증](TestResults/hearts-shop-20261114/verify-ui.json) · [APK](Builds/Android/Gatefall-v0.33.0.apk)
+
+남은 것: Play 게임즈 서비스·AdMob·Unity IAP의 실제 SDK 연결(Play Console과 AdMob 계정 필요), 스토어용 서명·AAB, 결정·묶음 상품 판매, 가격·확률·보상 수치의 재검토, 사람 플레이 평가. Codex 샌드박스에서는 Unity 라이선스를 쓸 수 없어 Unity 검증과 빌드는 바깥에서 돌려야 한다. 0.31.0 이후 변경은 작업 트리에만 있고 커밋되지 않았다.
+
+# 현재 전달 — 2026-11-13 v0.32.1/code148
+
+라온역 3-2~3-8 후속 정리. 좁은 화면에서 시작·호출·배속 버튼과 건설·조합 메뉴가 입구·지점을 가리지 않게 배치하고(`MobileLayout.PlaceControls`/`PanelBox`), 조합 카드에 재료를 표시하고, 3-3~3-8의 정예·속공·공성 체력 배율을 올렸다(2.2/3.0/1.85/1.35/2.0/2.8). 빌드 전 게이트에 `Tools/review-rail-choices.ps1 -Enforce`(창 봇·혼합 계획·위기 작전)와 화면 가림 검사(`Tests/HudOcclusionChecks.cs`)가 추가됐다. 전용 에뮬레이터 5720에서 3-3~3-8 전멸 완주·해금·보상·재실행 저장 확인, 3-6만 1~2별. 108,764,659바이트/SHA256 197fea6df819d3007f016f1ac62fa285cac8fb2547a947c002aabd13065961de. [기록](Docs/Design/GATEFALL_RAIL_POLISH_2026-11-12.md) · [검증](TestResults/rail-polish-20261112/verification-through-8.json) · [APK](Builds/Android/Gatefall-v0.32.1.apk)
+
+남은 것: 난이도는 스크립트 모델 기준이며 사람 플레이 평가가 없다. 3-6 조합 경로의 3별은 입력이 빨라야 한다. 위기 3-3은 혼합 계획 기준 331로 빡빡하다. 실기기·iOS 미검증. 0.31.0 이후 변경은 작업 트리에만 있고 커밋되지 않았다. 0.31.0~0.32.0 기록은 `Docs/Design`의 2026-11-10·11 문서를 본다(이 파일의 아래 항목은 0.27.36 이전 기록이다).
+
 # 현재 전달 — 2026-11-05 v0.27.36/code116
 
 Task331 완료. 방벽은 파란 충격문과 파괴 시 감속 충격파, 봉인은 옥색 구속닻과 대상별 사슬, 표식은 자주색 추격등과 실제 연계 추가타 섬광. 기존 조합/편성 ID·해금·가격·저장 유지. 소유 Android 5664에서 1-14 사슬7·연계1/0:31 포기, 1-5 충격파1·방벽1기 패배/보상0과 별도 1280×720 준비 Lv2를 확인했다. 업데이트 전후 합성 저장 동일, 패배 뒤 포기/재실행 동일 및 진행 보존. 97,737,773바이트/SHA256 af51cb2c52af43a449aa9e0d29e30459cbae686d0a4befdb02b13ff38fe6f9f9. [검증](TestResults/runtime-v02736.md) · [외형](Docs/QA/v050/v02736-defense-lineup.png) · [APK](Builds/Android/Gatefall-v0.27.36.apk)
